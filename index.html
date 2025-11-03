@@ -112,7 +112,7 @@
 
         .btn-primary {
             background-color: var(--secondary-color);
-            color: #003366; /* Un azul oscuro para mejor contraste */
+            color: #003366;
         }
         .btn-primary:hover {
             opacity: 0.85;
@@ -161,8 +161,8 @@
             gap: 15px;
         }
 
-        /* --- 4. Sección Tareas del Día --- */
-        #task-list {
+        /* --- 4. Sección Tareas del Día y Tareas Pendientes --- */
+        #task-list, #pending-tasks-list {
             margin-top: 20px;
             display: grid;
             gap: 15px;
@@ -171,13 +171,14 @@
             background-color: var(--bg-color);
             padding: 15px;
             border-radius: 8px;
-            border-left: 5px solid var(--secondary-color);
+            border-left: 5px solid var(--secondary-color); 
             display: flex;
             flex-direction: column;
             gap: 10px;
+            transition: border-left-color 0.3s ease; 
         }
         .task-item[data-type="Evento"] {
-            border-left-color: var(--primary-color);
+            border-left-color: var(--primary-color); 
         }
         .task-header {
             display: flex;
@@ -223,11 +224,20 @@
             font-size: 1.3em;
             font-weight: 700;
         }
+        .calendar-grid-header {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            border: 1px solid var(--border-color);
+            border-bottom: none;
+            border-radius: 8px 8px 0 0;
+            overflow: hidden;
+        }
         .calendar-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
             border: 1px solid var(--border-color);
-            border-radius: 8px;
+            border-top: none; 
+            border-radius: 0 0 8px 8px;
             overflow: hidden;
         }
         .calendar-day, .calendar-header-day {
@@ -263,14 +273,23 @@
         .day-number {
             font-size: 0.9em;
         }
-        .day-indicator {
-            width: 8px;
-            height: 8px;
-            background-color: var(--primary-color);
-            border-radius: 50%;
+        
+        /* Estilos para múltiples puntos de calendario */
+        .day-indicator-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px; 
             position: absolute;
             bottom: 8px;
             left: 8px;
+            right: 8px; 
+        }
+        .day-indicator-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            background-color: var(--primary-color); 
         }
         
         /* --- 6. Sección Menú Semanal --- */
@@ -308,7 +327,7 @@
             justify-content: space-between;
             align-items: center;
         }
-        .delete-btn { /* Botón genérico de borrar */
+        .delete-btn {
             background: none;
             border: none;
             color: #c53030;
@@ -318,7 +337,7 @@
             line-height: 1;
         }
 
-        /* --- 7. NUEVO: Estilos Objetivos Semanales --- */
+        /* --- 7. Estilos Objetivos Semanales --- */
         #objective-list {
             margin-top: 20px;
             display: grid;
@@ -332,7 +351,6 @@
             border-radius: 8px;
         }
         .objective-item input[type="checkbox"] {
-            /* Estilo custom de checkbox */
             appearance: none;
             -webkit-appearance: none;
             width: 20px;
@@ -348,9 +366,8 @@
             background-color: var(--secondary-color);
             border-color: var(--secondary-color);
         }
-        /* Tilde (check) */
         .objective-item input[type="checkbox"]:checked::after {
-            content: '\2713'; /* Código para '✓' */
+            content: '\2713'; 
             font-size: 14px;
             color: var(--primary-color);
             position: absolute;
@@ -370,7 +387,6 @@
             opacity: 0.8;
         }
 
-
         /* --- 8. Modales (Pop-ups) --- */
         .modal-overlay {
             position: fixed;
@@ -379,7 +395,7 @@
             width: 100%;
             height: 100%;
             background-color: rgba(0, 0, 0, 0.6);
-            display: none; /* Se activa con JS */
+            display: none; 
             justify-content: center;
             align-items: center;
             z-index: 1000;
@@ -405,7 +421,7 @@
             margin: 0;
             color: var(--primary-color);
         }
-        .close-modal-btn {
+        .modal-header .close-modal-btn {
             background: none;
             border: none;
             font-size: 2em;
@@ -420,26 +436,67 @@
             gap: 10px;
         }
         
-        /* Ocultar campos condicionalmente */
         .hidden-field {
             display: none;
         }
+
+        /* Estilos para Etiquetas (Tags) */
+        #task-tags-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+        .tag-pill {
+            font-size: 0.85em;
+            font-weight: 500;
+            padding: 4px 10px;
+            border-radius: 12px;
+            background-color: #eee;
+            color: #333;
+            display: flex;
+            align-items: center;
+        }
+        .tag-pill-remove {
+            margin-left: 6px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            color: #888;
+        }
+        .tag-pill-remove:hover {
+            color: #000;
+        }
+        .task-tags-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 5px;
+        }
         
         /* --- 9. Responsividad --- */
+        
+        /* MODIFICADO: Nuevas reglas de layout para escritorio */
         @media (min-width: 768px) {
-            /* Layout de escritorio: 2 columnas */
             main {
-                grid-template-columns: 1fr 1fr;
+                grid-template-columns: 1fr 1fr; /* 2 columnas */
             }
-            /* La sección de tareas y la del menú ocupan una columna */
-            #daily-tasks, #food-calendar, #weekly-objectives { /* <-- MODIFICADO */
+            
+            /* Columna 1: Tareas, Objetivos, Pendientes */
+            #daily-tasks, #weekly-objectives, #pending-tasks { 
                 grid-column: 1 / 2;
             }
-            /* El calendario mensual ocupa la otra columna */
+            
+            /* Columna 2: Calendario */
             #monthly-calendar {
                 grid-column: 2 / 3;
-                grid-row: 1 / span 3; /* <-- MODIFICADO (span 2 a span 3) */
+                grid-row: 1 / span 3; /* Abarca 3 filas (Tareas, Objetivos, Pendientes) */
                 align-self: start;
+            }
+            
+            /* Fila Full-Width: Menú Semanal */
+            #food-calendar {
+                grid-column: 1 / -1; /* Ocupa ambas columnas */
             }
         }
         
@@ -462,11 +519,15 @@
                 padding: 5px;
                 font-size: 0.8em;
             }
-            .day-indicator {
+            .day-indicator-container {
+                gap: 2px;
+                bottom: 4px;
+                left: 4px;
+                right: 4px;
+            }
+            .day-indicator-dot {
                 width: 5px;
                 height: 5px;
-                bottom: 5px;
-                left: 5px;
             }
         }
 
@@ -480,6 +541,7 @@
 
     <div class="container">
         <main>
+            
             <section id="daily-tasks">
                 <div class="section-header">
                     <h2 id="daily-tasks-title">Tareas para Hoy</h2>
@@ -488,7 +550,24 @@
                 <div id="task-list">
                     </div>
             </section>
+            
+            <section id="weekly-objectives">
+                <div class="section-header">
+                    <h2>Objetivos Semanales</h2>
+                    <button class="btn btn-primary" id="open-objective-modal-btn">Agregar Objetivo</button>
+                </div>
+                <div id="objective-list">
+                    </div>
+            </section>
 
+            <section id="pending-tasks">
+                <div class="section-header">
+                    <h2>Tareas Pendientes (a futuro)</h2>
+                </div>
+                <div id="pending-tasks-list">
+                    </div>
+            </section>
+            
             <section id="monthly-calendar">
                 <h2>Calendario Mensual</h2>
                 <div class="calendar-nav">
@@ -518,15 +597,6 @@
                     </div>
             </section>
             
-            <section id="weekly-objectives">
-                <div class="section-header">
-                    <h2>Objetivos Semanales</h2>
-                    <button class="btn btn-primary" id="open-objective-modal-btn">Agregar Objetivo</button>
-                </div>
-                <div id="objective-list">
-                    </div>
-            </section>
-
         </main>
     </div>
 
@@ -548,6 +618,21 @@
                     <label for="task-title">Título</label>
                     <input type="text" id="task-title" class="form-control" placeholder="Ej: Reunión de equipo" required>
                 </div>
+                
+                <div class="form-group">
+                    <label for="task-tag-input">Etiquetas</label>
+                    <div id="task-tags-container">
+                        </div>
+                    <input type="text" id="task-tag-input" class="form-control" 
+                           placeholder="Escribe una etiqueta y presiona Enter" list="existing-tags-datalist">
+                    <datalist id="existing-tags-datalist">
+                        <option value="personal"></option>
+                        <option value="salud"></option>
+                        <option value="cultivo"></option>
+                        <option value="trabajo"></option>
+                        <option value="facultad"></option>
+                    </datalist>
+                </div>
 
                 <div class="form-group">
                     <label>Tipo</label>
@@ -559,12 +644,12 @@
 
                 <div class="form-group">
                     <label for="task-date">Fecha</label>
-                    <input type="date" id="task-date" class="form-control" required>
+                    <input type="date" id="task-date" class="form-control">
                 </div>
                 
                 <div class="form-group">
                     <label for="task-time">Hora</label>
-                    <input type="time" id="task-time" class="form-control" required>
+                    <input type="time" id="task-time" class="form-control">
                 </div>
 
                 <div class="form-group" id="task-location-group" class="hidden-field">
@@ -581,7 +666,7 @@
                     <label><input type="checkbox" id="task-repeat-check"> Se repite</label>
                 </div>
                 
-                <div class="form-group hidden-field" id="task-repeat-options">
+                <div class="form-group hidden-field" id="task-repeat-options-group">
                     <label for="task-repeat-frequency">Frecuencia</label>
                     <select id="task-repeat-frequency" class="form-control">
                         <option value="none">No repetir</option>
@@ -590,10 +675,24 @@
                         <option value="monthly">Mensual</option>
                         <option value="annual">Anual</option>
                     </select>
+                    
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label for="repeat-duration-number">Repetir durante</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="number" id="repeat-duration-number" class="form-control" value="1" min="1" style="flex: 1;">
+                            <select id="repeat-duration-unit" class="form-control" style="flex: 2;">
+                                <option value="días">días</option>
+                                <option value="semanas">semanas</option>
+                                <option value="meses">meses</option>
+                                <option value="años">años</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
 
+
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary close-modal-btn" data-modal-id="task-modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger close-modal-btn" data-modal-id="task-modal">Cancelar</button>
                     <button type="submit" class="btn btn-primary">Guardar</button>
                 </div>
             </form>
@@ -612,12 +711,10 @@
                     <label for="food-name">Comida</label>
                     <input type="text" id="food-name" class="form-control" placeholder="Ej: Pollo con ensalada" required>
                 </div>
-                
                 <div class="form-group">
                     <label for="food-date">Fecha</label>
                     <input type="date" id="food-date" class="form-control" required>
                 </div>
-
                 <div class="form-group">
                     <label for="food-meal-type">Momento</label>
                     <select id="food-meal-type" class="form-control" required>
@@ -625,9 +722,8 @@
                         <option value="Cena">Cena</option>
                     </select>
                 </div>
-                
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary close-modal-btn" data-modal-id="food-modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger close-modal-btn" data-modal-id="food-modal">Cancelar</button>
                     <button type="submit" class="btn btn-primary">Guardar</button>
                 </div>
             </form>
@@ -646,9 +742,8 @@
                     <label for="objective-name">Objetivo</label>
                     <input type="text" id="objective-name" class="form-control" placeholder="Ej: Terminar el reporte" required>
                 </div>
-                
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary close-modal-btn" data-modal-id="objective-modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger close-modal-btn" data-modal-id="objective-modal">Cancelar</button>
                     <button type="submit" class="btn btn-primary">Guardar</button>
                 </div>
             </form>
@@ -659,7 +754,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
     
     <script>
-        // Tu script de configuración de Firebase no cambia
+        // Configuración de Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyCqbeQ5pq-JwAk6tfgFkn6j20rPt98lg4w",
             authDomain: "agendapp-c7080.firebaseapp.com",
@@ -677,29 +772,32 @@
         document.addEventListener('DOMContentLoaded', () => {
 
             // --- 1. Estado de la Aplicación y Constantes ---
+            let tasks = [];
+            let foodPlan = [];
+            let objectives = [];
+
+            let currentDate = new Date(); 
+            let selectedDate = new Date(); 
+            selectedDate.setHours(0, 0, 0, 0);
+
+            const TAG_COLORS = {
+                'personal': '#FFAB91', // Salmón
+                'salud': '#A5D6A7',    // Verde
+                'cultivo': '#81D4FA',  // Azul
+                'trabajo': '#B39DDB',  // Violeta
+                'facultad': '#F48FB1', // Rosa
+            };
+            const DEFAULT_TAG_COLORS = ['#CFD8DC', '#FFE082', '#BCAAA4']; // Gris, Amarillo, Marrón
             
-            // --- MODIFICADO: Todo el estado ahora se maneja desde Firebase ---
-            let tasks = [];       // Inicia vacío, se llenará desde Firebase
-            let foodPlan = [];    // Inicia vacío, se llenará desde Firebase
-            let objectives = [];  // Inicia vacío, se llenará desde Firebase
+            let selectedTags = new Set();
 
-            // Ya no se usan las claves de localStorage
-            // const FOOD_KEY = 'myAgenda.food';
-            // const OBJECTIVES_KEY = 'myAgenda.objectives';
-
-            let currentDate = new Date(); // Para el calendario mensual
-            let selectedDate = new Date(); // Para la lista de tareas
-            selectedDate.setHours(0, 0, 0, 0); // Normalizar a medianoche
-
-            // --- 2. Selectores del DOM (Sin cambios) ---
+            // --- 2. Selectores del DOM ---
             const taskModal = document.getElementById('task-modal');
             const foodModal = document.getElementById('food-modal');
             const objectiveModal = document.getElementById('objective-modal');
-
             const openTaskModalBtn = document.getElementById('open-task-modal-btn');
             const openFoodModalBtn = document.getElementById('open-food-modal-btn');
             const openObjectiveModalBtn = document.getElementById('open-objective-modal-btn');
-
             const closeModalBtns = document.querySelectorAll('.close-modal-btn');
             const modalOverlays = document.querySelectorAll('.modal-overlay');
 
@@ -717,63 +815,55 @@
 
             const foodGridContainer = document.getElementById('food-calendar-grid');
             const objectiveListContainer = document.getElementById('objective-list');
-
-            // --- 3. Funciones de Persistencia ---
             
-            // --- MODIFICADO: Funciones de saveFood/saveObjectives eliminadas ---
-            // --- Ahora tenemos "escuchas" (listeners) para todo ---
+            // MODIFICADO: Selector para lista de tareas pendientes
+            const pendingTasksListContainer = document.getElementById('pending-tasks-list');
+            
+            const taskTypeRadios = document.querySelectorAll('input[name="task-type"]');
+            const locationGroup = document.getElementById('task-location-group');
+            const repeatCheck = document.getElementById('task-repeat-check');
+            const repeatOptionsGroup = document.getElementById('task-repeat-options-group');
+            
+            const tagInput = document.getElementById('task-tag-input');
+            const tagsContainer = document.getElementById('task-tags-container');
+            
+            const taskDateInput = document.getElementById('task-date');
+            const taskTimeInput = document.getElementById('task-time');
+            
 
-            /**
-             * NUEVO: Escucha la colección 'tasks' en Firebase
-             */
+            // --- 3. Listeners de Firebase (en tiempo real) ---
+
             function listenForTasks() {
                 db.collection("tasks").onSnapshot((querySnapshot) => {
                     const newTasks = [];
                     querySnapshot.forEach((doc) => {
-                        newTasks.push({
-                            id: doc.id, 
-                            ...doc.data() 
-                        });
+                        newTasks.push({ id: doc.id, ...doc.data() });
                     });
-                    tasks = newTasks; // Actualiza el estado global
+                    tasks = newTasks; 
                     
-                    // Re-renderiza las secciones dependientes
                     renderDailyTasks();
                     renderMonthlyCalendar();
+                    renderPendingTasks(); // MODIFICADO: Llama al nuevo render
                     
                 }, (error) => console.error("Error al escuchar las tareas: ", error));
             }
             
-            /**
-             * NUEVO: Escucha la colección 'foodPlan' en Firebase
-             */
             function listenForFood() {
                 db.collection("foodPlan").onSnapshot((querySnapshot) => {
                     const newFoodPlan = [];
                     querySnapshot.forEach((doc) => {
-                        newFoodPlan.push({
-                            id: doc.id,
-                            ...doc.data()
-                        });
+                        newFoodPlan.push({ id: doc.id, ...doc.data() });
                     });
-                    foodPlan = newFoodPlan; // Actualiza el estado global
-                    renderFoodCalendar();   // Re-renderiza la sección
-                    
+                    foodPlan = newFoodPlan;
+                    renderFoodCalendar();
                 }, (error) => console.error("Error al escuchar el plan de comidas: ", error));
             }
             
-            /**
-             * NUEVO: Escucha la colección 'objectives' en Firebase
-             */
             function listenForObjectives() {
-                // Filtramos por 'weekId' para traer solo los de la semana actual
-                // Esto es más eficiente que traerlos *todos*
                 const currentWeekId = getWeekId(new Date());
-                
                 db.collection("objectives")
                   .where("weekId", "==", currentWeekId)
                   .onSnapshot((querySnapshot) => {
-                    
                     const newObjectives = [];
                     querySnapshot.forEach((doc) => {
                         newObjectives.push({
@@ -781,29 +871,24 @@
                             ...doc.data()
                         });
                     });
-                    objectives = newObjectives; // Actualiza el estado global
-                    renderWeeklyObjectives();   // Re-renderiza la sección
-                    
+                    objectives = newObjectives;
+                    renderWeeklyObjectives();
                 }, (error) => console.error("Error al escuchar los objetivos: ", error));
             }
 
-
             // --- 4. Funciones de Renderizado ---
-            
-            // (Función renderAll() eliminada por no ser necesaria)
 
             /**
-             * Renderiza la lista de tareas (Sin cambios)
+             * MODIFICADO: Renderiza tareas, CON COLOR DE BORDE POR ETIQUETA
              */
             function renderDailyTasks() {
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
-                if (selectedDate.getTime() === today.getTime()) {
-                    dailyTasksTitle.textContent = 'Tareas para Hoy';
-                } else {
-                    dailyTasksTitle.textContent = `Tareas para ${selectedDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}`;
-                }
-
+                dailyTasksTitle.textContent = (selectedDate.getTime() === today.getTime()) 
+                    ? 'Tareas para Hoy'
+                    : `Tareas para ${selectedDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}`;
+                
+                // MODIFICADO: Filtra tareas CON fecha
                 const selectedDateString = toISODateString(selectedDate);
                 const tasksForDay = tasks.filter(task => task.date === selectedDateString)
                                         .sort((a, b) => a.time.localeCompare(b.time));
@@ -816,32 +901,12 @@
                 }
 
                 tasksForDay.forEach(task => {
-                    const taskEl = document.createElement('div');
-                    taskEl.classList.add('task-item');
-                    taskEl.setAttribute('data-type', task.type);
-                    
-                    // Usa el ID de Firebase (string)
-                    taskEl.innerHTML = `
-                        <div class="task-header">
-                            <span class="task-title">${escapeHTML(task.title)}</span>
-                            <span class="task-time">${escapeHTML(task.time)}</span>
-                        </div>
-                        ${task.description ? `<p class="task-description">${escapeHTML(task.description)}</p>` : ''}
-                        <div class="task-details">
-                            ${task.location ? `<span><strong>Lugar:</strong> ${escapeHTML(task.location)}</span>` : ''}
-                            ${task.repeat !== 'none' ? `<span><strong>Repite:</strong> ${escapeHTML(task.repeat)}</span>` : ''}
-                        </div>
-                        <div class="task-actions">
-                            <button class="action-btn btn-secondary" onclick="handleEditTask('${task.id}')">Editar</button>
-                            <button class="action-btn btn-danger" onclick="handleDeleteTask('${task.id}')">Eliminar</button>
-                        </div>
-                    `;
-                    taskListContainer.appendChild(taskEl);
+                    taskListContainer.appendChild(createTaskCard(task)); // Usa la función helper
                 });
             }
 
             /**
-             * Renderiza el calendario mensual (Sin cambios)
+             * Renderiza el calendario mensual
              */
             function renderMonthlyCalendar() {
                 currentDate.setDate(1); 
@@ -870,7 +935,7 @@
             }
 
             /**
-             * Helper para crear un celda de día (Sin cambios)
+             * MODIFICADO: Helper para crear celda de día (con múltiples puntos de color)
              */
             function createCalendarDay(dayNumber, date, isOtherMonth) {
                 const dayEl = document.createElement('div');
@@ -883,12 +948,31 @@
                 if (!isOtherMonth && date.getTime() === selectedDate.getTime()) {
                     dayEl.classList.add('selected');
                 }
-                const hasTasks = tasks.some(task => task.date === dateString);
-                if (hasTasks && !isOtherMonth) {
-                    const indicator = document.createElement('div');
-                    indicator.classList.add('day-indicator');
-                    dayEl.appendChild(indicator);
+                
+                // MODIFICADO: Lógica para múltiples puntos de color
+                const tasksForDay = tasks.filter(task => task.date === dateString);
+                
+                if (tasksForDay.length > 0 && !isOtherMonth) {
+                    const container = document.createElement('div');
+                    container.className = 'day-indicator-container';
+                    
+                    tasksForDay.slice(0, 5).forEach(task => { // Limita a 5 puntos
+                        const dot = document.createElement('div');
+                        dot.className = 'day-indicator-dot';
+                        
+                        let dotColor = 'var(--primary-color)'; 
+                        if (task.tags && task.tags.length > 0) {
+                            dotColor = getTagColor(task.tags[0]);
+                        } else if (task.type === 'Tarea') {
+                            dotColor = 'var(--secondary-color)';
+                        }
+                        dot.style.backgroundColor = dotColor;
+                        container.appendChild(dot);
+                    });
+                    
+                    dayEl.appendChild(container);
                 }
+                
                 dayEl.addEventListener('click', () => {
                     selectedDate = date;
                     selectedDate.setHours(0, 0, 0, 0);
@@ -899,8 +983,7 @@
             }
 
             /**
-             * Renderiza el menú semanal
-             * MODIFICADO: Ahora usa el array 'foodPlan' global (sincronizado)
+             * Renderiza el menú semanal (Sin cambios)
              */
             function renderFoodCalendar() {
                 foodGridContainer.innerHTML = '';
@@ -916,12 +999,9 @@
                     const dateString = toISODateString(currentDay);
                     const dayEl = document.createElement('div');
                     dayEl.classList.add('food-day');
-                    
-                    // Usa el array 'foodPlan' global
                     const foodForDay = foodPlan.filter(food => food.date === dateString);
                     const almuerzo = foodForDay.find(f => f.mealType === 'Almuerzo');
                     const cena = foodForDay.find(f => f.mealType === 'Cena');
-
                     dayEl.innerHTML = `
                         <div class="food-day-header">${daysOfWeekNames[i]} (${currentDay.getDate()}/${currentDay.getMonth()+1})</div>
                         <div class="food-slot">
@@ -937,10 +1017,6 @@
                 }
             }
 
-            /**
-             * Helper para crear item de comida
-             * MODIFICADO: Usa el ID de Firebase (string)
-             */
             function createFoodItemHTML(food) {
                 return `
                     <div class="food-item">
@@ -951,27 +1027,19 @@
             }
             
             /**
-             * Renderiza los objetivos de la semana actual
-             * MODIFICADO: Usa el array 'objectives' global (sincronizado)
+             * Renderiza los objetivos de la semana actual (Sin cambios)
              */
             function renderWeeklyObjectives() {
-                // El array 'objectives' ya está filtrado por semana gracias al listener
-                
                 objectiveListContainer.innerHTML = ''; 
-                
                 if (objectives.length === 0) {
                     objectiveListContainer.innerHTML = '<p>No hay objetivos para esta semana.</p>';
                     return;
                 }
-
                 objectives.forEach(obj => {
                     const objEl = document.createElement('div');
                     objEl.classList.add('objective-item');
-                    
                     const checked = obj.completed ? 'checked' : '';
                     const completedClass = obj.completed ? 'completed' : '';
-                    
-                    // MODIFICADO: Usa el ID de Firebase (string)
                     objEl.innerHTML = `
                         <input type="checkbox" id="obj-${obj.id}" ${checked} onchange="handleToggleObjective('${obj.id}')">
                         <span class="objective-text ${completedClass}">${escapeHTML(obj.name)}</span>
@@ -981,7 +1049,74 @@
                 });
             }
 
-            // --- 5. Manejo de Modales (Sin cambios) ---
+            /**
+             * NUEVO: Renderiza las tareas sin fecha (pendientes)
+             */
+            function renderPendingTasks() {
+                const pendingTasks = tasks.filter(task => !task.date && task.type === 'Tarea');
+                
+                pendingTasksListContainer.innerHTML = ''; 
+
+                if (pendingTasks.length === 0) {
+                    pendingTasksListContainer.innerHTML = '<p>No hay tareas pendientes.</p>';
+                    return;
+                }
+
+                pendingTasks.forEach(task => {
+                    pendingTasksListContainer.appendChild(createTaskCard(task)); // Usa la función helper
+                });
+            }
+            
+            /**
+             * NUEVO: Helper unificado para crear tarjetas de Tarea/Evento
+             */
+            function createTaskCard(task) {
+                const taskEl = document.createElement('div');
+                taskEl.classList.add('task-item');
+                taskEl.setAttribute('data-type', task.type);
+
+                // Lógica de color de borde
+                let defaultColor = (task.type === 'Evento') ? 'var(--primary-color)' : 'var(--secondary-color)';
+                let borderColor = defaultColor;
+                if (task.tags && task.tags.length > 0) {
+                    borderColor = getTagColor(task.tags[0]);
+                }
+                taskEl.style.borderLeftColor = borderColor;
+
+                // Lógica de etiquetas
+                let tagsHTML = '';
+                if (task.tags && task.tags.length > 0) {
+                    tagsHTML = '<div class="task-tags-list">';
+                    task.tags.forEach(tag => {
+                        const color = getTagColor(tag);
+                        tagsHTML += `<span class="tag-pill" style="background-color: ${color};">${escapeHTML(tag)}</span>`;
+                    });
+                    tagsHTML += '</div>';
+                }
+                
+                // Muestra la hora solo si existe
+                const timeHTML = task.time ? `<span class="task-time">${escapeHTML(task.time)}</span>` : '';
+
+                taskEl.innerHTML = `
+                    <div class="task-header">
+                        <span class="task-title">${escapeHTML(task.title)}</span>
+                        ${timeHTML}
+                    </div>
+                    ${tagsHTML}
+                    ${task.description ? `<p class="task-description">${escapeHTML(task.description)}</p>` : ''}
+                    <div class="task-details">
+                        ${task.location ? `<span><strong>Lugar:</strong> ${escapeHTML(task.location)}</span>` : ''}
+                    </div>
+                    <div class="task-actions">
+                        <button class="action-btn btn-secondary" onclick="handleEditTask('${task.id}')">Editar</button>
+                        <button class="action-btn btn-danger" onclick="handleDeleteTask('${task.id}')">Eliminar</button>
+                    </div>
+                `;
+                return taskEl;
+            }
+
+
+            // --- 5. Manejo de Modales ---
             function openModal(modal) {
                 modal.style.display = 'flex';
             }
@@ -989,7 +1124,7 @@
             function closeModal(modal) {
                 modal.style.display = 'none';
                 resetTaskForm();
-                foodForm.reset(); // MODIFICADO: Resetea form de comida
+                foodForm.reset(); 
                 objectiveForm.reset(); 
             }
 
@@ -1018,111 +1153,197 @@
 
             // --- 6. Manejo de Formularios ---
 
-            // Lógica condicional del formulario de tareas (Sin cambios)
-            const taskTypeRadios = document.querySelectorAll('input[name="task-type"]');
-            const locationGroup = document.getElementById('task-location-group');
-            const repeatCheck = document.getElementById('task-repeat-check');
-            const repeatOptions = document.getElementById('task-repeat-options');
+            // MODIFICADO: Lógica condicional (con required)
             taskTypeRadios.forEach(radio => {
                 radio.addEventListener('change', (e) => {
-                    locationGroup.style.display = (e.target.value === 'Evento') ? 'block' : 'none';
+                    const isEvent = e.target.value === 'Evento';
+                    locationGroup.style.display = isEvent ? 'block' : 'none';
+                    
+                    // Eventos requieren fecha/hora, Tareas no
+                    taskDateInput.required = isEvent;
+                    taskTimeInput.required = isEvent;
                 });
             });
             repeatCheck.addEventListener('change', (e) => {
-                repeatOptions.style.display = e.target.checked ? 'block' : 'none';
+                repeatOptionsGroup.style.display = e.target.checked ? 'block' : 'none';
             });
 
-            // Enviar formulario de Tarea/Evento a FIREBASE (Sin cambios)
+            // Lógica de Etiquetas (Sin cambios)
+            tagInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const tagName = tagInput.value.trim().toLowerCase();
+                    if (tagName && !selectedTags.has(tagName)) {
+                        selectedTags.add(tagName);
+                        renderTagPills();
+                    }
+                    tagInput.value = '';
+                }
+            });
+            
+            function getTagColor(tag) {
+                if (TAG_COLORS[tag]) {
+                    return TAG_COLORS[tag];
+                }
+                let hash = 0;
+                for (let i = 0; i < tag.length; i++) {
+                    hash = tag.charCodeAt(i) + ((hash << 5) - hash);
+                }
+                const index = Math.abs(hash) % DEFAULT_TAG_COLORS.length;
+                return DEFAULT_TAG_COLORS[index];
+            }
+
+            function renderTagPills() {
+                tagsContainer.innerHTML = '';
+                selectedTags.forEach(tag => {
+                    const pill = document.createElement('span');
+                    pill.className = 'tag-pill';
+                    pill.style.backgroundColor = getTagColor(tag);
+                    pill.textContent = escapeHTML(tag);
+                    const removeBtn = document.createElement('span');
+                    removeBtn.className = 'tag-pill-remove';
+                    removeBtn.textContent = '×';
+                    removeBtn.onclick = () => {
+                        selectedTags.delete(tag);
+                        renderTagPills();
+                    };
+                    pill.appendChild(removeBtn);
+                    tagsContainer.appendChild(pill);
+                });
+            }
+
+            // MODIFICADO: Enviar formulario de Tarea (con lógica de fecha nula)
             taskForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const id = document.getElementById('task-id').value; 
+                
+                const id = document.getElementById('task-id').value;
+                const isRepeating = repeatCheck.checked && document.getElementById('task-repeat-frequency').value !== 'none';
+                
+                const taskDate = document.getElementById('task-date').value;
+                const taskTime = document.getElementById('task-time').value;
+
                 const taskData = {
                     title: document.getElementById('task-title').value,
                     type: document.querySelector('input[name="task-type"]:checked').value,
-                    date: document.getElementById('task-date').value,
-                    time: document.getElementById('task-time').value,
+                    date: taskDate || null, 
+                    time: taskTime || null, 
                     location: document.getElementById('task-location').value,
                     description: document.getElementById('task-description').value,
-                    repeat: repeatCheck.checked ? document.getElementById('task-repeat-frequency').value : 'none',
+                    tags: Array.from(selectedTags), 
+                    repeat: document.getElementById('task-repeat-frequency').value
                 };
+
                 try {
+                    // Caso 1: Editando una tarea
                     if (id) {
                         await db.collection("tasks").doc(id).update(taskData);
-                    } else {
+                    
+                    // Caso 2: Creando una tarea nueva, NO repetitiva O SIN FECHA
+                    } else if (!isRepeating || !taskData.date) { 
+                        taskData.repeat = 'none';
                         await db.collection("tasks").add(taskData);
+                    
+                    // Caso 3: Creando una NUEVA serie (solo si hay fecha)
+                    } else { 
+                        const batch = db.batch();
+                        const seriesId = Date.now().toString();
+                        const frequency = taskData.repeat;
+                        const durationNum = parseInt(document.getElementById('repeat-duration-number').value, 10);
+                        const durationUnit = document.getElementById('repeat-duration-unit').value;
+                        
+                        let startDate = new Date(taskData.date + 'T' + taskData.time);
+                        let endDate = new Date(startDate);
+                        
+                        if (durationUnit === 'días') endDate.setDate(endDate.getDate() + durationNum);
+                        if (durationUnit === 'semanas') endDate.setDate(endDate.getDate() + (durationNum * 7));
+                        if (durationUnit === 'meses') endDate.setMonth(endDate.getMonth() + durationNum);
+                        if (durationUnit === 'años') endDate.setFullYear(endDate.getFullYear() + durationNum);
+                        
+                        let currentLoopDate = new Date(startDate);
+                        
+                        while (currentLoopDate <= endDate) {
+                            const newTask = { ...taskData };
+                            newTask.date = toISODateString(currentLoopDate);
+                            newTask.time = currentLoopDate.toTimeString().substring(0, 5);
+                            newTask.seriesId = seriesId; 
+                            newTask.repeat = 'none';     
+                            
+                            const docRef = db.collection("tasks").doc(); 
+                            batch.set(docRef, newTask);
+                            
+                            if (frequency === 'daily') currentLoopDate.setDate(currentLoopDate.getDate() + 1);
+                            if (frequency === 'weekly') currentLoopDate.setDate(currentLoopDate.getDate() + 7);
+                            if (frequency === 'monthly') currentLoopDate.setMonth(currentLoopDate.getMonth() + 1);
+                            if (frequency === 'annual') currentLoopDate.setFullYear(currentLoopDate.getFullYear() + 1);
+                        }
+                        
+                        await batch.commit();
                     }
+                    
                     closeModal(taskModal); 
+                    
                 } catch (error) {
-                    console.error("Error al guardar la tarea: ", error);
+                    console.error("Error al guardar la tarea(s): ", error);
                 }
             });
 
+            // MODIFICADO: Resetea el formulario de tareas (y los required)
             function resetTaskForm() {
                 taskForm.reset();
                 document.getElementById('task-id').value = '';
                 document.getElementById('task-modal-title').textContent = 'Añadir Tarea/Evento';
                 locationGroup.style.display = 'none';
-                repeatOptions.style.display = 'none';
+                repeatOptionsGroup.style.display = 'none'; 
+                
+                taskDateInput.required = false;
+                taskTimeInput.required = false;
+                
+                selectedTags.clear();
+                renderTagPills();
             }
 
-            // --- MODIFICADO: Enviar formulario de Comida a FIREBASE ---
+            // Enviar formulario de Comida (Sin cambios)
             foodForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-
                 const newFood = {
                     name: document.getElementById('food-name').value,
                     date: document.getElementById('food-date').value,
                     mealType: document.getElementById('food-meal-type').value
                 };
-
                 try {
-                    // Replicamos la lógica de "no duplicados":
-                    // 1. Buscamos si ya existe una comida para ese día y momento
                     const query = db.collection("foodPlan")
                         .where("date", "==", newFood.date)
                         .where("mealType", "==", newFood.mealType);
-                    
                     const querySnapshot = await query.get();
-
                     if (querySnapshot.empty) {
-                        // 2a. Si no existe, la agregamos
                         await db.collection("foodPlan").add(newFood);
                     } else {
-                        // 2b. Si existe, la actualizamos (reemplazamos)
                         const docId = querySnapshot.docs[0].id;
                         await db.collection("foodPlan").doc(docId).update(newFood);
                     }
-                    
-                    // onSnapshot() se encargará de renderizar
                     closeModal(foodModal);
-                    
                 } catch (error) {
                     console.error("Error al guardar la comida: ", error);
                 }
             });
             
-            // --- MODIFICADO: Enviar formulario de Objetivos a FIREBASE ---
+            // Enviar formulario de Objetivos (Sin cambios)
             objectiveForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const objectiveName = document.getElementById('objective-name').value;
-                
                 if (!objectiveName.trim()) return; 
-
                 const newObjective = {
                     name: objectiveName,
                     completed: false,
-                    weekId: getWeekId(new Date()) // Asignar a la semana actual
+                    weekId: getWeekId(new Date()) 
                 };
-
                 try {
                     await db.collection("objectives").add(newObjective);
-                    // onSnapshot() se encargará de renderizar
                     closeModal(objectiveModal);
                 } catch (error) {
                     console.error("Error al guardar el objetivo: ", error);
                 }
             });
-
 
             // --- 7. Navegación del Calendario (Sin cambios) ---
             prevMonthBtn.addEventListener('click', () => {
@@ -1147,62 +1368,71 @@
                 }
             };
 
-            // Editar Tarea (Sin cambios)
+            // MODIFICADO: Editar Tarea (maneja fechas nulas y 'required')
             window.handleEditTask = (id) => {
                 const task = tasks.find(task => task.id === id);
                 if (!task) return;
+                
                 document.getElementById('task-id').value = task.id; 
                 document.getElementById('task-modal-title').textContent = 'Editar Tarea/Evento';
                 document.getElementById('task-title').value = task.title;
+                
+                const isEvent = task.type === 'Evento';
                 document.querySelector(`input[name="task-type"][value="${task.type}"]`).checked = true;
-                document.getElementById('task-date').value = task.date;
-                document.getElementById('task-time').value = task.time;
+                taskDateInput.required = isEvent;
+                taskTimeInput.required = isEvent;
+                
+                document.getElementById('task-date').value = task.date || '';
+                document.getElementById('task-time').value = task.time || '';
                 document.getElementById('task-description').value = task.description;
-                locationGroup.style.display = (task.type === 'Evento') ? 'block' : 'none';
-                if (task.type === 'Evento') {
+                
+                locationGroup.style.display = isEvent ? 'block' : 'none';
+                if (isEvent) {
                     document.getElementById('task-location').value = task.location;
                 }
-                repeatCheck.checked = (task.repeat !== 'none');
-                repeatOptions.style.display = (task.repeat !== 'none') ? 'block' : 'none';
-                if (task.repeat !== 'none') {
+                
+                const isRepeating = task.repeat && task.repeat !== 'none';
+                repeatCheck.checked = isRepeating;
+                repeatOptionsGroup.style.display = isRepeating ? 'block' : 'none';
+                if (isRepeating) {
                     document.getElementById('task-repeat-frequency').value = task.repeat;
                 }
+
+                selectedTags.clear();
+                if (task.tags && task.tags.length > 0) {
+                    task.tags.forEach(tag => selectedTags.add(tag));
+                }
+                renderTagPills(); 
+                
                 openModal(taskModal);
             };
 
-            // --- MODIFICADO: Eliminar Comida de FIREBASE ---
+            // Acciones de Comida y Objetivos (Sin cambios)
             window.handleDeleteFood = async (id) => {
                 try {
                     await db.collection("foodPlan").doc(id).delete();
-                    // onSnapshot() se encargará de re-renderizar
                 } catch (error) {
                     console.error("Error al eliminar la comida: ", error);
                 }
             };
             
-            // --- MODIFICADO: Marcar/Desmarcar Objetivo en FIREBASE ---
             window.handleToggleObjective = async (id) => {
-                // Buscamos el objetivo en nuestro array local sincronizado
                 const objective = objectives.find(obj => obj.id === id);
                 if (objective) {
-                    const newCompletedState = !objective.completed; // Calculamos el nuevo estado
+                    const newCompletedState = !objective.completed;
                     try {
-                        // Enviamos solo la actualización a Firebase
                         await db.collection("objectives").doc(id).update({
                             completed: newCompletedState
                         });
-                        // onSnapshot() se encargará de re-renderizar
                     } catch (error) {
                         console.error("Error al actualizar el objetivo: ", error);
                     }
                 }
             };
 
-            // --- MODIFICADO: Eliminar Objetivo de FIREBASE ---
             window.handleDeleteObjective = async (id) => {
                 try {
                     await db.collection("objectives").doc(id).delete();
-                    // onSnapshot() se encargará de re-renderizar
                 } catch (error) {
                     console.error("Error al eliminar el objetivo: ", error);
                 }
@@ -1226,6 +1456,7 @@
             }
 
             function escapeHTML(str) {
+                if (!str) return '';
                 return str.replace(/[&<>"']/g, (match) => {
                     const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
                     return map[match];
@@ -1237,15 +1468,14 @@
 
             // --- 11. Inicialización ---
             
-            // Inicia todas las "escuchas" en tiempo real
             listenForTasks();
             listenForFood();
             listenForObjectives();
             
-            // Renderiza el estado inicial vacío (se llenarán cuando Firebase responda)
             renderMonthlyCalendar();
             renderFoodCalendar();
             renderWeeklyObjectives();
+            renderPendingTasks(); // MODIFICADO: Llama al nuevo render
         });
     </script>
 </body>
