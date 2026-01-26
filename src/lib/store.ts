@@ -21,6 +21,16 @@ interface AppState {
     notes?: string;
     isAllDay?: boolean;
   }) => Promise<void>;
+  addTasks: (tasksData: {
+    title: string;
+    durationMinutes?: number;
+    effort?: Effort;
+    scheduledDate?: Date | null;
+    category?: string;
+    location?: string;
+    notes?: string;
+    isAllDay?: boolean;
+  }[]) => Promise<void>;
   deleteTask: (id: number) => Promise<void>;
   completeTask: (taskId: number) => Promise<void>;
   addReward: (rewardData: { title: string; cost: number; icon: string }) => Promise<void>;
@@ -75,6 +85,30 @@ export const useStore = create<AppState>((set, get) => ({
 
     const id = await db.tasks.add(newTask);
     set((state) => ({ tasks: [...state.tasks, { ...newTask, id } as Task] }));
+  },
+
+  addTasks: async (tasksData) => {
+    const newTasks = tasksData.map((taskData) => {
+      const duration = taskData.durationMinutes ?? 15;
+      const effort = taskData.effort ?? 'LOW';
+      const goldReward = calculateGoldReward(duration, effort);
+
+      return {
+        ...taskData,
+        durationMinutes: duration,
+        effort: effort,
+        scheduledDate: taskData.scheduledDate === undefined ? new Date() : taskData.scheduledDate,
+        status: 'PENDING' as TaskStatus,
+        goldReward,
+        createdAt: new Date(),
+      };
+    });
+
+    await db.tasks.bulkAdd(newTasks);
+
+    // Refresh tasks from DB to get IDs and ensure consistency
+    const allTasks = await db.tasks.toArray();
+    set({ tasks: allTasks });
   },
 
   deleteTask: async (id) => {

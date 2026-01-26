@@ -3,6 +3,13 @@ import { useStore } from '../../lib/store';
 import { Modal } from '../../components/Modal';
 import { Button } from '../../components/Button';
 import {
+  addDays,
+  addWeeks,
+  addMonths,
+  addYears,
+  getYear
+} from 'date-fns';
+import {
   X,
   Clock,
   Dumbbell,
@@ -13,7 +20,8 @@ import {
   Users,
   MoreHorizontal,
   ChevronRight,
-  ChevronDown
+  ChevronDown,
+  Cake
 } from 'lucide-react';
 
 interface CreateTaskModalProps {
@@ -28,17 +36,23 @@ const CATEGORIES = [
   { id: 'facultad', label: 'Facultad', icon: GraduationCap, color: 'text-indigo-400', border: 'border-indigo-400/50', bg: 'bg-indigo-400/10', ring: 'ring-indigo-400' },
   { id: 'salud', label: 'Salud', icon: HeartPulse, color: 'text-red-400', border: 'border-red-400/50', bg: 'bg-red-400/10', ring: 'ring-red-400' },
   { id: 'amigos', label: 'Amigos', icon: Users, color: 'text-yellow-400', border: 'border-yellow-400/50', bg: 'bg-yellow-400/10', ring: 'ring-yellow-400' },
+  { id: 'cumpleanos', label: 'Cumpleaños', icon: Cake, color: 'text-pink-400', border: 'border-pink-400/50', bg: 'bg-pink-400/10', ring: 'ring-pink-400' },
   { id: 'otros', label: 'Otros', icon: MoreHorizontal, color: 'text-stone-400', border: 'border-stone-400/50', bg: 'bg-stone-400/10', ring: 'ring-stone-400' },
 ];
 
 export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
-  const { addTask } = useStore();
+  const { addTask, addTasks } = useStore();
 
   const [title, setTitle] = useState('');
   const [date, setDate] = useState<string | null>(new Date().toISOString().split('T')[0]); // YYYY-MM-DD
   const [isTimeEnabled, setIsTimeEnabled] = useState(false);
   const [time, setTime] = useState('');
   const [category, setCategory] = useState<string | null>(null);
+
+  // Recurrence
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrenceFrequency, setRecurrenceFrequency] = useState(1);
+  const [recurrenceUnit, setRecurrenceUnit] = useState<'day' | 'week' | 'month' | 'year'>('day');
 
   // Additional Data
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -61,15 +75,53 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
         }
     }
 
-    await addTask({
-      title,
-      scheduledDate,
-      category: category || undefined,
-      location,
-      notes,
-      isAllDay: !isTimeEnabled,
-      // Defaults handled in store, but we removed Duration/Effort inputs
-    });
+    if (isRecurring && scheduledDate) {
+      const tasksToCreate = [];
+      let nextDate = scheduledDate;
+      const limitYear = new Date().getFullYear();
+
+      // Ensure we process recurrence only for current year as per requirement
+      // If start date is beyond current year, fallback to single task creation
+      if (getYear(scheduledDate) > limitYear) {
+         await addTask({
+            title,
+            scheduledDate,
+            category: category || undefined,
+            location,
+            notes,
+            isAllDay: !isTimeEnabled,
+         });
+      } else {
+         while (getYear(nextDate) === limitYear) {
+            tasksToCreate.push({
+                title,
+                scheduledDate: nextDate,
+                category: category || undefined,
+                location,
+                notes,
+                isAllDay: !isTimeEnabled,
+            });
+
+            if (recurrenceUnit === 'day') nextDate = addDays(nextDate, recurrenceFrequency);
+            if (recurrenceUnit === 'week') nextDate = addWeeks(nextDate, recurrenceFrequency);
+            if (recurrenceUnit === 'month') nextDate = addMonths(nextDate, recurrenceFrequency);
+            if (recurrenceUnit === 'year') nextDate = addYears(nextDate, recurrenceFrequency);
+         }
+
+         if (tasksToCreate.length > 0) {
+             await addTasks(tasksToCreate);
+         }
+      }
+    } else {
+      await addTask({
+        title,
+        scheduledDate,
+        category: category || undefined,
+        location,
+        notes,
+        isAllDay: !isTimeEnabled,
+      });
+    }
 
     // Reset Form
     setTitle('');
@@ -80,6 +132,9 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
     setIsDetailsOpen(false);
     setLocation('');
     setNotes('');
+    setIsRecurring(false);
+    setRecurrenceFrequency(1);
+    setRecurrenceUnit('day');
 
     onClose();
   };
@@ -104,9 +159,9 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
         {/* Date & Time */}
         <div className="flex flex-col space-y-2">
             <label className="block text-sm font-medium text-rose-200">Fecha y Hora</label>
-            <div className="flex items-center gap-3">
+            <div className="grid grid-cols-2 gap-4">
                 {/* Date Input with Clear Button */}
-                <div className="relative flex-1">
+                <div className="relative">
                     <input
                         type="date"
                         value={date || ''}
@@ -125,58 +180,90 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
                     )}
                 </div>
 
-                {/* Time Toggle */}
-                <div className="flex items-center gap-2">
-                    <input
-                        type="checkbox"
-                        id="timeToggle"
-                        checked={isTimeEnabled}
-                        onChange={(e) => setIsTimeEnabled(e.target.checked)}
-                        className="w-5 h-5 rounded border-rose-700 text-rose-600 focus:ring-rose-500 bg-rose-900/50"
-                    />
-                    <label htmlFor="timeToggle" className="cursor-pointer text-rose-300">
-                        <Clock size={20} />
-                    </label>
-                </div>
-
-                {/* Time Picker (Conditional) */}
-                {isTimeEnabled && (
-                    <div className="w-28">
+                {/* Time Section */}
+                <div className="flex gap-2">
+                    <div className="flex items-center h-full">
                         <input
-                            type="time"
-                            value={time}
-                            onChange={(e) => setTime(e.target.value)}
-                            className="w-full bg-rose-900/50 border border-rose-800 rounded-md p-2 text-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-500 [color-scheme:dark]"
+                            type="checkbox"
+                            id="timeToggle"
+                            checked={isTimeEnabled}
+                            onChange={(e) => setIsTimeEnabled(e.target.checked)}
+                            className="w-5 h-5 rounded border-rose-700 text-rose-600 focus:ring-rose-500 bg-rose-900/50"
                         />
+                        <label htmlFor="timeToggle" className="cursor-pointer text-rose-300 ml-2">
+                            <Clock size={20} />
+                        </label>
                     </div>
-                )}
+
+                    <input
+                        type="time"
+                        value={time}
+                        onChange={(e) => setTime(e.target.value)}
+                        disabled={!isTimeEnabled}
+                        className={`w-full bg-rose-900/50 border border-rose-800 rounded-md p-2 text-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-500 [color-scheme:dark] ${
+                            !isTimeEnabled ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
+                    />
+                </div>
             </div>
         </div>
 
         {/* Categories */}
         <div>
             <label className="block text-sm font-medium text-rose-200 mb-2">Categorías</label>
-            <div className="flex flex-wrap gap-2">
-                {CATEGORIES.map((cat) => {
-                    const Icon = cat.icon;
-                    const isSelected = category === cat.id;
-                    return (
-                        <button
-                            key={cat.id}
-                            type="button"
-                            onClick={() => setCategory(isSelected ? null : cat.id)}
-                            className={`flex items-center gap-2 px-3 py-2 rounded-full border transition-all duration-200 ${
-                                isSelected
-                                    ? `${cat.bg} ${cat.border} ${cat.color} ring-2 ${cat.ring} ring-offset-1 ring-offset-rose-950`
-                                    : 'bg-rose-900/30 border-rose-800 text-stone-400 hover:border-rose-700 hover:bg-rose-900/50'
-                            }`}
-                        >
-                            <Icon size={16} />
-                            <span className="text-sm font-medium">{cat.label}</span>
-                        </button>
-                    );
-                })}
+            <select
+                value={category || ''}
+                onChange={(e) => setCategory(e.target.value || null)}
+                className="w-full bg-rose-900/50 border border-rose-800 rounded-md p-3 text-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-500"
+            >
+                <option value="">Sin categoría</option>
+                {CATEGORIES.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                        {cat.label}
+                    </option>
+                ))}
+            </select>
+        </div>
+
+        {/* Recurrence */}
+        <div>
+            <div className="flex items-center gap-2 mb-2">
+                <input
+                    type="checkbox"
+                    id="recurrenceToggle"
+                    checked={isRecurring}
+                    onChange={(e) => setIsRecurring(e.target.checked)}
+                    className="w-4 h-4 rounded border-rose-700 text-rose-600 focus:ring-rose-500 bg-rose-900/50"
+                />
+                <label htmlFor="recurrenceToggle" className="text-sm font-medium text-rose-200 cursor-pointer">
+                    ¿Se repite?
+                </label>
             </div>
+
+            {isRecurring && (
+                <div className="flex gap-4 p-3 bg-rose-900/20 border border-rose-800/30 rounded-md animate-in fade-in slide-in-from-top-1">
+                    <div className="w-20">
+                        <input
+                            type="number"
+                            min="1"
+                            max="99"
+                            value={recurrenceFrequency}
+                            onChange={(e) => setRecurrenceFrequency(Math.max(1, parseInt(e.target.value) || 1))}
+                            className="w-full bg-rose-900/50 border border-rose-800 rounded-md p-2 text-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-500 text-center"
+                        />
+                    </div>
+                    <select
+                        value={recurrenceUnit}
+                        onChange={(e) => setRecurrenceUnit(e.target.value as any)}
+                        className="flex-1 bg-rose-900/50 border border-rose-800 rounded-md p-2 text-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                    >
+                        <option value="day">Día(s)</option>
+                        <option value="week">Semana(s)</option>
+                        <option value="month">Mes(es)</option>
+                        <option value="year">Año(s)</option>
+                    </select>
+                </div>
+            )}
         </div>
 
         {/* Additional Data (Accordion) */}
