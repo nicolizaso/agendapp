@@ -11,7 +11,16 @@ interface AppState {
 
   // Actions
   init: () => Promise<void>;
-  addTask: (taskData: { title: string; durationMinutes: number; effort: Effort; scheduledDate?: Date }) => Promise<void>;
+  addTask: (taskData: {
+    title: string;
+    durationMinutes?: number;
+    effort?: Effort;
+    scheduledDate?: Date | null;
+    category?: string;
+    location?: string;
+    notes?: string;
+    isAllDay?: boolean;
+  }) => Promise<void>;
   deleteTask: (id: number) => Promise<void>;
   completeTask: (taskId: number) => Promise<void>;
   addReward: (rewardData: { title: string; cost: number; icon: string }) => Promise<void>;
@@ -50,10 +59,15 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   addTask: async (taskData) => {
-    const goldReward = calculateGoldReward(taskData.durationMinutes, taskData.effort);
+    const duration = taskData.durationMinutes ?? 15;
+    const effort = taskData.effort ?? 'LOW';
+    const goldReward = calculateGoldReward(duration, effort);
+
     const newTask: Task = {
       ...taskData,
-      scheduledDate: taskData.scheduledDate ?? new Date(),
+      durationMinutes: duration,
+      effort: effort,
+      scheduledDate: taskData.scheduledDate === undefined ? new Date() : taskData.scheduledDate,
       status: 'PENDING',
       goldReward,
       createdAt: new Date(),
