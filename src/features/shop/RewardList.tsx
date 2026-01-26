@@ -8,7 +8,7 @@ export function RewardList() {
     const { rewards, userStats, buyReward } = useStore();
 
     if (rewards.length === 0) {
-        return <div className="text-center text-rose-400 py-10">No rewards available. Add one above!</div>
+        return <div className="text-center text-rose-400 py-10">No hay recompensas disponibles. ¡Añade una!</div>
     }
 
     return (
@@ -34,8 +34,8 @@ export function RewardList() {
                                 disabled={!canAfford}
                                 onClick={() => reward.id && buyReward(reward.id)}
                             >
-                                <span className="group-hover:hidden">Buy</span>
-                                <span className="hidden group-hover:inline">Confirm</span>
+                                <span className="group-hover:hidden">Comprar</span>
+                                <span className="hidden group-hover:inline">Confirmar</span>
                                 <span className="flex items-center">
                                     {reward.cost} <Coins className="w-4 h-4 ml-1" />
                                 </span>

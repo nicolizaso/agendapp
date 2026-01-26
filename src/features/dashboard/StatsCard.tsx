@@ -13,31 +13,31 @@ export function StatsCard() {
        {/* Gold */}
        <Card className="border-rose-700/20 bg-rose-900/50">
          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-           <CardTitle className="text-sm font-medium text-stone-200">Total Gold</CardTitle>
+           <CardTitle className="text-sm font-medium text-stone-200">Oro Total</CardTitle>
            <Coins className="h-4 w-4 text-rose-400" />
          </CardHeader>
          <CardContent>
            <div className="text-2xl font-bold text-stone-100">{userStats.currentGold}</div>
-           <p className="text-xs text-rose-300">Available to spend</p>
+           <p className="text-xs text-rose-300">Disponible para gastar</p>
          </CardContent>
        </Card>
 
        {/* Level */}
        <Card className="bg-rose-900/50">
          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-           <CardTitle className="text-sm font-medium text-stone-200">Level</CardTitle>
+           <CardTitle className="text-sm font-medium text-stone-200">Nivel</CardTitle>
            <Trophy className="h-4 w-4 text-rose-400" />
          </CardHeader>
          <CardContent>
            <div className="text-2xl font-bold text-stone-100">{userStats.level}</div>
-           <p className="text-xs text-rose-300">Keep growing!</p>
+           <p className="text-xs text-rose-300">¡Sigue creciendo!</p>
          </CardContent>
        </Card>
 
        {/* XP */}
        <Card className="bg-rose-900/50">
          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-           <CardTitle className="text-sm font-medium text-stone-200">Experience</CardTitle>
+           <CardTitle className="text-sm font-medium text-stone-200">Experiencia</CardTitle>
            <Zap className="h-4 w-4 text-rose-400" />
          </CardHeader>
          <CardContent>
@@ -45,7 +45,7 @@ export function StatsCard() {
             <div className="w-full bg-rose-800 rounded-full h-2.5 mt-2 overflow-hidden">
                 <div className="bg-rose-600 h-2.5 rounded-full transition-all duration-500" style={{ width: `${xpProgress}%` }}></div>
             </div>
-           <p className="text-xs text-rose-300 mt-1">{Math.round(xpProgress)}% to next level</p>
+           <p className="text-xs text-rose-300 mt-1">{Math.round(xpProgress)}% para el siguiente nivel</p>
          </CardContent>
        </Card>
     </div>

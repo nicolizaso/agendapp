@@ -16,12 +16,12 @@ export function TaskList() {
     });
 
     if (tasks.length === 0) {
-        return <div className="text-center text-rose-400 py-10">No missions active. Create one above!</div>
+        return <div className="text-center text-rose-400 py-10">No hay misiones activas. ¡Crea una!</div>
     }
 
     return (
         <div className="space-y-4">
-            <h2 className="text-xl font-bold text-stone-200 mb-4">Mission Log</h2>
+            <h2 className="text-xl font-bold text-stone-200 mb-4">Misiones Activas</h2>
             {sortedTasks.map((task) => (
                 <Card key={task.id} className={cn(
                     "transition-all duration-200",
@@ -40,10 +40,10 @@ export function TaskList() {
                                     "flex items-center gap-1 font-semibold",
                                     task.effort === 'HIGH' ? "text-red-400" : task.effort === 'MEDIUM' ? "text-amber-400" : "text-green-400"
                                 )}>
-                                    <Zap className="w-3 h-3" /> {task.effort}
+                                    <Zap className="w-3 h-3" /> {task.effort === 'LOW' ? 'Bajo' : task.effort === 'MEDIUM' ? 'Medio' : 'Alto'}
                                 </span>
                                 <span className="text-rose-400 font-bold">
-                                    +{task.goldReward} G
+                                    +{task.goldReward} Oro
                                 </span>
                             </div>
                         </div>
@@ -51,7 +51,7 @@ export function TaskList() {
                         <div className="flex items-center gap-2">
                             {task.status === 'PENDING' && (
                                 <Button size="sm" onClick={() => task.id && completeTask(task.id)} className="bg-green-700 hover:bg-green-600 text-white gap-2">
-                                    <CheckCircle className="w-4 h-4" /> Complete
+                                    <CheckCircle className="w-4 h-4" /> Completar
                                 </Button>
                             )}
                             <Button size="icon" variant="ghost" onClick={() => task.id && deleteTask(task.id)} className="text-rose-400 hover:text-red-400">
