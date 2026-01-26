@@ -31,7 +31,12 @@ function App() {
   return (
     <Layout>
       <header className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
+        <div className="flex items-center gap-4">
+            <img
+                src="/logo.png"
+                alt="Logo Pipa's Journal"
+                className="w-8 h-8 object-contain"
+            />
             <h1 className="text-3xl font-heading font-bold text-stone-100">
                 Pipa's Journal
             </h1>
