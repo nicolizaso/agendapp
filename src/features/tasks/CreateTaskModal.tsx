@@ -12,33 +12,15 @@ import {
 import {
   X,
   Clock,
-  Dumbbell,
-  Sprout,
-  Briefcase,
-  GraduationCap,
-  HeartPulse,
-  Users,
-  MoreHorizontal,
   ChevronRight,
-  ChevronDown,
-  Cake
+  ChevronDown
 } from 'lucide-react';
+import { CATEGORIES } from '../../lib/constants';
 
 interface CreateTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
-
-const CATEGORIES = [
-  { id: 'gym', label: 'Gym', icon: Dumbbell, color: 'text-orange-400', border: 'border-orange-400/50', bg: 'bg-orange-400/10', ring: 'ring-orange-400' },
-  { id: 'cultivo', label: 'Cultivo', icon: Sprout, color: 'text-green-400', border: 'border-green-400/50', bg: 'bg-green-400/10', ring: 'ring-green-400' },
-  { id: 'trabajo', label: 'Trabajo', icon: Briefcase, color: 'text-blue-400', border: 'border-blue-400/50', bg: 'bg-blue-400/10', ring: 'ring-blue-400' },
-  { id: 'facultad', label: 'Facultad', icon: GraduationCap, color: 'text-indigo-400', border: 'border-indigo-400/50', bg: 'bg-indigo-400/10', ring: 'ring-indigo-400' },
-  { id: 'salud', label: 'Salud', icon: HeartPulse, color: 'text-red-400', border: 'border-red-400/50', bg: 'bg-red-400/10', ring: 'ring-red-400' },
-  { id: 'amigos', label: 'Amigos', icon: Users, color: 'text-yellow-400', border: 'border-yellow-400/50', bg: 'bg-yellow-400/10', ring: 'ring-yellow-400' },
-  { id: 'cumpleanos', label: 'Cumpleaños', icon: Cake, color: 'text-pink-400', border: 'border-pink-400/50', bg: 'bg-pink-400/10', ring: 'ring-pink-400' },
-  { id: 'otros', label: 'Otros', icon: MoreHorizontal, color: 'text-stone-400', border: 'border-stone-400/50', bg: 'bg-stone-400/10', ring: 'ring-stone-400' },
-];
 
 export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
   const { addTask, addTasks } = useStore();
@@ -254,7 +236,7 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
                     </div>
                     <select
                         value={recurrenceUnit}
-                        onChange={(e) => setRecurrenceUnit(e.target.value as any)}
+                        onChange={(e) => setRecurrenceUnit(e.target.value as 'day' | 'week' | 'month' | 'year')}
                         className="flex-1 bg-rose-900/50 border border-rose-800 rounded-md p-2 text-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-500"
                     >
                         <option value="day">Día(s)</option>

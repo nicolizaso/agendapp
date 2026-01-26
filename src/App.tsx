@@ -33,9 +33,8 @@ function App() {
       <header className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
             <h1 className="text-3xl font-heading font-bold text-stone-100">
-                La Vida de Pipa
+                Pipa's Journal
             </h1>
-            <p className="text-rose-300 font-body">Gamifica tu existencia.</p>
         </div>
 
         <nav className="flex items-center gap-2 bg-rose-900 p-1 rounded-lg border border-rose-800">
@@ -53,7 +52,7 @@ function App() {
                 size="sm"
                 className="gap-2"
             >
-                <ListTodo className="w-4 h-4" /> Misiones
+                <ListTodo className="w-4 h-4" /> Pendientes
             </Button>
         </nav>
       </header>
