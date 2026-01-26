@@ -10,12 +10,13 @@ import {
   getYear
 } from 'date-fns';
 import {
-  X,
   Clock,
   ChevronRight,
   ChevronDown
 } from 'lucide-react';
-import { CATEGORIES } from '../../lib/constants';
+import { CustomSelect } from '../../components/ui/CustomSelect';
+import { DatePicker } from '../../components/ui/DatePicker';
+import { TimeInput } from '../../components/ui/TimeInput';
 
 interface CreateTaskModalProps {
   isOpen: boolean;
@@ -122,7 +123,7 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Nueva Misión">
+    <Modal isOpen={isOpen} onClose={onClose} title="Nueva Tarea">
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Title */}
         <div>
@@ -142,24 +143,9 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
         <div className="flex flex-col space-y-2">
             <label className="block text-sm font-medium text-rose-200">Fecha y Hora</label>
             <div className="grid grid-cols-2 gap-4">
-                {/* Date Input with Clear Button */}
+                {/* Date Input */}
                 <div className="relative">
-                    <input
-                        type="date"
-                        value={date || ''}
-                        onChange={(e) => setDate(e.target.value)}
-                        className="w-full bg-rose-900/50 border border-rose-800 rounded-md p-2 text-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-500 [color-scheme:dark]"
-                    />
-                    {date && (
-                        <button
-                            type="button"
-                            onClick={() => setDate(null)}
-                            className="absolute right-8 top-1/2 -translate-y-1/2 text-rose-400 hover:text-rose-200"
-                            title="Limpiar fecha"
-                        >
-                            <X size={16} />
-                        </button>
-                    )}
+                    <DatePicker value={date} onChange={setDate} />
                 </div>
 
                 {/* Time Section */}
@@ -177,14 +163,10 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
                         </label>
                     </div>
 
-                    <input
-                        type="time"
+                    <TimeInput
                         value={time}
-                        onChange={(e) => setTime(e.target.value)}
+                        onChange={setTime}
                         disabled={!isTimeEnabled}
-                        className={`w-full bg-rose-900/50 border border-rose-800 rounded-md p-2 text-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-500 [color-scheme:dark] ${
-                            !isTimeEnabled ? 'opacity-50 cursor-not-allowed' : ''
-                        }`}
                     />
                 </div>
             </div>
@@ -193,18 +175,11 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
         {/* Categories */}
         <div>
             <label className="block text-sm font-medium text-rose-200 mb-2">Categorías</label>
-            <select
-                value={category || ''}
-                onChange={(e) => setCategory(e.target.value || null)}
-                className="w-full bg-rose-900/50 border border-rose-800 rounded-md p-3 text-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-500"
-            >
-                <option value="">Sin categoría</option>
-                {CATEGORIES.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                        {cat.label}
-                    </option>
-                ))}
-            </select>
+            <CustomSelect
+                value={category}
+                onChange={(val) => setCategory(val || null)}
+                placeholder="Sin categoría"
+            />
         </div>
 
         {/* Recurrence */}
@@ -286,7 +261,7 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
         </div>
 
         <div className="pt-2 flex justify-end">
-             <Button type="submit">Crear Misión</Button>
+             <Button type="submit">Crear Tarea</Button>
         </div>
       </form>
     </Modal>
