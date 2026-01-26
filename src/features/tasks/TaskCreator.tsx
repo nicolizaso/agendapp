@@ -26,7 +26,7 @@ export function TaskCreator() {
   };
 
   return (
-    <Card className="mb-8 border-slate-700 bg-slate-800/50">
+    <Card className="mb-8 border-rose-800 bg-rose-900/50">
       <CardHeader>
         <CardTitle>Create New Mission</CardTitle>
       </CardHeader>
@@ -72,8 +72,8 @@ export function TaskCreator() {
           </div>
 
           <div className="flex items-center justify-between pt-2">
-            <div className="text-sm text-slate-400">
-                Reward: <span className="text-gold-400 font-bold text-lg ml-1">+{projectedGold} Gold</span>
+            <div className="text-sm text-rose-300">
+                Reward: <span className="text-rose-400 font-bold text-lg ml-1">+{projectedGold} Gold</span>
             </div>
             <Button type="submit" disabled={!title}>
                 Add Mission

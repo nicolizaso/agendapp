@@ -8,7 +8,7 @@ export function RewardList() {
     const { rewards, userStats, buyReward } = useStore();
 
     if (rewards.length === 0) {
-        return <div className="text-center text-slate-500 py-10">No rewards available. Add one above!</div>
+        return <div className="text-center text-rose-400 py-10">No rewards available. Add one above!</div>
     }
 
     return (
@@ -20,11 +20,11 @@ export function RewardList() {
                 const canAfford = userStats.currentGold >= reward.cost;
 
                 return (
-                    <Card key={reward.id} className="bg-slate-800 border-slate-700 flex flex-col justify-between transition-colors hover:border-gold-500/50">
+                    <Card key={reward.id} className="bg-rose-900 border-rose-800 flex flex-col justify-between transition-colors hover:border-rose-700/50">
                         <CardHeader className="pb-2">
                              <div className="flex justify-between items-start">
-                                <CardTitle className="text-lg text-slate-100">{reward.title}</CardTitle>
-                                <IconComponent className="w-6 h-6 text-slate-400" />
+                                <CardTitle className="text-lg text-stone-200">{reward.title}</CardTitle>
+                                <IconComponent className="w-6 h-6 text-rose-300" />
                              </div>
                         </CardHeader>
                         <CardFooter className="pt-4">

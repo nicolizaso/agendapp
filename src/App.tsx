@@ -21,7 +21,7 @@ function App() {
 
   if (isLoading) {
     return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-950 text-gold-500">
+        <div className="min-h-screen flex items-center justify-center bg-rose-950 text-rose-500">
             <Loader2 className="w-10 h-10 animate-spin" />
         </div>
     )
@@ -31,13 +31,13 @@ function App() {
     <Layout>
       <header className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-gold-400 to-amber-600 bg-clip-text text-transparent">
-                VectorLife
+            <h1 className="text-3xl font-bold text-stone-100">
+                La Vida de Pipa
             </h1>
-            <p className="text-slate-400">Gamify your existence.</p>
+            <p className="text-rose-300">Gamify your existence.</p>
         </div>
 
-        <nav className="flex items-center gap-2 bg-slate-900 p-1 rounded-lg border border-slate-800">
+        <nav className="flex items-center gap-2 bg-rose-900 p-1 rounded-lg border border-rose-800">
             <Button
                 variant={activeTab === 'dashboard' ? 'primary' : 'ghost'}
                 onClick={() => setActiveTab('dashboard')}
@@ -70,11 +70,11 @@ function App() {
             <StatsCard />
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div>
-                    <h2 className="text-xl font-bold text-slate-200 mb-4">Active Missions</h2>
+                    <h2 className="text-xl font-bold text-stone-200 mb-4">Active Missions</h2>
                     <TaskList />
                 </div>
                  <div>
-                    <h2 className="text-xl font-bold text-slate-200 mb-4">Quick Shop</h2>
+                    <h2 className="text-xl font-bold text-stone-200 mb-4">Quick Shop</h2>
                     <RewardList />
                 </div>
             </div>
