@@ -1,53 +1,44 @@
-from playwright.sync_api import sync_playwright
 import time
+from playwright.sync_api import sync_playwright
 
-def run():
+def verify_dashboard():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
 
-        page.on("console", lambda msg: print(f"CONSOLE: {msg.text}"))
-        page.on("pageerror", lambda err: print(f"PAGE ERROR: {err}"))
-
-        # 1. Load Page
-        print("Navigating to app...")
-        page.goto("http://localhost:5173")
-
-        # Check content
-        time.sleep(2)
-        # print("Page content:")
-        # print(page.content())
-
-        # 2. Verify Title and Headers (Localization)
-        print("Verifying localization...")
+        # Navigate to app
         try:
-            # Check for header
-            page.wait_for_selector("text=La Vida de Pipa", timeout=10000)
-            page.wait_for_selector("text=Gamifica tu existencia")
+            page.goto("http://localhost:5173")
 
-            # Check for Nav
-            page.wait_for_selector("text=Mi Progreso")
-            page.wait_for_selector("text=Misiones")
-            page.wait_for_selector("text=Mercado")
+            # Wait for content to load
+            page.wait_for_selector("h1", timeout=10000)
 
-            print("Localization verified.")
+            # Check title
+            title = page.locator("h1").text_content()
+            print(f"Title: {title}")
+
+            # Check for Agenda de Hoy
+            agenda = page.locator("text=Agenda de Hoy")
+            if agenda.count() > 0:
+                print("Agenda de Hoy found")
+            else:
+                print("Agenda de Hoy NOT found")
+
+            # Check for Shop (should not exist)
+            shop = page.locator("text=Mercado")
+            if shop.count() == 0:
+                print("Mercado NOT found (Good)")
+            else:
+                print("Mercado found (Bad)")
+
+            # Take screenshot of Dashboard
+            page.screenshot(path="verification_dashboard.png", full_page=True)
+
         except Exception as e:
-            print(f"Localization check failed: {e}")
-            page.screenshot(path="verification_fail_loc.png")
-            browser.close()
-            return
-
-        # 3. Create a Task via FAB (Skipped for now to verify screenshot)
-        # ...
-
-        # 5. Take Screenshot
-        print("Taking final screenshot...")
-        # wait a bit for animations
-        time.sleep(1)
-        page.screenshot(path="verification_dashboard.png", full_page=True)
-        print("Screenshot saved to verification_dashboard.png")
+            print(f"Error: {e}")
+            page.screenshot(path="verification_error.png")
 
         browser.close()
 
 if __name__ == "__main__":
-    run()
+    verify_dashboard()

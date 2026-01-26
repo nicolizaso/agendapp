@@ -1,18 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useStore } from './lib/store';
 import { Layout } from './components/Layout';
-import { StatsCard } from './features/dashboard/StatsCard';
 import { TaskList } from './features/tasks/TaskList';
-import { RewardList } from './features/shop/RewardList';
-import { CreateReward } from './features/shop/CreateReward';
 import { Button } from './components/Button';
 import { FAB } from './components/FAB';
 import { CreateTaskModal } from './features/tasks/CreateTaskModal';
 import { TodaySection } from './features/dashboard/TodaySection';
 import { CalendarSection } from './features/dashboard/CalendarSection';
-import { LayoutDashboard, ListTodo, ShoppingBag, Loader2 } from 'lucide-react';
+import { LayoutDashboard, ListTodo, Loader2 } from 'lucide-react';
 
-type Tab = 'dashboard' | 'tasks' | 'shop';
+type Tab = 'dashboard' | 'tasks';
 
 function App() {
   const { init, isLoading } = useStore();
@@ -35,10 +32,10 @@ function App() {
     <Layout>
       <header className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-            <h1 className="text-3xl font-bold text-stone-100">
+            <h1 className="text-3xl font-heading font-bold text-stone-100">
                 La Vida de Pipa
             </h1>
-            <p className="text-rose-300">Gamifica tu existencia.</p>
+            <p className="text-rose-300 font-body">Gamifica tu existencia.</p>
         </div>
 
         <nav className="flex items-center gap-2 bg-rose-900 p-1 rounded-lg border border-rose-800">
@@ -58,20 +55,11 @@ function App() {
             >
                 <ListTodo className="w-4 h-4" /> Misiones
             </Button>
-            <Button
-                variant={activeTab === 'shop' ? 'primary' : 'ghost'}
-                onClick={() => setActiveTab('shop')}
-                size="sm"
-                className="gap-2"
-            >
-                <ShoppingBag className="w-4 h-4" /> Mercado
-            </Button>
         </nav>
       </header>
 
       {activeTab === 'dashboard' && (
-        <div className="animate-in fade-in duration-500">
-            <StatsCard />
+        <div className="animate-in fade-in duration-500 grid grid-cols-1 gap-6">
             <TodaySection />
             <CalendarSection />
         </div>
@@ -80,14 +68,6 @@ function App() {
       {activeTab === 'tasks' && (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-3xl mx-auto">
              <TaskList />
-        </div>
-      )}
-
-      {activeTab === 'shop' && (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-             <StatsCard />
-             <CreateReward />
-             <RewardList />
         </div>
       )}
 
