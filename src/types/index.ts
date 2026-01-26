@@ -5,12 +5,16 @@ export type TaskStatus = 'PENDING' | 'COMPLETED';
 export interface Task {
   id?: number;
   title: string;
-  durationMinutes: number;
-  effort: Effort;
+  durationMinutes?: number;
+  effort?: Effort;
   status: TaskStatus;
   goldReward: number;
   createdAt: Date;
-  scheduledDate: Date;
+  scheduledDate: Date | null;
+  category?: string;
+  location?: string;
+  notes?: string;
+  isAllDay?: boolean;
 }
 
 export interface Reward {
