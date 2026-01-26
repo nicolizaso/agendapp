@@ -1,63 +1,133 @@
+import { useState } from 'react';
 import { useStore } from '../../lib/store';
-import { startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, format, isToday } from 'date-fns';
+import { startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, format, isToday, addMonths, subMonths, startOfWeek, endOfWeek, isSameMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '../../lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/Card';
+import { Button } from '../../components/Button';
+import { ChevronLeft, ChevronRight, Plus, CalendarX } from 'lucide-react';
+import { Modal } from '../../components/Modal';
+import { TaskCard } from '../tasks/components/TaskCard';
+
+// Map specific bg colors for dots based on category ID
+const DOT_COLORS: Record<string, string> = {
+  casa: 'bg-purple-500',
+  gym: 'bg-orange-500',
+  cultivo: 'bg-green-500',
+  trabajo: 'bg-blue-500',
+  facultad: 'bg-indigo-500',
+  salud: 'bg-red-500',
+  amigos: 'bg-yellow-500',
+  cumpleanos: 'bg-pink-500',
+  otros: 'bg-stone-500',
+};
 
 export function CalendarSection() {
     const { tasks } = useStore();
-    const today = new Date();
-    const start = startOfMonth(today);
-    const end = endOfMonth(today);
+    const [currentDate, setCurrentDate] = useState(new Date());
+    const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+
+    // Generate days for the grid (including prev/next month fillers)
+    const start = startOfWeek(startOfMonth(currentDate), { weekStartsOn: 0 }); // Sunday start
+    const end = endOfWeek(endOfMonth(currentDate), { weekStartsOn: 0 });
     const days = eachDayOfInterval({ start, end });
 
-    // Helper to check if a day has tasks (any status)
-    const hasTask = (day: Date) => {
-        return tasks.some(t => isSameDay(new Date(t.scheduledDate || t.createdAt), day));
+    // Navigation handlers
+    const prevMonth = () => setCurrentDate(subMonths(currentDate, 1));
+    const nextMonth = () => setCurrentDate(addMonths(currentDate, 1));
+
+    // Helper to get tasks for a specific day
+    const getTasksForDay = (day: Date) => {
+        return tasks.filter(t => t.scheduledDate && isSameDay(new Date(t.scheduledDate), day));
     };
+
+    const selectedDayTasks = selectedDay ? getTasksForDay(selectedDay) : [];
 
     return (
         <Card className="rounded-2xl bg-rose-900/40 backdrop-blur border-rose-800 animate-in slide-in-from-bottom-4 duration-700 delay-100">
-             <CardHeader className="pb-2">
-                 <CardTitle className="text-xl font-heading text-stone-200 capitalize text-center">
-                    {format(today, 'MMMM yyyy', { locale: es })}
+             {/* Header with Navigation */}
+             <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+                 <Button variant="ghost" size="icon" onClick={prevMonth} className="text-stone-400 hover:text-stone-200 hover:bg-rose-800/50">
+                    <ChevronLeft className="w-5 h-5" />
+                 </Button>
+                 <CardTitle className="text-xl font-heading text-stone-200 capitalize text-center select-none">
+                    {format(currentDate, 'MMMM yyyy', { locale: es })}
                  </CardTitle>
+                 <Button variant="ghost" size="icon" onClick={nextMonth} className="text-stone-400 hover:text-stone-200 hover:bg-rose-800/50">
+                    <ChevronRight className="w-5 h-5" />
+                 </Button>
              </CardHeader>
+
              <CardContent>
+                 {/* Weekday Headers */}
                  <div className="grid grid-cols-7 gap-1 text-center text-xs text-rose-400 mb-4 font-body">
                     {['D', 'L', 'M', 'M', 'J', 'V', 'S'].map((d, i) => (
                         <div key={i} className="font-bold">{d}</div>
                     ))}
                  </div>
-                 <div className="grid grid-cols-7 gap-2 font-body">
-                    {/* Pad start of month */}
-                    {Array.from({ length: start.getDay() }).map((_, i) => (
-                        <div key={`empty-${i}`} />
-                    ))}
 
+                 {/* Calendar Grid */}
+                 <div className="grid grid-cols-7 gap-2 font-body">
                     {days.map((day) => {
-                        const active = hasTask(day);
+                        const dayTasks = getTasksForDay(day);
+                        const isCurrentMonth = isSameMonth(day, currentDate);
                         const isCurrentDay = isToday(day);
 
                         return (
                             <div
                                 key={day.toISOString()}
+                                onClick={() => setSelectedDay(day)}
                                 className={cn(
-                                    "aspect-square rounded-md flex flex-col items-center justify-center relative border transition-all duration-300",
+                                    "aspect-square rounded-md flex flex-col items-center justify-start pt-1.5 relative border transition-all duration-300 cursor-pointer select-none",
                                     isCurrentDay
                                         ? "bg-rose-800 border-rose-600 text-white shadow-[0_0_10px_rgba(225,29,72,0.3)]"
-                                        : "bg-rose-950/50 border-rose-900 text-stone-400 hover:bg-rose-900 hover:border-rose-700"
+                                        : isCurrentMonth
+                                            ? "bg-rose-950/50 border-rose-900 text-stone-400 hover:bg-rose-900 hover:border-rose-700"
+                                            : "bg-rose-950/20 border-rose-900/30 text-rose-900/30 hover:bg-rose-900/30"
                                 )}
                             >
-                                <span className="text-sm font-medium">{format(day, 'd')}</span>
-                                {active && (
-                                    <div className="absolute bottom-1.5 w-1.5 h-1.5 rounded-full bg-rose-500 shadow-[0_0_5px_rgba(244,63,94,0.8)]" />
-                                )}
+                                <span className="text-sm font-medium leading-none">{format(day, 'd')}</span>
+
+                                {/* Dots Container */}
+                                <div className="flex gap-0.5 flex-wrap justify-center content-center mt-1 w-full px-1">
+                                    {dayTasks.slice(0, 3).map((task) => (
+                                        <div
+                                            key={task.id}
+                                            className={cn(
+                                                "w-1.5 h-1.5 rounded-full shadow-sm",
+                                                task.category ? DOT_COLORS[task.category] || 'bg-stone-500' : 'bg-stone-500'
+                                            )}
+                                        />
+                                    ))}
+                                    {dayTasks.length > 3 && (
+                                        <Plus className="w-1.5 h-1.5 text-stone-500" />
+                                    )}
+                                </div>
                             </div>
                         );
                     })}
                  </div>
              </CardContent>
+
+             {/* Day Details Modal */}
+             <Modal
+                isOpen={!!selectedDay}
+                onClose={() => setSelectedDay(null)}
+                title={selectedDay ? format(selectedDay, "EEEE, d 'de' MMMM", { locale: es }) : ''}
+             >
+                <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+                    {selectedDayTasks.length > 0 ? (
+                        selectedDayTasks.map(task => (
+                            <TaskCard key={task.id} task={task} showDelete={true} />
+                        ))
+                    ) : (
+                        <div className="flex flex-col items-center justify-center py-10 text-rose-400/50 gap-3">
+                            <CalendarX className="w-16 h-16 opacity-50" />
+                            <p className="text-sm font-body">No hay eventos programados</p>
+                        </div>
+                    )}
+                </div>
+             </Modal>
         </Card>
     );
 }
