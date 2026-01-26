@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react';
 import { useStore } from './lib/store';
 import { Layout } from './components/Layout';
 import { StatsCard } from './features/dashboard/StatsCard';
-import { TaskCreator } from './features/tasks/TaskCreator';
 import { TaskList } from './features/tasks/TaskList';
 import { RewardList } from './features/shop/RewardList';
 import { CreateReward } from './features/shop/CreateReward';
 import { Button } from './components/Button';
+import { FAB } from './components/FAB';
+import { CreateTaskModal } from './features/tasks/CreateTaskModal';
+import { TodaySection } from './features/dashboard/TodaySection';
+import { CalendarSection } from './features/dashboard/CalendarSection';
 import { LayoutDashboard, ListTodo, ShoppingBag, Loader2 } from 'lucide-react';
 
 type Tab = 'dashboard' | 'tasks' | 'shop';
@@ -14,6 +17,7 @@ type Tab = 'dashboard' | 'tasks' | 'shop';
 function App() {
   const { init, isLoading } = useStore();
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     init();
@@ -34,7 +38,7 @@ function App() {
             <h1 className="text-3xl font-bold text-stone-100">
                 La Vida de Pipa
             </h1>
-            <p className="text-rose-300">Gamify your existence.</p>
+            <p className="text-rose-300">Gamifica tu existencia.</p>
         </div>
 
         <nav className="flex items-center gap-2 bg-rose-900 p-1 rounded-lg border border-rose-800">
@@ -44,7 +48,7 @@ function App() {
                 size="sm"
                 className="gap-2"
             >
-                <LayoutDashboard className="w-4 h-4" /> Dashboard
+                <LayoutDashboard className="w-4 h-4" /> Mi Progreso
             </Button>
             <Button
                 variant={activeTab === 'tasks' ? 'primary' : 'ghost'}
@@ -52,7 +56,7 @@ function App() {
                 size="sm"
                 className="gap-2"
             >
-                <ListTodo className="w-4 h-4" /> Missions
+                <ListTodo className="w-4 h-4" /> Misiones
             </Button>
             <Button
                 variant={activeTab === 'shop' ? 'primary' : 'ghost'}
@@ -60,7 +64,7 @@ function App() {
                 size="sm"
                 className="gap-2"
             >
-                <ShoppingBag className="w-4 h-4" /> Shop
+                <ShoppingBag className="w-4 h-4" /> Mercado
             </Button>
         </nav>
       </header>
@@ -68,22 +72,13 @@ function App() {
       {activeTab === 'dashboard' && (
         <div className="animate-in fade-in duration-500">
             <StatsCard />
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div>
-                    <h2 className="text-xl font-bold text-stone-200 mb-4">Active Missions</h2>
-                    <TaskList />
-                </div>
-                 <div>
-                    <h2 className="text-xl font-bold text-stone-200 mb-4">Quick Shop</h2>
-                    <RewardList />
-                </div>
-            </div>
+            <TodaySection />
+            <CalendarSection />
         </div>
       )}
 
       {activeTab === 'tasks' && (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-3xl mx-auto">
-             <TaskCreator />
              <TaskList />
         </div>
       )}
@@ -95,6 +90,9 @@ function App() {
              <RewardList />
         </div>
       )}
+
+      <FAB onClick={() => setIsModalOpen(true)} />
+      <CreateTaskModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </Layout>
   );
 }

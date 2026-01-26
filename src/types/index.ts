@@ -10,6 +10,7 @@ export interface Task {
   status: TaskStatus;
   goldReward: number;
   createdAt: Date;
+  scheduledDate: Date;
 }
 
 export interface Reward {
