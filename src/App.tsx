@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import { isSameMinute } from 'date-fns';
 import { useStore } from './lib/store';
+import { useUIStore } from './hooks/useUIStore';
 import { useNotifications, getNotificationMessage } from './hooks/useNotifications';
 import { Layout } from './components/Layout';
 import { TaskList } from './features/tasks/TaskList';
 import { Button } from './components/Button';
 import { FAB } from './components/FAB';
 import { CreateTaskModal } from './features/tasks/CreateTaskModal';
+import { ConfirmDialog } from './components/ui/ConfirmDialog';
 import { TodaySection } from './features/dashboard/TodaySection';
 import { CalendarSection } from './features/dashboard/CalendarSection';
 import { LayoutDashboard, ListTodo, Loader2 } from 'lucide-react';
@@ -15,9 +17,9 @@ type Tab = 'dashboard' | 'tasks';
 
 function App() {
   const { init, isLoading, tasks } = useStore();
+  const { openCreateModal } = useUIStore();
   const { requestPermission, sendNotification } = useNotifications();
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     init();
@@ -107,8 +109,9 @@ function App() {
         </div>
       )}
 
-      <FAB onClick={() => setIsModalOpen(true)} />
-      <CreateTaskModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <FAB onClick={() => openCreateModal()} />
+      <CreateTaskModal />
+      <ConfirmDialog />
     </Layout>
   );
 }

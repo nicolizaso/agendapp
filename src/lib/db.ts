@@ -13,6 +13,10 @@ export class VectorLifeDB extends Dexie {
       rewards: '++id',
       userStats: '++id'
     });
+
+    this.version(2).stores({
+      tasks: '++id, scheduledDate, status, recurrenceId, [status+scheduledDate]'
+    });
   }
 }
 

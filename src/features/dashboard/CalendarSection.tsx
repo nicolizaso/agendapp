@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useStore } from '../../lib/store';
+import { useUIStore } from '../../hooks/useUIStore';
 import { startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, format, isToday, addMonths, subMonths, startOfWeek, endOfWeek, isSameMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '../../lib/utils';
@@ -24,6 +25,7 @@ const DOT_COLORS: Record<string, string> = {
 
 export function CalendarSection() {
     const { tasks } = useStore();
+    const { openCreateModal } = useUIStore();
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDay, setSelectedDay] = useState<Date | null>(null);
 
@@ -126,6 +128,21 @@ export function CalendarSection() {
                             <p className="text-sm font-body">No hay eventos programados</p>
                         </div>
                     )}
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-rose-800/50 flex justify-end">
+                    <Button
+                        onClick={() => {
+                            if (selectedDay) {
+                                openCreateModal({ initialDate: selectedDay });
+                                setSelectedDay(null);
+                            }
+                        }}
+                        className="gap-2"
+                    >
+                        <Plus className="w-4 h-4" />
+                        Crear Tarea
+                    </Button>
                 </div>
              </Modal>
         </Card>
