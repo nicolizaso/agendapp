@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useStore } from '../../lib/store';
 import { Modal } from '../../components/Modal';
 import { Button } from '../../components/Button';
@@ -14,9 +14,10 @@ import {
   ChevronRight,
   ChevronDown
 } from 'lucide-react';
+import { cn } from '../../lib/utils';
 import { CustomSelect } from '../../components/ui/CustomSelect';
 import { DatePicker } from '../../components/ui/DatePicker';
-import { TimeInput } from '../../components/ui/TimeInput';
+import { TimeWheelPicker } from '../../components/ui/TimeWheelPicker';
 
 interface CreateTaskModalProps {
   isOpen: boolean;
@@ -30,7 +31,21 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
   const [date, setDate] = useState<string | null>(new Date().toISOString().split('T')[0]); // YYYY-MM-DD
   const [isTimeEnabled, setIsTimeEnabled] = useState(false);
   const [time, setTime] = useState('');
+  const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
+  const timeContainerRef = useRef<HTMLDivElement>(null);
   const [category, setCategory] = useState<string | null>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (timeContainerRef.current && !timeContainerRef.current.contains(event.target as Node)) {
+        setIsTimePickerOpen(false);
+      }
+    }
+    if (isTimePickerOpen) {
+        document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isTimePickerOpen]);
 
   // Recurrence
   const [isRecurring, setIsRecurring] = useState(false);
@@ -149,13 +164,16 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
                 </div>
 
                 {/* Time Section */}
-                <div className="flex gap-2">
+                <div className="flex gap-2 relative" ref={timeContainerRef}>
                     <div className="flex items-center h-full">
                         <input
                             type="checkbox"
                             id="timeToggle"
                             checked={isTimeEnabled}
-                            onChange={(e) => setIsTimeEnabled(e.target.checked)}
+                            onChange={(e) => {
+                                setIsTimeEnabled(e.target.checked);
+                                if (e.target.checked && !time) setTime("12:00");
+                            }}
                             className="w-5 h-5 rounded border-rose-700 text-rose-600 focus:ring-rose-500 bg-rose-900/50"
                         />
                         <label htmlFor="timeToggle" className="cursor-pointer text-rose-300 ml-2">
@@ -163,11 +181,26 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
                         </label>
                     </div>
 
-                    <TimeInput
-                        value={time}
-                        onChange={setTime}
+                    <button
+                        type="button"
+                        onClick={() => isTimeEnabled && setIsTimePickerOpen(!isTimePickerOpen)}
                         disabled={!isTimeEnabled}
-                    />
+                        className={cn(
+                            "flex-1 flex items-center justify-center bg-rose-900/50 border border-rose-800 rounded-md p-2 text-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all",
+                            !isTimeEnabled && "opacity-50 cursor-not-allowed text-stone-500",
+                            isTimeEnabled && "hover:bg-rose-900/80"
+                        )}
+                    >
+                        <span className="text-xl font-mono tracking-wider">
+                            {time || "--:--"}
+                        </span>
+                    </button>
+
+                    {isTimePickerOpen && isTimeEnabled && (
+                        <div className="absolute top-full right-0 mt-2 z-50 p-4 bg-rose-950 border border-rose-800 rounded-xl shadow-2xl w-[280px] animate-in fade-in zoom-in-95 duration-100">
+                             <TimeWheelPicker value={time || "12:00"} onChange={setTime} />
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
