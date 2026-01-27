@@ -44,3 +44,8 @@ export interface HabitLog {
   habitId: number;
   date: string; // ISO Date YYYY-MM-DD
 }
+
+export interface DailyNote {
+  date: string; // YYYY-MM-DD
+  content: string;
+}
