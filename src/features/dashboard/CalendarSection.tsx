@@ -46,23 +46,23 @@ export function CalendarSection() {
     const selectedDayTasks = selectedDay ? getTasksForDay(selectedDay) : [];
 
     return (
-        <Card className="rounded-2xl bg-rose-900/40 backdrop-blur border-rose-800 animate-in slide-in-from-bottom-4 duration-700 delay-100">
+        <Card className="rounded-2xl bg-neutral-900/40 backdrop-blur border-neutral-800 animate-in slide-in-from-bottom-4 duration-700 delay-100">
              {/* Header with Navigation */}
              <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-                 <Button variant="ghost" size="icon" onClick={prevMonth} className="text-stone-400 hover:text-stone-200 hover:bg-rose-800/50">
+                 <Button variant="ghost" size="icon" onClick={prevMonth} className="text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50">
                     <ChevronLeft className="w-5 h-5" />
                  </Button>
-                 <CardTitle className="text-xl font-heading text-stone-200 capitalize text-center select-none">
+                 <CardTitle className="text-xl font-heading text-neutral-200 capitalize text-center select-none">
                     {format(currentDate, 'MMMM yyyy', { locale: es })}
                  </CardTitle>
-                 <Button variant="ghost" size="icon" onClick={nextMonth} className="text-stone-400 hover:text-stone-200 hover:bg-rose-800/50">
+                 <Button variant="ghost" size="icon" onClick={nextMonth} className="text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50">
                     <ChevronRight className="w-5 h-5" />
                  </Button>
              </CardHeader>
 
              <CardContent>
                  {/* Weekday Headers */}
-                 <div className="grid grid-cols-7 gap-1 text-center text-xs text-rose-400 mb-4 font-body">
+                 <div className="grid grid-cols-7 gap-1 text-center text-xs text-neutral-400 mb-4 font-body">
                     {['D', 'L', 'M', 'M', 'J', 'V', 'S'].map((d, i) => (
                         <div key={i} className="font-bold">{d}</div>
                     ))}
@@ -82,10 +82,10 @@ export function CalendarSection() {
                                 className={cn(
                                     "aspect-square rounded-md flex flex-col items-center justify-start pt-1.5 relative border transition-all duration-300 cursor-pointer select-none",
                                     isCurrentDay
-                                        ? "bg-rose-800 border-rose-600 text-white shadow-[0_0_10px_rgba(225,29,72,0.3)]"
+                                        ? "bg-red-600 border-red-500 text-white shadow-[0_0_10px_rgba(220,38,38,0.3)]"
                                         : isCurrentMonth
-                                            ? "bg-rose-950/50 border-rose-900 text-stone-400 hover:bg-rose-900 hover:border-rose-700"
-                                            : "bg-rose-950/20 border-rose-900/30 text-rose-900/30 hover:bg-rose-900/30"
+                                            ? "bg-neutral-900 border-neutral-800 text-neutral-400 hover:bg-neutral-800 hover:border-neutral-700"
+                                            : "bg-neutral-950/50 border-neutral-900/30 text-neutral-800 hover:bg-neutral-900/30"
                                 )}
                             >
                                 <span className="text-sm font-medium leading-none">{format(day, 'd')}</span>
@@ -97,12 +97,12 @@ export function CalendarSection() {
                                             key={task.id}
                                             className={cn(
                                                 "w-1.5 h-1.5 rounded-full shadow-sm",
-                                                task.category ? DOT_COLORS[task.category] || 'bg-stone-500' : 'bg-stone-500'
+                                                task.category ? DOT_COLORS[task.category] || 'bg-neutral-500' : 'bg-neutral-500'
                                             )}
                                         />
                                     ))}
                                     {dayTasks.length > 3 && (
-                                        <Plus className="w-1.5 h-1.5 text-stone-500" />
+                                        <Plus className="w-1.5 h-1.5 text-neutral-500" />
                                     )}
                                 </div>
                             </div>
@@ -123,14 +123,14 @@ export function CalendarSection() {
                             <TaskCard key={task.id} task={task} showDelete={true} />
                         ))
                     ) : (
-                        <div className="flex flex-col items-center justify-center py-10 text-rose-400/50 gap-3">
+                        <div className="flex flex-col items-center justify-center py-10 text-neutral-500 gap-3">
                             <CalendarX className="w-16 h-16 opacity-50" />
                             <p className="text-sm font-body">No hay eventos programados</p>
                         </div>
                     )}
                 </div>
 
-                <div className="mt-4 pt-4 border-t border-rose-800/50 flex justify-end">
+                <div className="mt-4 pt-4 border-t border-neutral-800/50 flex justify-end">
                     <Button
                         onClick={() => {
                             if (selectedDay) {

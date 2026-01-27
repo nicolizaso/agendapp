@@ -75,8 +75,8 @@ export function TimeInput({ value, onChange, disabled }: TimeInputProps) {
 
   return (
     <div className={cn(
-        "flex items-center bg-rose-900/50 border border-rose-800 rounded-md overflow-hidden w-full",
-        "focus-within:ring-2 focus-within:ring-rose-500",
+        "flex items-center bg-neutral-900/50 border border-neutral-800 rounded-md overflow-hidden w-full",
+        "focus-within:ring-2 focus-within:ring-red-600",
         disabled && "opacity-50 cursor-not-allowed"
     )}>
       <input
@@ -87,10 +87,10 @@ export function TimeInput({ value, onChange, disabled }: TimeInputProps) {
         onChange={(e) => handleChange('hours', e.target.value)}
         onBlur={() => handleBlur('hours')}
         disabled={disabled}
-        className="w-full text-center bg-transparent text-stone-200 focus:outline-none p-2 placeholder-rose-700/50"
+        className="w-full text-center bg-transparent text-neutral-200 focus:outline-none p-2 placeholder-neutral-600"
         placeholder="HH"
       />
-      <span className="text-rose-400 font-bold">:</span>
+      <span className="text-neutral-400 font-bold">:</span>
       <input
         type="text"
         inputMode="numeric"
@@ -99,7 +99,7 @@ export function TimeInput({ value, onChange, disabled }: TimeInputProps) {
         onChange={(e) => handleChange('minutes', e.target.value)}
         onBlur={() => handleBlur('minutes')}
         disabled={disabled}
-        className="w-full text-center bg-transparent text-stone-200 focus:outline-none p-2 placeholder-rose-700/50"
+        className="w-full text-center bg-transparent text-neutral-200 focus:outline-none p-2 placeholder-neutral-600"
         placeholder="MM"
       />
     </div>

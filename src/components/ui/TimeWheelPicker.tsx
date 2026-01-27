@@ -102,9 +102,9 @@ export function TimeWheelPicker({ value, onChange }: TimeWheelPickerProps) {
   };
 
   return (
-    <div className="flex h-[160px] relative bg-rose-950 rounded-lg overflow-hidden select-none">
+    <div className="flex h-[160px] relative bg-neutral-900 rounded-lg overflow-hidden select-none">
        {/* Overlay Center Bar */}
-       <div className="absolute top-1/2 left-0 w-full h-[40px] -translate-y-1/2 bg-rose-800/30 border-y border-rose-700/50 pointer-events-none z-10" />
+       <div className="absolute top-1/2 left-0 w-full h-[40px] -translate-y-1/2 bg-neutral-800/30 border-y border-neutral-700/50 pointer-events-none z-10" />
 
        {/* Hours Column */}
        <div
@@ -120,7 +120,7 @@ export function TimeWheelPicker({ value, onChange }: TimeWheelPickerProps) {
                onClick={() => scrollToItem('hours', h)}
                className={cn(
                   "h-[40px] flex items-center justify-center snap-center cursor-pointer transition-colors",
-                  hours === h ? "text-white font-bold text-xl" : "text-rose-400/50 text-base"
+                  hours === h ? "text-white font-bold text-xl" : "text-neutral-500 text-base"
                )}
              >
                 {h}
@@ -130,7 +130,7 @@ export function TimeWheelPicker({ value, onChange }: TimeWheelPickerProps) {
        </div>
 
        {/* Separator */}
-       <div className="flex items-center justify-center text-rose-500 font-bold z-20 pb-1">:</div>
+       <div className="flex items-center justify-center text-red-500 font-bold z-20 pb-1">:</div>
 
        {/* Minutes Column */}
        <div
@@ -148,7 +148,7 @@ export function TimeWheelPicker({ value, onChange }: TimeWheelPickerProps) {
                   "h-[40px] flex items-center justify-center snap-center cursor-pointer transition-colors",
                   // Approximate check for minute highlighting (since we might have 03 but list has 00, 05)
                   // But our logic snaps to list items, so strict equality is fine after snap.
-                  minutes === m ? "text-white font-bold text-xl" : "text-rose-400/50 text-base"
+                  minutes === m ? "text-white font-bold text-xl" : "text-neutral-500 text-base"
                )}
              >
                 {m}

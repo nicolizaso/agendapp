@@ -70,8 +70,8 @@ export function CustomSelect({ value, onChange, placeholder = 'Seleccionar...' }
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
           "w-full flex items-center justify-between",
-          "bg-rose-900/50 border border-rose-800 rounded-md p-3",
-          "text-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-500",
+          "bg-neutral-900/50 border border-neutral-800 rounded-md p-3",
+          "text-neutral-200 focus:outline-none focus:ring-2 focus:ring-red-600",
           "transition-all duration-200 text-base"
         )}
       >
@@ -83,13 +83,13 @@ export function CustomSelect({ value, onChange, placeholder = 'Seleccionar...' }
              <span>{selectedCategory.label}</span>
           </div>
         ) : (
-          <span className="text-stone-400">{placeholder}</span>
+          <span className="text-neutral-400">{placeholder}</span>
         )}
-        <ChevronDown size={16} className={cn("text-rose-400 transition-transform", isOpen && "rotate-180")} />
+        <ChevronDown size={16} className={cn("text-neutral-400 transition-transform", isOpen && "rotate-180")} />
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 w-full mt-2 bg-rose-950 border border-rose-800 rounded-lg shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+        <div className="absolute z-50 w-full mt-2 bg-neutral-900 border border-neutral-800 rounded-lg shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
            <div className="p-1 space-y-1 max-h-60 overflow-y-auto">
               {Object.values(CATEGORY_CONFIG).map((cat) => (
                   <button
@@ -101,17 +101,17 @@ export function CustomSelect({ value, onChange, placeholder = 'Seleccionar...' }
                     }}
                     className={cn(
                         "w-full flex items-center justify-between p-2 rounded-md transition-colors",
-                        "hover:bg-rose-900/50",
-                        value === cat.id ? "bg-rose-900/80" : ""
+                        "hover:bg-neutral-800",
+                        value === cat.id ? "bg-neutral-800" : ""
                     )}
                   >
                      <div className="flex items-center gap-2">
                         <div className={cn("p-1.5 rounded-md", cat.bgClass, cat.colorClass)}>
                             <cat.icon size={16} />
                         </div>
-                        <span className="text-stone-200 text-base font-medium">{cat.label}</span>
+                        <span className="text-neutral-200 text-base font-medium">{cat.label}</span>
                      </div>
-                     {value === cat.id && <Check size={16} className="text-rose-500" />}
+                     {value === cat.id && <Check size={16} className="text-red-500" />}
                   </button>
               ))}
            </div>

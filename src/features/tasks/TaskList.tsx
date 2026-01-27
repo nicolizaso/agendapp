@@ -16,12 +16,12 @@ export function TaskList() {
     });
 
     if (sortedTasks.length === 0) {
-        return <div className="text-center text-rose-400 py-10">No hay pendientes. ¡Agrega uno a tu backlog!</div>
+        return <div className="text-center text-neutral-400 py-10">No hay pendientes. ¡Agrega uno a tu backlog!</div>
     }
 
     return (
         <div className="space-y-4">
-            <h2 className="text-xl font-bold text-stone-200 mb-4">Pendientes</h2>
+            <h2 className="text-xl font-bold text-neutral-200 mb-4">Pendientes</h2>
             {sortedTasks.map((task) => (
                 <TaskCard key={task.id} task={task} showDelete={true} />
             ))}

@@ -50,14 +50,14 @@ export function TaskCard({ task, className, showDelete = true }: TaskCardProps) 
 
   return (
     <div className={cn(
-      "bg-rose-950/50 border border-rose-800/50 rounded-xl p-4 flex items-center justify-between hover:bg-rose-900/50 transition-colors group",
+      "bg-neutral-900 border border-neutral-800 rounded-xl p-4 flex items-center justify-between hover:bg-neutral-800/50 transition-colors group",
       task.status === 'COMPLETED' && "opacity-60",
       className
     )}>
       <div className="flex-1 min-w-0 mr-4">
         <h3 className={cn(
           "font-medium text-lg font-body truncate",
-          task.status === 'COMPLETED' ? "line-through text-rose-400" : "text-stone-200"
+          task.status === 'COMPLETED' ? "line-through text-neutral-400" : "text-neutral-200"
         )}>
           {task.title}
         </h3>
@@ -73,7 +73,7 @@ export function TaskCard({ task, className, showDelete = true }: TaskCardProps) 
             </span>
           )}
           {!task.isAllDay && task.scheduledDate && (
-            <span className="text-stone-400 flex items-center gap-1 shrink-0">
+            <span className="text-neutral-400 flex items-center gap-1 shrink-0">
               <Clock className="w-3 h-3" />
               {format(new Date(task.scheduledDate), 'HH:mm')}
             </span>
@@ -86,7 +86,7 @@ export function TaskCard({ task, className, showDelete = true }: TaskCardProps) 
           <Button
             size="sm"
             onClick={() => task.id && completeTask(task.id)}
-            className="bg-rose-700 hover:bg-rose-600 text-white gap-2 rounded-lg"
+            className="bg-red-600 hover:bg-red-700 text-white gap-2 rounded-lg"
           >
             <CheckCircle className="w-4 h-4" />
           </Button>
@@ -95,7 +95,7 @@ export function TaskCard({ task, className, showDelete = true }: TaskCardProps) 
           size="icon"
           variant="ghost"
           onClick={() => openCreateModal({ taskToEdit: task })}
-          className="text-rose-400 hover:text-rose-200 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="text-neutral-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
         >
           <Pencil className="w-4 h-4" />
         </Button>
@@ -104,7 +104,7 @@ export function TaskCard({ task, className, showDelete = true }: TaskCardProps) 
             size="icon"
             variant="ghost"
             onClick={handleDelete}
-            className="text-rose-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="text-neutral-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
           >
             <Trash2 className="w-4 h-4" />
           </Button>
