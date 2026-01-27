@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import { isSameMinute } from 'date-fns';
 import { useStore } from './lib/store';
+import { useNotifications, getNotificationMessage } from './hooks/useNotifications';
 import { Layout } from './components/Layout';
 import { TaskList } from './features/tasks/TaskList';
 import { Button } from './components/Button';
@@ -12,13 +14,43 @@ import { LayoutDashboard, ListTodo, Loader2 } from 'lucide-react';
 type Tab = 'dashboard' | 'tasks';
 
 function App() {
-  const { init, isLoading } = useStore();
+  const { init, isLoading, tasks } = useStore();
+  const { requestPermission, sendNotification } = useNotifications();
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     init();
   }, [init]);
+
+  useEffect(() => {
+    requestPermission();
+  }, [requestPermission]);
+
+  useEffect(() => {
+    const checkTasks = () => {
+      const now = new Date();
+      tasks.forEach((task) => {
+        if (
+          task.status === 'PENDING' &&
+          !task.isAllDay &&
+          task.scheduledDate
+        ) {
+          const taskDate = new Date(task.scheduledDate);
+          if (isSameMinute(taskDate, now) && task.id) {
+            sendNotification(
+              task.title,
+              getNotificationMessage(task.category),
+              task.id
+            );
+          }
+        }
+      });
+    };
+
+    const intervalId = setInterval(checkTasks, 60000); // Check every minute
+    return () => clearInterval(intervalId);
+  }, [tasks, sendNotification]);
 
   if (isLoading) {
     return (
