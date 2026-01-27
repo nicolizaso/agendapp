@@ -20,6 +20,7 @@ interface AppState {
     location?: string;
     notes?: string;
     isAllDay?: boolean;
+    recurrenceId?: string;
   }) => Promise<void>;
   addTasks: (tasksData: {
     title: string;
@@ -30,8 +31,12 @@ interface AppState {
     location?: string;
     notes?: string;
     isAllDay?: boolean;
+    recurrenceId?: string;
   }[]) => Promise<void>;
+  updateTask: (id: number, updates: Partial<Task>) => Promise<void>;
+  updateRecurringTasks: (recurrenceId: string, updates: Partial<Task>, mode: 'this' | 'future', referenceDate: Date) => Promise<void>;
   deleteTask: (id: number) => Promise<void>;
+  deleteRecurringTasks: (recurrenceId: string, mode: 'this' | 'future', referenceDate: Date) => Promise<void>;
   completeTask: (taskId: number) => Promise<void>;
   addReward: (rewardData: { title: string; cost: number; icon: string }) => Promise<void>;
   buyReward: (rewardId: number) => Promise<void>;
@@ -111,9 +116,63 @@ export const useStore = create<AppState>((set, get) => ({
     set({ tasks: allTasks });
   },
 
+  updateTask: async (id, updates) => {
+    await db.tasks.update(id, updates);
+    set((state) => ({
+      tasks: state.tasks.map((t) => (t.id === id ? { ...t, ...updates } : t)),
+    }));
+  },
+
+  updateRecurringTasks: async (recurrenceId, updates, mode, referenceDate) => {
+    if (mode === 'future') {
+      await db.transaction('rw', db.tasks, async () => {
+        const tasksToUpdate = await db.tasks
+          .where('recurrenceId')
+          .equals(recurrenceId)
+          .filter((t) => !!t.scheduledDate && new Date(t.scheduledDate) >= referenceDate)
+          .toArray();
+
+        for (const task of tasksToUpdate) {
+          const newValues = { ...updates };
+
+          // Special handling for date/time: apply new time to original date
+          if (newValues.scheduledDate && task.scheduledDate) {
+            const newDate = new Date(newValues.scheduledDate);
+            const originalDate = new Date(task.scheduledDate);
+
+            originalDate.setHours(newDate.getHours(), newDate.getMinutes(), 0, 0);
+            newValues.scheduledDate = originalDate;
+          }
+
+          if (task.id) {
+            await db.tasks.update(task.id, newValues);
+          }
+        }
+      });
+
+      // Refresh from DB to ensure consistency
+      const allTasks = await db.tasks.toArray();
+      set({ tasks: allTasks });
+    }
+  },
+
   deleteTask: async (id) => {
     await db.tasks.delete(id);
     set((state) => ({ tasks: state.tasks.filter((t) => t.id !== id) }));
+  },
+
+  deleteRecurringTasks: async (recurrenceId, mode, referenceDate) => {
+    if (mode === 'future') {
+      await db.tasks
+        .where('recurrenceId')
+        .equals(recurrenceId)
+        .filter((t) => !!t.scheduledDate && new Date(t.scheduledDate) >= referenceDate)
+        .delete();
+
+      // Refresh
+      const allTasks = await db.tasks.toArray();
+      set({ tasks: allTasks });
+    }
   },
 
   completeTask: async (taskId) => {

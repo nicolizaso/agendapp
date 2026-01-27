@@ -1,0 +1,61 @@
+import { create } from 'zustand';
+import type { Task } from '../types';
+
+interface UIState {
+  // Create Task Modal
+  isCreateModalOpen: boolean;
+  createModalData: {
+    initialDate?: Date;
+    taskToEdit?: Task;
+  };
+  openCreateModal: (data?: { initialDate?: Date; taskToEdit?: Task }) => void;
+  closeCreateModal: () => void;
+
+  // Confirm Dialog
+  confirmDialog: {
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant: 'default' | 'danger';
+    onConfirm: () => void;
+    actions?: { label: string; onClick: () => void; variant?: 'primary' | 'secondary' | 'danger' | 'ghost' }[];
+  };
+  openConfirmDialog: (data: {
+    title: string;
+    message: string;
+    variant?: 'default' | 'danger';
+    onConfirm?: () => void;
+    actions?: { label: string; onClick: () => void; variant?: 'primary' | 'secondary' | 'danger' | 'ghost' }[];
+  }) => void;
+  closeConfirmDialog: () => void;
+}
+
+export const useUIStore = create<UIState>((set) => ({
+  // Create Modal
+  isCreateModalOpen: false,
+  createModalData: {},
+  openCreateModal: (data = {}) => set({ isCreateModalOpen: true, createModalData: data }),
+  closeCreateModal: () => set({ isCreateModalOpen: false, createModalData: {} }),
+
+  // Confirm Dialog
+  confirmDialog: {
+    isOpen: false,
+    title: '',
+    message: '',
+    variant: 'default',
+    onConfirm: () => {},
+  },
+  openConfirmDialog: (data) => set({
+    confirmDialog: {
+      isOpen: true,
+      title: data.title,
+      message: data.message,
+      variant: data.variant || 'default',
+      onConfirm: data.onConfirm || (() => {}),
+      actions: data.actions
+    }
+  }),
+  closeConfirmDialog: () => set((state) => ({
+    confirmDialog: { ...state.confirmDialog, isOpen: false }
+  })),
+}));

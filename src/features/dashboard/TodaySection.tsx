@@ -1,13 +1,10 @@
 import { useStore } from '../../lib/store';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/Card';
-import { Button } from '../../components/Button';
-import { CheckCircle, Clock } from 'lucide-react';
-import { cn } from '../../lib/utils';
-import { isSameDay, format } from 'date-fns';
-import { CATEGORIES } from '../../lib/constants';
+import { TaskCard } from '../tasks/components/TaskCard';
+import { isSameDay } from 'date-fns';
 
 export function TodaySection() {
-    const { tasks, completeTask } = useStore();
+    const { tasks } = useStore();
     const today = new Date();
 
     const todayTasks = tasks.filter(task =>
@@ -29,34 +26,9 @@ export function TodaySection() {
                     </div>
                 ) : (
                     <div className="grid gap-3">
-                        {todayTasks.map((task) => {
-                            const category = CATEGORIES.find(c => c.id === task.category);
-                            return (
-                                <div key={task.id} className="bg-rose-950/50 border border-rose-800/50 rounded-xl p-4 flex items-center justify-between hover:bg-rose-900/50 transition-colors">
-                                     <div className="flex-1">
-                                        <h3 className="font-medium text-lg text-stone-200 font-body">
-                                            {task.title}
-                                        </h3>
-                                        <div className="flex items-center gap-3 mt-2 text-xs font-body">
-                                            {category && (
-                                                <span className={cn("px-2 py-0.5 rounded-full border bg-opacity-20 flex items-center gap-1", category.color, category.border, category.bg)}>
-                                                    {category.label}
-                                                </span>
-                                            )}
-                                            {!task.isAllDay && task.scheduledDate && (
-                                                <span className="text-stone-400 flex items-center gap-1">
-                                                    <Clock className="w-3 h-3" />
-                                                    {format(new Date(task.scheduledDate), 'HH:mm')}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <Button size="sm" onClick={() => task.id && completeTask(task.id)} className="bg-rose-700 hover:bg-rose-600 text-white gap-2 rounded-lg">
-                                        <CheckCircle className="w-4 h-4" />
-                                    </Button>
-                                </div>
-                            );
-                        })}
+                        {todayTasks.map((task) => (
+                            <TaskCard key={task.id} task={task} showDelete={false} />
+                        ))}
                     </div>
                 )}
             </CardContent>

@@ -15,6 +15,7 @@ export interface Task {
   location?: string;
   notes?: string;
   isAllDay?: boolean;
+  recurrenceId?: string;
 }
 
 export interface Reward {

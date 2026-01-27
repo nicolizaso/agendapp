@@ -1,8 +1,9 @@
 import type { Task } from '../../../types';
 import { useStore } from '../../../lib/store';
+import { useUIStore } from '../../../hooks/useUIStore';
 import { CATEGORIES } from '../../../lib/constants';
 import { Button } from '../../../components/Button';
-import { CheckCircle, Clock, Trash2 } from 'lucide-react';
+import { CheckCircle, Clock, Trash2, Pencil } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { format } from 'date-fns';
 
@@ -13,8 +14,39 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task, className, showDelete = true }: TaskCardProps) {
-  const { completeTask, deleteTask } = useStore();
+  const { completeTask, deleteTask, deleteRecurringTasks } = useStore();
+  const { openCreateModal, openConfirmDialog } = useUIStore();
   const category = CATEGORIES.find(c => c.id === task.category);
+
+  const handleDelete = () => {
+    if (!task.id) return;
+
+    if (task.recurrenceId) {
+      openConfirmDialog({
+        title: "Borrar evento recurrente",
+        message: "¿Qué deseas borrar?",
+        actions: [
+          {
+            label: "Cancelar",
+            onClick: () => {},
+            variant: 'ghost'
+          },
+          {
+            label: "Solo este evento",
+            onClick: () => deleteTask(task.id!),
+            variant: 'secondary'
+          },
+          {
+            label: "Este y futuros",
+            onClick: () => deleteRecurringTasks(task.recurrenceId!, 'future', task.scheduledDate ? new Date(task.scheduledDate) : new Date()),
+            variant: 'danger'
+          }
+        ]
+      });
+    } else {
+      deleteTask(task.id);
+    }
+  };
 
   return (
     <div className={cn(
@@ -59,11 +91,19 @@ export function TaskCard({ task, className, showDelete = true }: TaskCardProps) 
             <CheckCircle className="w-4 h-4" />
           </Button>
         )}
+        <Button
+          size="icon"
+          variant="ghost"
+          onClick={() => openCreateModal({ taskToEdit: task })}
+          className="text-rose-400 hover:text-rose-200 opacity-0 group-hover:opacity-100 transition-opacity"
+        >
+          <Pencil className="w-4 h-4" />
+        </Button>
         {showDelete && (
            <Button
             size="icon"
             variant="ghost"
-            onClick={() => task.id && deleteTask(task.id)}
+            onClick={handleDelete}
             className="text-rose-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
           >
             <Trash2 className="w-4 h-4" />

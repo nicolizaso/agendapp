@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useStore } from '../../lib/store';
+import { useUIStore } from '../../hooks/useUIStore';
 import { Modal } from '../../components/Modal';
 import { Button } from '../../components/Button';
 import {
@@ -7,7 +8,8 @@ import {
   addWeeks,
   addMonths,
   addYears,
-  getYear
+  getYear,
+  format
 } from 'date-fns';
 import {
   Clock,
@@ -19,13 +21,10 @@ import { CustomSelect } from '../../components/ui/CustomSelect';
 import { DatePicker } from '../../components/ui/DatePicker';
 import { TimeWheelPicker } from '../../components/ui/TimeWheelPicker';
 
-interface CreateTaskModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
-  const { addTask, addTasks } = useStore();
+export function CreateTaskModal() {
+  const { isCreateModalOpen, closeCreateModal, createModalData, openConfirmDialog } = useUIStore();
+  const { addTask, addTasks, updateTask, updateRecurringTasks } = useStore();
+  const { initialDate, taskToEdit } = createModalData;
 
   const [title, setTitle] = useState('');
   const [date, setDate] = useState<string | null>(new Date().toISOString().split('T')[0]); // YYYY-MM-DD
@@ -57,6 +56,53 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
   const [location, setLocation] = useState('');
   const [notes, setNotes] = useState('');
 
+  // Effect to sync state when modal opens or data changes
+  useEffect(() => {
+    if (isCreateModalOpen) {
+      if (taskToEdit) {
+        setTitle(taskToEdit.title);
+        setCategory(taskToEdit.category || null);
+        setLocation(taskToEdit.location || '');
+        setNotes(taskToEdit.notes || '');
+
+        if (taskToEdit.scheduledDate) {
+          const d = new Date(taskToEdit.scheduledDate);
+          setDate(format(d, 'yyyy-MM-dd'));
+
+          if (!taskToEdit.isAllDay) {
+            setIsTimeEnabled(true);
+            setTime(format(d, 'HH:mm'));
+          } else {
+            setIsTimeEnabled(false);
+            setTime('');
+          }
+        }
+
+        // For simplicity, we don't pre-fill recurrence rules as decoding them from a list of tasks is complex
+        // We assume editing is for the task content/date
+        setIsRecurring(false);
+      } else {
+        // New Task
+        setTitle('');
+        setCategory(null);
+        setLocation('');
+        setNotes('');
+        setIsRecurring(false);
+        setRecurrenceFrequency(1);
+        setRecurrenceUnit('day');
+
+        if (initialDate) {
+          setDate(format(initialDate, 'yyyy-MM-dd'));
+        } else {
+          setDate(new Date().toISOString().split('T')[0]);
+        }
+
+        setIsTimeEnabled(false);
+        setTime('');
+      }
+    }
+  }, [isCreateModalOpen, taskToEdit, initialDate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title) return;
@@ -73,72 +119,96 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
         }
     }
 
-    if (isRecurring && scheduledDate) {
-      const tasksToCreate = [];
-      let nextDate = scheduledDate;
-      const limitYear = new Date().getFullYear();
-
-      // Ensure we process recurrence only for current year as per requirement
-      // If start date is beyond current year, fallback to single task creation
-      if (getYear(scheduledDate) > limitYear) {
-         await addTask({
-            title,
-            scheduledDate,
-            category: category || undefined,
-            location,
-            notes,
-            isAllDay: !isTimeEnabled,
-         });
-      } else {
-         while (getYear(nextDate) === limitYear) {
-            tasksToCreate.push({
-                title,
-                scheduledDate: nextDate,
-                category: category || undefined,
-                location,
-                notes,
-                isAllDay: !isTimeEnabled,
-            });
-
-            if (recurrenceUnit === 'day') nextDate = addDays(nextDate, recurrenceFrequency);
-            if (recurrenceUnit === 'week') nextDate = addWeeks(nextDate, recurrenceFrequency);
-            if (recurrenceUnit === 'month') nextDate = addMonths(nextDate, recurrenceFrequency);
-            if (recurrenceUnit === 'year') nextDate = addYears(nextDate, recurrenceFrequency);
-         }
-
-         if (tasksToCreate.length > 0) {
-             await addTasks(tasksToCreate);
-         }
-      }
-    } else {
-      await addTask({
+    const taskData = {
         title,
         scheduledDate,
         category: category || undefined,
         location,
         notes,
         isAllDay: !isTimeEnabled,
-      });
+    };
+
+    if (taskToEdit) {
+        if (taskToEdit.recurrenceId) {
+             openConfirmDialog({
+                 title: "Editar tarea recurrente",
+                 message: "¿Deseas aplicar los cambios solo a este evento o a todos los futuros de la serie?",
+                 actions: [
+                     {
+                         label: "Cancelar",
+                         onClick: () => {},
+                         variant: 'ghost'
+                     },
+                     {
+                         label: "Solo este evento",
+                         onClick: async () => {
+                             if (taskToEdit.id) {
+                                await updateTask(taskToEdit.id, taskData);
+                                closeCreateModal();
+                             }
+                         },
+                         variant: 'secondary'
+                     },
+                     {
+                         label: "Este y futuros",
+                         onClick: async () => {
+                             if (taskToEdit.recurrenceId && taskToEdit.scheduledDate) {
+                                // Use the original task date as reference to include it in the future update
+                                await updateRecurringTasks(taskToEdit.recurrenceId, taskData, 'future', new Date(taskToEdit.scheduledDate));
+                                closeCreateModal();
+                             }
+                         },
+                         variant: 'primary'
+                     }
+                 ]
+             });
+        } else {
+             if (taskToEdit.id) {
+                await updateTask(taskToEdit.id, taskData);
+                closeCreateModal();
+             }
+        }
+    } else {
+        // Create Logic
+        if (isRecurring && scheduledDate) {
+          const recurrenceId = crypto.randomUUID(); // Generate Recurrence ID
+          const tasksToCreate = [];
+          let nextDate = scheduledDate;
+          const limitYear = new Date().getFullYear();
+
+          if (getYear(scheduledDate) > limitYear) {
+             await addTask({ ...taskData, recurrenceId });
+          } else {
+             while (getYear(nextDate) === limitYear) {
+                tasksToCreate.push({
+                    title,
+                    scheduledDate: nextDate,
+                    category: category || undefined,
+                    location,
+                    notes,
+                    isAllDay: !isTimeEnabled,
+                    recurrenceId
+                });
+
+                if (recurrenceUnit === 'day') nextDate = addDays(nextDate, recurrenceFrequency);
+                if (recurrenceUnit === 'week') nextDate = addWeeks(nextDate, recurrenceFrequency);
+                if (recurrenceUnit === 'month') nextDate = addMonths(nextDate, recurrenceFrequency);
+                if (recurrenceUnit === 'year') nextDate = addYears(nextDate, recurrenceFrequency);
+             }
+
+             if (tasksToCreate.length > 0) {
+                 await addTasks(tasksToCreate);
+             }
+          }
+        } else {
+          await addTask(taskData);
+        }
+        closeCreateModal();
     }
-
-    // Reset Form
-    setTitle('');
-    setDate(new Date().toISOString().split('T')[0]);
-    setIsTimeEnabled(false);
-    setTime('');
-    setCategory(null);
-    setIsDetailsOpen(false);
-    setLocation('');
-    setNotes('');
-    setIsRecurring(false);
-    setRecurrenceFrequency(1);
-    setRecurrenceUnit('day');
-
-    onClose();
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Nueva Tarea">
+    <Modal isOpen={isCreateModalOpen} onClose={closeCreateModal} title={taskToEdit ? "Editar Tarea" : "Nueva Tarea"}>
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Title */}
         <div>
@@ -215,46 +285,48 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
             />
         </div>
 
-        {/* Recurrence */}
-        <div>
-            <div className="flex items-center gap-2 mb-2">
-                <input
-                    type="checkbox"
-                    id="recurrenceToggle"
-                    checked={isRecurring}
-                    onChange={(e) => setIsRecurring(e.target.checked)}
-                    className="w-4 h-4 rounded border-rose-700 text-rose-600 focus:ring-rose-500 bg-rose-900/50"
-                />
-                <label htmlFor="recurrenceToggle" className="text-sm font-medium text-rose-200 cursor-pointer">
-                    ¿Se repite?
-                </label>
-            </div>
-
-            {isRecurring && (
-                <div className="flex gap-4 p-3 bg-rose-900/20 border border-rose-800/30 rounded-md animate-in fade-in slide-in-from-top-1">
-                    <div className="w-20">
-                        <input
-                            type="number"
-                            min="1"
-                            max="99"
-                            value={recurrenceFrequency}
-                            onChange={(e) => setRecurrenceFrequency(Math.max(1, parseInt(e.target.value) || 1))}
-                            className="w-full bg-rose-900/50 border border-rose-800 rounded-md p-2 text-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-500 text-center"
-                        />
-                    </div>
-                    <select
-                        value={recurrenceUnit}
-                        onChange={(e) => setRecurrenceUnit(e.target.value as 'day' | 'week' | 'month' | 'year')}
-                        className="flex-1 bg-rose-900/50 border border-rose-800 rounded-md p-2 text-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-500"
-                    >
-                        <option value="day">Día(s)</option>
-                        <option value="week">Semana(s)</option>
-                        <option value="month">Mes(es)</option>
-                        <option value="year">Año(s)</option>
-                    </select>
+        {/* Recurrence - Only show if creating new task (to avoid complex edit logic) */}
+        {!taskToEdit && (
+            <div>
+                <div className="flex items-center gap-2 mb-2">
+                    <input
+                        type="checkbox"
+                        id="recurrenceToggle"
+                        checked={isRecurring}
+                        onChange={(e) => setIsRecurring(e.target.checked)}
+                        className="w-4 h-4 rounded border-rose-700 text-rose-600 focus:ring-rose-500 bg-rose-900/50"
+                    />
+                    <label htmlFor="recurrenceToggle" className="text-sm font-medium text-rose-200 cursor-pointer">
+                        ¿Se repite?
+                    </label>
                 </div>
-            )}
-        </div>
+
+                {isRecurring && (
+                    <div className="flex gap-4 p-3 bg-rose-900/20 border border-rose-800/30 rounded-md animate-in fade-in slide-in-from-top-1">
+                        <div className="w-20">
+                            <input
+                                type="number"
+                                min="1"
+                                max="99"
+                                value={recurrenceFrequency}
+                                onChange={(e) => setRecurrenceFrequency(Math.max(1, parseInt(e.target.value) || 1))}
+                                className="w-full bg-rose-900/50 border border-rose-800 rounded-md p-2 text-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-500 text-center"
+                            />
+                        </div>
+                        <select
+                            value={recurrenceUnit}
+                            onChange={(e) => setRecurrenceUnit(e.target.value as 'day' | 'week' | 'month' | 'year')}
+                            className="flex-1 bg-rose-900/50 border border-rose-800 rounded-md p-2 text-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                        >
+                            <option value="day">Día(s)</option>
+                            <option value="week">Semana(s)</option>
+                            <option value="month">Mes(es)</option>
+                            <option value="year">Año(s)</option>
+                        </select>
+                    </div>
+                )}
+            </div>
+        )}
 
         {/* Additional Data (Accordion) */}
         <div className="border-t border-rose-900/50 pt-2">
@@ -294,7 +366,7 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
         </div>
 
         <div className="pt-2 flex justify-end">
-             <Button type="submit">Crear Tarea</Button>
+             <Button type="submit">{taskToEdit ? 'Guardar Cambios' : 'Crear Tarea'}</Button>
         </div>
       </form>
     </Modal>
