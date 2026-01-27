@@ -14,7 +14,7 @@ import {
   parseISO
 } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -35,10 +35,6 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
   const [currentMonth, setCurrentMonth] = useState(() =>
     value ? parseISO(value) : new Date()
   );
-
-  // Sync current month if value changes drastically? Maybe not necessary for UX,
-  // but if external change happens, we might want to update.
-  // For now, let's keep internal navigation independent unless opened.
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -62,7 +58,8 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
 
   const weekDays = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
-  const handleDayClick = (day: Date) => {
+  const handleDayClick = (day: Date, e: React.MouseEvent) => {
+    e.stopPropagation();
     onChange(format(day, 'yyyy-MM-dd'));
     setIsOpen(false);
   };
@@ -71,21 +68,32 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
 
   return (
     <div className="relative" ref={containerRef}>
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className={cn(
-          "w-full flex items-center gap-2",
-          "bg-rose-900/50 border border-rose-800 rounded-md p-2",
-          "text-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-500",
-          "transition-all duration-200 text-base"
+      <div className="relative w-full">
+        <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-400 pointer-events-none" size={18} />
+        <input
+          readOnly
+          value={value ? format(parseISO(value), "d 'de' MMMM, yyyy", { locale: es }) : ""}
+          placeholder="Seleccionar fecha"
+          onClick={() => setIsOpen(!isOpen)}
+          className={cn(
+            "w-full bg-rose-900/50 border border-rose-800 rounded-md py-2 pl-10 pr-10",
+            "text-stone-200 placeholder:text-rose-400/70 focus:outline-none focus:ring-2 focus:ring-rose-500",
+            "transition-all duration-200 text-base cursor-pointer"
+          )}
+        />
+        {value && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onChange(null);
+            }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 z-10 p-1 text-stone-400 hover:text-rose-500 transition-colors"
+          >
+            <X size={18} />
+          </button>
         )}
-      >
-        <CalendarIcon size={18} className="text-rose-400" />
-        <span className={cn(!value && "text-rose-400/70")}>
-            {value ? format(parseISO(value), "d 'de' MMMM, yyyy", { locale: es }) : "Seleccionar fecha"}
-        </span>
-      </button>
+      </div>
 
       {isOpen && (
         <div className="absolute z-50 mt-2 p-4 bg-rose-950 border border-rose-800 rounded-xl shadow-2xl w-[320px] animate-in fade-in zoom-in-95 duration-100 left-0 sm:left-auto">
@@ -104,8 +112,8 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
 
           {/* Weekday Labels */}
           <div className="grid grid-cols-7 gap-1 mb-2">
-            {weekDays.map(d => (
-                <div key={d} className="text-center text-xs font-medium text-rose-400 py-1">
+            {weekDays.map((d, i) => (
+                <div key={i} className="text-center text-xs font-medium text-rose-400 py-1">
                     {d}
                 </div>
             ))}
@@ -122,7 +130,7 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
                     <button
                         key={idx}
                         type="button"
-                        onClick={() => handleDayClick(day)}
+                        onClick={(e) => handleDayClick(day, e)}
                         className={cn(
                             "h-9 w-9 rounded-full flex items-center justify-center text-sm transition-colors relative",
                             !isCurrentMonth && "text-rose-900/40 invisible", // Hide non-current month days for cleaner look or make them faint
