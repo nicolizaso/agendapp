@@ -72,7 +72,7 @@ export function CustomSelect({ value, onChange, placeholder = 'Seleccionar...' }
           "w-full flex items-center justify-between",
           "bg-rose-900/50 border border-rose-800 rounded-md p-3",
           "text-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-500",
-          "transition-all duration-200"
+          "transition-all duration-200 text-base"
         )}
       >
         {selectedCategory ? (
@@ -109,7 +109,7 @@ export function CustomSelect({ value, onChange, placeholder = 'Seleccionar...' }
                         <div className={cn("p-1.5 rounded-md", cat.bgClass, cat.colorClass)}>
                             <cat.icon size={16} />
                         </div>
-                        <span className="text-stone-200 text-sm font-medium">{cat.label}</span>
+                        <span className="text-stone-200 text-base font-medium">{cat.label}</span>
                      </div>
                      {value === cat.id && <Check size={16} className="text-rose-500" />}
                   </button>

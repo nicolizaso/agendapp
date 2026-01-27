@@ -78,7 +78,7 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
           "w-full flex items-center gap-2",
           "bg-rose-900/50 border border-rose-800 rounded-md p-2",
           "text-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-500",
-          "transition-all duration-200"
+          "transition-all duration-200 text-base"
         )}
       >
         <CalendarIcon size={18} className="text-rose-400" />
