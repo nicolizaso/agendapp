@@ -31,3 +31,16 @@ export interface UserStats {
   currentXp: number;
   level: number;
 }
+
+export interface Habit {
+  id?: number;
+  title: string;
+  emoji: string;
+  color: string;
+}
+
+export interface HabitLog {
+  id?: number;
+  habitId: number;
+  date: string; // ISO Date YYYY-MM-DD
+}
