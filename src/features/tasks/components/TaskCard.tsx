@@ -95,7 +95,7 @@ export function TaskCard({ task, className, showDelete = true }: TaskCardProps) 
           size="icon"
           variant="ghost"
           onClick={() => openCreateModal({ taskToEdit: task })}
-          className="text-neutral-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
+          className="text-neutral-500 hover:text-neutral-200 transition-colors duration-200"
         >
           <Pencil className="w-4 h-4" />
         </Button>
@@ -104,7 +104,7 @@ export function TaskCard({ task, className, showDelete = true }: TaskCardProps) 
             size="icon"
             variant="ghost"
             onClick={handleDelete}
-            className="text-neutral-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="text-neutral-500 hover:text-red-500 transition-colors duration-200"
           >
             <Trash2 className="w-4 h-4" />
           </Button>
