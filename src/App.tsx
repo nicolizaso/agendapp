@@ -12,6 +12,7 @@ import { ConfirmDialog } from './components/ui/ConfirmDialog';
 import { TodaySection } from './features/dashboard/TodaySection';
 import { CalendarSection } from './features/dashboard/CalendarSection';
 import { SettingsModal } from './features/settings/components/SettingsModal';
+import { HabitTracker } from './features/habits/HabitTracker';
 import { LayoutDashboard, ListTodo, Loader2, Settings } from 'lucide-react';
 
 type Tab = 'dashboard' | 'tasks';
@@ -108,6 +109,7 @@ function App() {
 
       {activeTab === 'dashboard' && (
         <div className="animate-in fade-in duration-500 grid grid-cols-1 gap-6">
+            <HabitTracker />
             <TodaySection />
             <CalendarSection />
         </div>
