@@ -11,13 +11,14 @@ import { CreateTaskModal } from './features/tasks/CreateTaskModal';
 import { ConfirmDialog } from './components/ui/ConfirmDialog';
 import { TodaySection } from './features/dashboard/TodaySection';
 import { CalendarSection } from './features/dashboard/CalendarSection';
-import { LayoutDashboard, ListTodo, Loader2 } from 'lucide-react';
+import { SettingsModal } from './features/settings/components/SettingsModal';
+import { LayoutDashboard, ListTodo, Loader2, Settings } from 'lucide-react';
 
 type Tab = 'dashboard' | 'tasks';
 
 function App() {
   const { init, isLoading, tasks } = useStore();
-  const { openCreateModal } = useUIStore();
+  const { openCreateModal, openSettingsModal } = useUIStore();
   const { requestPermission, sendNotification } = useNotifications();
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
 
@@ -93,6 +94,15 @@ function App() {
             >
                 <ListTodo className="w-4 h-4" /> Pendientes
             </Button>
+            <div className="w-px h-6 bg-neutral-800 mx-1" />
+            <Button
+                variant="ghost"
+                onClick={() => openSettingsModal()}
+                size="sm"
+                className="w-9 px-0"
+            >
+                <Settings className="w-4 h-4" />
+            </Button>
         </nav>
       </header>
 
@@ -111,6 +121,7 @@ function App() {
 
       <FAB onClick={() => openCreateModal()} />
       <CreateTaskModal />
+      <SettingsModal />
       <ConfirmDialog />
     </Layout>
   );

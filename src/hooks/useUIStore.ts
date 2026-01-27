@@ -11,6 +11,11 @@ interface UIState {
   openCreateModal: (data?: { initialDate?: Date; taskToEdit?: Task }) => void;
   closeCreateModal: () => void;
 
+  // Settings Modal
+  isSettingsModalOpen: boolean;
+  openSettingsModal: () => void;
+  closeSettingsModal: () => void;
+
   // Confirm Dialog
   confirmDialog: {
     isOpen: boolean;
@@ -36,6 +41,11 @@ export const useUIStore = create<UIState>((set) => ({
   createModalData: {},
   openCreateModal: (data = {}) => set({ isCreateModalOpen: true, createModalData: data }),
   closeCreateModal: () => set({ isCreateModalOpen: false, createModalData: {} }),
+
+  // Settings Modal
+  isSettingsModalOpen: false,
+  openSettingsModal: () => set({ isSettingsModalOpen: true }),
+  closeSettingsModal: () => set({ isSettingsModalOpen: false }),
 
   // Confirm Dialog
   confirmDialog: {
