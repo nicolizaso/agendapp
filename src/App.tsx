@@ -56,7 +56,7 @@ function App() {
 
   if (isLoading) {
     return (
-        <div className="min-h-screen flex items-center justify-center bg-rose-950 text-rose-500">
+        <div className="min-h-screen flex items-center justify-center bg-neutral-950 text-red-500">
             <Loader2 className="w-10 h-10 animate-spin" />
         </div>
     )
@@ -71,12 +71,12 @@ function App() {
                 alt="Logo Pipa's Journal"
                 className="w-8 h-8 object-contain"
             />
-            <h1 className="text-3xl font-heading font-bold text-stone-100">
+            <h1 className="text-3xl font-heading font-bold text-neutral-100">
                 Pipa's Journal
             </h1>
         </div>
 
-        <nav className="flex items-center gap-2 bg-rose-900 p-1 rounded-lg border border-rose-800">
+        <nav className="flex items-center gap-2 bg-neutral-900 p-1 rounded-lg border border-neutral-800">
             <Button
                 variant={activeTab === 'dashboard' ? 'primary' : 'ghost'}
                 onClick={() => setActiveTab('dashboard')}

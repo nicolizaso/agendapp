@@ -28,7 +28,7 @@ export function CreateReward() {
   const IconPreview = (Icons as any)[icon] || Icons.Gift;
 
   return (
-    <Card className="mb-8 border-rose-800 bg-rose-900/50">
+    <Card className="mb-8 border-neutral-800 bg-neutral-900/50">
       <CardHeader>
         <CardTitle>Add New Reward</CardTitle>
       </CardHeader>
@@ -69,7 +69,7 @@ export function CreateReward() {
                     {AVAILABLE_ICONS.map(i => <option key={i} value={i}>{i}</option>)}
                 </Select>
                 <div className="absolute left-2 top-2.5 pointer-events-none">
-                    <IconPreview className="w-4 h-4 text-rose-300" />
+                    <IconPreview className="w-4 h-4 text-neutral-400" />
                 </div>
             </div>
           </div>

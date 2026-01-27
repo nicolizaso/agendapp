@@ -212,12 +212,12 @@ export function CreateTaskModal() {
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Title */}
         <div>
-          <label className="block text-sm font-medium text-rose-200 mb-1">Título</label>
+          <label className="block text-sm font-medium text-neutral-200 mb-1">Título</label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full bg-rose-900/50 border border-rose-800 rounded-md p-3 text-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-500 placeholder-rose-800/50"
+            className="w-full bg-neutral-900/50 border border-neutral-800 rounded-md p-3 text-neutral-200 focus:outline-none focus:ring-2 focus:ring-red-600 placeholder-neutral-700"
             placeholder="Ej: Entrenar pierna"
             required
             autoFocus
@@ -226,7 +226,7 @@ export function CreateTaskModal() {
 
         {/* Date & Time */}
         <div className="flex flex-col space-y-2">
-            <label className="block text-sm font-medium text-rose-200">Fecha y Hora</label>
+            <label className="block text-sm font-medium text-neutral-200">Fecha y Hora</label>
             <div className="grid grid-cols-2 gap-4">
                 {/* Date Input */}
                 <div className="relative">
@@ -244,9 +244,9 @@ export function CreateTaskModal() {
                                 setIsTimeEnabled(e.target.checked);
                                 if (e.target.checked && !time) setTime("12:00");
                             }}
-                            className="w-5 h-5 rounded border-rose-700 text-rose-600 focus:ring-rose-500 bg-rose-900/50"
+                            className="w-5 h-5 rounded border-neutral-700 text-red-600 focus:ring-red-600 bg-neutral-900/50"
                         />
-                        <label htmlFor="timeToggle" className="cursor-pointer text-rose-300 ml-2">
+                        <label htmlFor="timeToggle" className="cursor-pointer text-neutral-400 ml-2">
                             <Clock size={20} />
                         </label>
                     </div>
@@ -256,9 +256,9 @@ export function CreateTaskModal() {
                         onClick={() => isTimeEnabled && setIsTimePickerOpen(!isTimePickerOpen)}
                         disabled={!isTimeEnabled}
                         className={cn(
-                            "flex-1 flex items-center justify-center bg-rose-900/50 border border-rose-800 rounded-md p-2 text-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all",
-                            !isTimeEnabled && "opacity-50 cursor-not-allowed text-stone-500",
-                            isTimeEnabled && "hover:bg-rose-900/80"
+                            "flex-1 flex items-center justify-center bg-neutral-900/50 border border-neutral-800 rounded-md p-2 text-neutral-200 focus:outline-none focus:ring-2 focus:ring-red-600 transition-all",
+                            !isTimeEnabled && "opacity-50 cursor-not-allowed text-neutral-500",
+                            isTimeEnabled && "hover:bg-neutral-800"
                         )}
                     >
                         <span className="text-xl font-mono tracking-wider">
@@ -267,7 +267,7 @@ export function CreateTaskModal() {
                     </button>
 
                     {isTimePickerOpen && isTimeEnabled && (
-                        <div className="absolute top-full right-0 mt-2 z-50 p-4 bg-rose-950 border border-rose-800 rounded-xl shadow-2xl w-[280px] animate-in fade-in zoom-in-95 duration-100">
+                        <div className="absolute top-full right-0 mt-2 z-50 p-4 bg-neutral-900 border border-neutral-800 rounded-xl shadow-2xl w-[280px] animate-in fade-in zoom-in-95 duration-100">
                              <TimeWheelPicker value={time || "12:00"} onChange={setTime} />
                         </div>
                     )}
@@ -277,7 +277,7 @@ export function CreateTaskModal() {
 
         {/* Categories */}
         <div>
-            <label className="block text-sm font-medium text-rose-200 mb-2">Categorías</label>
+            <label className="block text-sm font-medium text-neutral-200 mb-2">Categorías</label>
             <CustomSelect
                 value={category}
                 onChange={(val) => setCategory(val || null)}
@@ -294,15 +294,15 @@ export function CreateTaskModal() {
                         id="recurrenceToggle"
                         checked={isRecurring}
                         onChange={(e) => setIsRecurring(e.target.checked)}
-                        className="w-4 h-4 rounded border-rose-700 text-rose-600 focus:ring-rose-500 bg-rose-900/50"
+                        className="w-4 h-4 rounded border-neutral-700 text-red-600 focus:ring-red-600 bg-neutral-900/50"
                     />
-                    <label htmlFor="recurrenceToggle" className="text-sm font-medium text-rose-200 cursor-pointer">
+                    <label htmlFor="recurrenceToggle" className="text-sm font-medium text-neutral-200 cursor-pointer">
                         ¿Se repite?
                     </label>
                 </div>
 
                 {isRecurring && (
-                    <div className="flex gap-4 p-3 bg-rose-900/20 border border-rose-800/30 rounded-md animate-in fade-in slide-in-from-top-1">
+                    <div className="flex gap-4 p-3 bg-neutral-900/20 border border-neutral-800/30 rounded-md animate-in fade-in slide-in-from-top-1">
                         <div className="w-20">
                             <input
                                 type="number"
@@ -310,13 +310,13 @@ export function CreateTaskModal() {
                                 max="99"
                                 value={recurrenceFrequency}
                                 onChange={(e) => setRecurrenceFrequency(Math.max(1, parseInt(e.target.value) || 1))}
-                                className="w-full bg-rose-900/50 border border-rose-800 rounded-md p-2 text-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-500 text-center"
+                                className="w-full bg-neutral-900/50 border border-neutral-800 rounded-md p-2 text-neutral-200 focus:outline-none focus:ring-2 focus:ring-red-600 text-center"
                             />
                         </div>
                         <select
                             value={recurrenceUnit}
                             onChange={(e) => setRecurrenceUnit(e.target.value as 'day' | 'week' | 'month' | 'year')}
-                            className="flex-1 bg-rose-900/50 border border-rose-800 rounded-md p-2 text-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                            className="flex-1 bg-neutral-900/50 border border-neutral-800 rounded-md p-2 text-neutral-200 focus:outline-none focus:ring-2 focus:ring-red-600"
                         >
                             <option value="day">Día(s)</option>
                             <option value="week">Semana(s)</option>
@@ -329,11 +329,11 @@ export function CreateTaskModal() {
         )}
 
         {/* Additional Data (Accordion) */}
-        <div className="border-t border-rose-900/50 pt-2">
+        <div className="border-t border-neutral-900/50 pt-2">
             <button
                 type="button"
                 onClick={() => setIsDetailsOpen(!isDetailsOpen)}
-                className="flex items-center justify-between w-full p-2 text-sm font-medium text-rose-300 hover:text-rose-100 transition-colors"
+                className="flex items-center justify-between w-full p-2 text-sm font-medium text-neutral-400 hover:text-neutral-100 transition-colors"
             >
                 <span>Datos Adicionales</span>
                 {isDetailsOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
@@ -342,22 +342,22 @@ export function CreateTaskModal() {
             {isDetailsOpen && (
                 <div className="mt-2 space-y-4 p-2 animate-in fade-in slide-in-from-top-2">
                     <div>
-                        <label className="block text-xs font-medium text-rose-400 mb-1">Ubicación</label>
+                        <label className="block text-xs font-medium text-neutral-400 mb-1">Ubicación</label>
                         <input
                             type="text"
                             value={location}
                             onChange={(e) => setLocation(e.target.value)}
-                            className="w-full bg-rose-900/30 border border-rose-800/50 rounded-md p-2 text-sm text-stone-300 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                            className="w-full bg-neutral-900/30 border border-neutral-800/50 rounded-md p-2 text-sm text-neutral-300 focus:outline-none focus:ring-1 focus:ring-red-600"
                             placeholder="Ej: Gimnasio, Oficina..."
                         />
                     </div>
                     <div>
-                        <label className="block text-xs font-medium text-rose-400 mb-1">Notas</label>
+                        <label className="block text-xs font-medium text-neutral-400 mb-1">Notas</label>
                         <textarea
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
                             rows={3}
-                            className="w-full bg-rose-900/30 border border-rose-800/50 rounded-md p-2 text-sm text-stone-300 focus:outline-none focus:ring-1 focus:ring-rose-500 resize-none"
+                            className="w-full bg-neutral-900/30 border border-neutral-800/50 rounded-md p-2 text-sm text-neutral-300 focus:outline-none focus:ring-1 focus:ring-red-600 resize-none"
                             placeholder="Detalles adicionales..."
                         />
                     </div>

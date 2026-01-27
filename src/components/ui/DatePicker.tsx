@@ -69,15 +69,15 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
   return (
     <div className="relative" ref={containerRef}>
       <div className="relative w-full">
-        <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-400 pointer-events-none" size={18} />
+        <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" size={18} />
         <input
           readOnly
           value={value ? format(parseISO(value), "d 'de' MMMM, yyyy", { locale: es }) : ""}
           placeholder="Seleccionar fecha"
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
-            "w-full bg-rose-900/50 border border-rose-800 rounded-md py-2 pl-10 pr-10",
-            "text-stone-200 placeholder:text-rose-400/70 focus:outline-none focus:ring-2 focus:ring-rose-500",
+            "w-full bg-neutral-900/50 border border-neutral-800 rounded-md py-2 pl-10 pr-10",
+            "text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-red-600",
             "transition-all duration-200 text-base cursor-pointer"
           )}
         />
@@ -88,7 +88,7 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
               e.stopPropagation();
               onChange(null);
             }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 z-10 p-1 text-stone-400 hover:text-rose-500 transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 z-10 p-1 text-neutral-400 hover:text-red-500 transition-colors"
           >
             <X size={18} />
           </button>
@@ -96,16 +96,16 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
       </div>
 
       {isOpen && (
-        <div className="absolute z-50 mt-2 p-4 bg-rose-950 border border-rose-800 rounded-xl shadow-2xl w-[320px] animate-in fade-in zoom-in-95 duration-100 left-0 sm:left-auto">
+        <div className="absolute z-50 mt-2 p-4 bg-neutral-900 border border-neutral-800 rounded-xl shadow-2xl w-[320px] animate-in fade-in zoom-in-95 duration-100 left-0 sm:left-auto">
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
-            <button type="button" onClick={prevMonth} className="p-1 hover:bg-rose-900 rounded-full text-rose-300">
+            <button type="button" onClick={prevMonth} className="p-1 hover:bg-neutral-800 rounded-full text-neutral-300">
                 <ChevronLeft size={20} />
             </button>
-            <h3 className="font-heading font-semibold text-stone-200 capitalize">
+            <h3 className="font-heading font-semibold text-neutral-200 capitalize">
                 {format(currentMonth, 'MMMM yyyy', { locale: es })}
             </h3>
-            <button type="button" onClick={nextMonth} className="p-1 hover:bg-rose-900 rounded-full text-rose-300">
+            <button type="button" onClick={nextMonth} className="p-1 hover:bg-neutral-800 rounded-full text-neutral-300">
                 <ChevronRight size={20} />
             </button>
           </div>
@@ -113,7 +113,7 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
           {/* Weekday Labels */}
           <div className="grid grid-cols-7 gap-1 mb-2">
             {weekDays.map((d, i) => (
-                <div key={i} className="text-center text-xs font-medium text-rose-400 py-1">
+                <div key={i} className="text-center text-xs font-medium text-neutral-400 py-1">
                     {d}
                 </div>
             ))}
@@ -133,10 +133,10 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
                         onClick={(e) => handleDayClick(day, e)}
                         className={cn(
                             "h-9 w-9 rounded-full flex items-center justify-center text-sm transition-colors relative",
-                            !isCurrentMonth && "text-rose-900/40 invisible", // Hide non-current month days for cleaner look or make them faint
-                            isCurrentMonth && !isSelected && "text-stone-300 hover:bg-rose-900/50",
-                            isSelected && "bg-rose-600 text-white shadow-md shadow-rose-900/50 font-bold",
-                            isTodayDate && !isSelected && "ring-1 ring-rose-500 text-rose-400"
+                            !isCurrentMonth && "text-neutral-700/40 invisible", // Hide non-current month days for cleaner look or make them faint
+                            isCurrentMonth && !isSelected && "text-neutral-300 hover:bg-neutral-800",
+                            isSelected && "bg-red-600 text-white shadow-md shadow-red-900/20 font-bold",
+                            isTodayDate && !isSelected && "ring-1 ring-red-500 text-red-500"
                         )}
                         disabled={!isCurrentMonth}
                     >
