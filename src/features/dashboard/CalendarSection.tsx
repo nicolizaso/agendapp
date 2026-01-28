@@ -20,6 +20,7 @@ const DOT_COLORS: Record<string, string> = {
   facultad: 'bg-indigo-500',
   salud: 'bg-red-500',
   amigos: 'bg-yellow-500',
+  familia: 'bg-cyan-500',
   cumpleanos: 'bg-pink-500',
   otros: 'bg-stone-500',
 };
