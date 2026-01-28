@@ -38,6 +38,7 @@ const CATEGORY_CONFIG: Record<string, CategoryOption> = {
   // Fallbacks for existing categories in constants.ts that weren't explicitly styled in prompt, reusing similar logic
   facultad: { id: 'facultad', label: 'Facultad', icon: GraduationCap, colorClass: 'text-indigo-300', bgClass: 'bg-indigo-500/20' },
   amigos: { id: 'amigos', label: 'Amigos', icon: Users, colorClass: 'text-yellow-300', bgClass: 'bg-yellow-500/20' },
+  familia: { id: 'familia', label: 'Familia', icon: Heart, colorClass: 'text-cyan-300', bgClass: 'bg-cyan-500/20' },
   cumpleanos: { id: 'cumpleanos', label: 'Cumpleaños', icon: Cake, colorClass: 'text-pink-300', bgClass: 'bg-pink-500/20' },
 };
 
