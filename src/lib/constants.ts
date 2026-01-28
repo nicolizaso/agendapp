@@ -7,7 +7,8 @@ import {
   Users,
   MoreHorizontal,
   Cake,
-  Home
+  Home,
+  Heart
 } from 'lucide-react';
 
 export const CATEGORIES = [
@@ -18,6 +19,7 @@ export const CATEGORIES = [
   { id: 'facultad', label: 'Facultad', icon: GraduationCap, color: 'text-indigo-400', border: 'border-indigo-400/50', bg: 'bg-indigo-400/10', ring: 'ring-indigo-400' },
   { id: 'salud', label: 'Salud', icon: HeartPulse, color: 'text-red-400', border: 'border-red-400/50', bg: 'bg-red-400/10', ring: 'ring-red-400' },
   { id: 'amigos', label: 'Amigos', icon: Users, color: 'text-yellow-400', border: 'border-yellow-400/50', bg: 'bg-yellow-400/10', ring: 'ring-yellow-400' },
+  { id: 'familia', label: 'Familia', icon: Heart, color: 'text-cyan-400', border: 'border-cyan-400/50', bg: 'bg-cyan-400/10', ring: 'ring-cyan-400' },
   { id: 'cumpleanos', label: 'Cumpleaños', icon: Cake, color: 'text-pink-400', border: 'border-pink-400/50', bg: 'bg-pink-400/10', ring: 'ring-pink-400' },
   { id: 'otros', label: 'Otros', icon: MoreHorizontal, color: 'text-stone-400', border: 'border-stone-400/50', bg: 'bg-stone-400/10', ring: 'ring-stone-400' },
 ];

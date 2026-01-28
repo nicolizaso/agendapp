@@ -8,10 +8,9 @@ export function TodaySection() {
     const today = new Date();
 
     const todayTasks = tasks.filter(task =>
-        task.status === 'PENDING' &&
         task.scheduledDate &&
         isSameDay(new Date(task.scheduledDate), today)
-    );
+    ).sort((a, b) => (a.status === b.status ? 0 : a.status === 'PENDING' ? -1 : 1));
 
     return (
         <Card className="rounded-2xl bg-neutral-900/40 backdrop-blur border-neutral-800 animate-in slide-in-from-bottom-2 duration-500 h-full">
