@@ -9,6 +9,7 @@ import { Button } from '../../components/Button';
 import { ChevronLeft, ChevronRight, Plus, CalendarX } from 'lucide-react';
 import { Modal } from '../../components/Modal';
 import { TaskCard } from '../tasks/components/TaskCard';
+import { BrainDumpEditor } from '../journal/components/BrainDumpEditor';
 
 // Map specific bg colors for dots based on category ID
 const DOT_COLORS: Record<string, string> = {
@@ -28,6 +29,7 @@ export function CalendarSection() {
     const { openCreateModal } = useUIStore();
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+    const [activeTab, setActiveTab] = useState<'tasks' | 'journal'>('tasks');
 
     // Generate days for the grid (including prev/next month fillers)
     const start = startOfWeek(startOfMonth(currentDate), { weekStartsOn: 0 }); // Sunday start
@@ -78,7 +80,10 @@ export function CalendarSection() {
                         return (
                             <div
                                 key={day.toISOString()}
-                                onClick={() => setSelectedDay(day)}
+                                onClick={() => {
+                                    setSelectedDay(day);
+                                    setActiveTab('tasks');
+                                }}
                                 className={cn(
                                     "aspect-square rounded-md flex flex-col items-center justify-start pt-1.5 relative border transition-all duration-300 cursor-pointer select-none",
                                     isCurrentDay
@@ -117,33 +122,72 @@ export function CalendarSection() {
                 onClose={() => setSelectedDay(null)}
                 title={selectedDay ? format(selectedDay, "EEEE, d 'de' MMMM", { locale: es }) : ''}
              >
-                <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
-                    {selectedDayTasks.length > 0 ? (
-                        selectedDayTasks.map(task => (
-                            <TaskCard key={task.id} task={task} showDelete={true} />
-                        ))
-                    ) : (
-                        <div className="flex flex-col items-center justify-center py-10 text-neutral-500 gap-3">
-                            <CalendarX className="w-16 h-16 opacity-50" />
-                            <p className="text-sm font-body">No hay eventos programados</p>
-                        </div>
-                    )}
+                <div className="flex border-b border-neutral-800 mb-4">
+                    <button
+                        onClick={() => setActiveTab('tasks')}
+                        className={cn(
+                            "flex-1 pb-2 text-sm font-medium transition-colors relative",
+                            activeTab === 'tasks'
+                                ? "text-red-500"
+                                : "text-neutral-500 hover:text-neutral-300"
+                        )}
+                    >
+                        Tareas
+                        {activeTab === 'tasks' && (
+                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-500" />
+                        )}
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('journal')}
+                        className={cn(
+                            "flex-1 pb-2 text-sm font-medium transition-colors relative",
+                            activeTab === 'journal'
+                                ? "text-red-500"
+                                : "text-neutral-500 hover:text-neutral-300"
+                        )}
+                    >
+                        Brain Dump
+                        {activeTab === 'journal' && (
+                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-500" />
+                        )}
+                    </button>
                 </div>
 
-                <div className="mt-4 pt-4 border-t border-neutral-800/50 flex justify-end">
-                    <Button
-                        onClick={() => {
-                            if (selectedDay) {
-                                openCreateModal({ initialDate: selectedDay });
-                                setSelectedDay(null);
-                            }
-                        }}
-                        className="gap-2"
-                    >
-                        <Plus className="w-4 h-4" />
-                        Crear Tarea
-                    </Button>
-                </div>
+                {activeTab === 'tasks' ? (
+                    <>
+                        <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+                            {selectedDayTasks.length > 0 ? (
+                                selectedDayTasks.map(task => (
+                                    <TaskCard key={task.id} task={task} showDelete={true} />
+                                ))
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-10 text-neutral-500 gap-3">
+                                    <CalendarX className="w-16 h-16 opacity-50" />
+                                    <p className="text-sm font-body">No hay eventos programados</p>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="mt-4 pt-4 border-t border-neutral-800/50 flex justify-end">
+                            <Button
+                                onClick={() => {
+                                    if (selectedDay) {
+                                        openCreateModal({ initialDate: selectedDay });
+                                        setSelectedDay(null);
+                                    }
+                                }}
+                                className="gap-2"
+                            >
+                                <Plus className="w-4 h-4" />
+                                Crear Tarea
+                            </Button>
+                        </div>
+                    </>
+                ) : (
+                    <div className="h-[60vh] -mx-4">
+                         {selectedDay && <BrainDumpEditor date={selectedDay} className="h-full" />}
+                    </div>
+                )}
              </Modal>
         </Card>
     );

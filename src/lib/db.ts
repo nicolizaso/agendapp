@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { Task, Reward, UserStats, Habit, HabitLog } from '../types';
+import type { Task, Reward, UserStats, Habit, HabitLog, DailyNote } from '../types';
 
 export class VectorLifeDB extends Dexie {
   tasks!: Table<Task>;
@@ -7,6 +7,7 @@ export class VectorLifeDB extends Dexie {
   userStats!: Table<UserStats>;
   habits!: Table<Habit>;
   habitLogs!: Table<HabitLog>;
+  dailyNotes!: Table<DailyNote>;
 
   constructor() {
     super('VectorLifeDB');
@@ -23,6 +24,10 @@ export class VectorLifeDB extends Dexie {
     this.version(3).stores({
       habits: '++id, title, emoji, color',
       habitLogs: '++id, habitId, date, [habitId+date]'
+    });
+
+    this.version(4).stores({
+      dailyNotes: 'date, content'
     });
   }
 }
