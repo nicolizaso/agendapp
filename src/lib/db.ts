@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { Task, Reward, UserStats, Habit, HabitLog, DailyNote } from '../types';
+import type { Task, Reward, UserStats, Habit, HabitLog, DailyNote, Exercise, Workout, WorkoutSet } from '../types';
 
 export class VectorLifeDB extends Dexie {
   tasks!: Table<Task>;
@@ -8,6 +8,9 @@ export class VectorLifeDB extends Dexie {
   habits!: Table<Habit>;
   habitLogs!: Table<HabitLog>;
   dailyNotes!: Table<DailyNote>;
+  exercises!: Table<Exercise>;
+  workouts!: Table<Workout>;
+  sets!: Table<WorkoutSet>;
 
   constructor() {
     super('VectorLifeDB');
@@ -29,7 +32,33 @@ export class VectorLifeDB extends Dexie {
     this.version(4).stores({
       dailyNotes: 'date, content'
     });
+
+    this.version(5).stores({
+      exercises: '++id, name, muscleGroup',
+      workouts: '++id, date, name, durationSeconds',
+      sets: '++id, workoutId, exerciseId, [exerciseId+date]'
+    });
   }
 }
 
 export const db = new VectorLifeDB();
+
+export const seedDefaultExercises = async () => {
+  const count = await db.exercises.count();
+  if (count === 0) {
+    await db.exercises.bulkAdd([
+      { name: 'Banco Plano', muscleGroup: 'Pecho' },
+      { name: 'Sentadilla', muscleGroup: 'Piernas' },
+      { name: 'Peso Muerto', muscleGroup: 'Espalda/Piernas' },
+      { name: 'Dominadas', muscleGroup: 'Espalda' },
+      { name: 'Press Militar', muscleGroup: 'Hombros' },
+      { name: 'Remo con Barra', muscleGroup: 'Espalda' },
+      { name: 'Curl de Bíceps', muscleGroup: 'Bíceps' },
+      { name: 'Tríceps en Polea', muscleGroup: 'Tríceps' },
+      { name: 'Estocadas', muscleGroup: 'Piernas' },
+      { name: 'Elevaciones Laterales', muscleGroup: 'Hombros' },
+      { name: 'Fondos en Paralelas', muscleGroup: 'Pecho/Tríceps' },
+      { name: 'Prensa de Piernas', muscleGroup: 'Piernas' },
+    ]);
+  }
+};

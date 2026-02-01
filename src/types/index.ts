@@ -49,3 +49,26 @@ export interface DailyNote {
   date: string; // YYYY-MM-DD (PK)
   content: string;
 }
+
+export interface Exercise {
+  id?: number;
+  name: string;
+  muscleGroup: string;
+}
+
+export interface Workout {
+  id?: number;
+  date: Date;
+  name: string;
+  durationSeconds: number;
+}
+
+export interface WorkoutSet {
+  id?: number;
+  workoutId: number;
+  exerciseId: number;
+  weight: number;
+  reps: number;
+  rpe?: number;
+  date: Date; // For efficient indexing [exerciseId+date]
+}

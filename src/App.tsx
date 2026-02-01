@@ -14,9 +14,10 @@ import { CalendarSection } from './features/dashboard/CalendarSection';
 import { SettingsModal } from './features/settings/components/SettingsModal';
 import { HabitTracker } from './features/habits/HabitTracker';
 import { AnalyticsSection } from './features/analytics/AnalyticsSection';
-import { LayoutDashboard, ListTodo, Loader2, Settings, BarChart3 } from 'lucide-react';
+import { GymPage } from './features/gym/GymPage';
+import { LayoutDashboard, ListTodo, Loader2, Settings, BarChart3, Dumbbell } from 'lucide-react';
 
-type Tab = 'dashboard' | 'tasks' | 'analytics';
+type Tab = 'dashboard' | 'tasks' | 'analytics' | 'gym';
 
 function App() {
   const { init, isLoading, tasks } = useStore();
@@ -97,6 +98,14 @@ function App() {
                 <ListTodo className="w-4 h-4" /> Pendientes
             </Button>
             <Button
+                variant={activeTab === 'gym' ? 'primary' : 'ghost'}
+                onClick={() => setActiveTab('gym')}
+                size="sm"
+                className="gap-2"
+            >
+                <Dumbbell className="w-4 h-4" /> Gym
+            </Button>
+            <Button
                 variant={activeTab === 'analytics' ? 'primary' : 'ghost'}
                 onClick={() => setActiveTab('analytics')}
                 size="sm"
@@ -127,6 +136,12 @@ function App() {
       {activeTab === 'tasks' && (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-3xl mx-auto">
              <TaskList />
+        </div>
+      )}
+
+      {activeTab === 'gym' && (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+             <GymPage />
         </div>
       )}
 
