@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import Dexie from 'dexie';
 import { db, seedDefaultExercises } from '../lib/db';
-import type { Exercise, WorkoutSet } from '../types';
+import type { Exercise, WorkoutSet, Routine } from '../types';
 
 interface ActiveSetInput {
   weight: string; // Keep as string for inputs
@@ -20,6 +20,7 @@ interface GymState {
   // Global State
   isLoading: boolean;
   exercises: Exercise[];
+  routines: Routine[];
 
   // Active Workout State
   isWorkoutActive: boolean;
@@ -36,6 +37,11 @@ interface GymState {
   startWorkout: () => Promise<void>;
   finishWorkout: () => Promise<void>;
   cancelWorkout: () => Promise<void>;
+
+  // Routine Actions
+  createRoutine: (name: string, exercises: { exerciseId: number; targetSets: number; targetReps: string; targetWeight?: string }[]) => Promise<void>;
+  getRoutines: () => Promise<void>;
+  loadRoutineIntoWorkout: (routineId: number) => Promise<void>;
 
   addExercise: (exercise: Exercise) => void;
   updateSet: (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps', value: string) => void;
@@ -55,6 +61,7 @@ interface GymState {
 export const useGymStore = create<GymState>((set, get) => ({
   isLoading: false,
   exercises: [],
+  routines: [],
 
   isWorkoutActive: false,
   activeWorkoutId: null,
@@ -69,12 +76,9 @@ export const useGymStore = create<GymState>((set, get) => ({
     try {
       await seedDefaultExercises();
       const exercises = await db.exercises.toArray();
+      const routines = await db.routines.toArray();
 
-      // Check if there's an unfinished workout?
-      // For now, let's keep it simple: Just load exercises.
-      // Persistence of active workout could be added later or via localStorage.
-
-      set({ exercises, isLoading: false });
+      set({ exercises, routines, isLoading: false });
     } catch (error) {
       console.error('Failed to init gym store', error);
       set({ isLoading: false });
@@ -86,7 +90,7 @@ export const useGymStore = create<GymState>((set, get) => ({
     try {
       const id = await db.workouts.add({
         date: startTime,
-        name: 'Entrenamiento de Tarde', // Dynamic naming could be added
+        name: 'Entrenamiento Libre',
         durationSeconds: 0,
       });
 
@@ -98,6 +102,89 @@ export const useGymStore = create<GymState>((set, get) => ({
       });
     } catch (err) {
       console.error('Failed to start workout', err);
+    }
+  },
+
+  createRoutine: async (name, exercises) => {
+    try {
+      await db.transaction('rw', db.routines, db.routineExercises, async () => {
+        const routineId = await db.routines.add({
+          name,
+          created_at: new Date()
+        });
+
+        const routineExercises = exercises.map((ex, index) => ({
+            routineId: routineId as number,
+            exerciseId: ex.exerciseId,
+            order: index,
+            targetSets: ex.targetSets,
+            targetReps: ex.targetReps,
+            targetWeight: ex.targetWeight
+        }));
+
+        await db.routineExercises.bulkAdd(routineExercises);
+      });
+      get().getRoutines();
+    } catch (err) {
+        console.error('Failed to create routine', err);
+    }
+  },
+
+  getRoutines: async () => {
+      try {
+          const routines = await db.routines.toArray();
+          set({ routines });
+      } catch (err) {
+          console.error('Failed to fetch routines', err);
+      }
+  },
+
+  loadRoutineIntoWorkout: async (routineId) => {
+    const { exercises } = get();
+    try {
+        const routine = await db.routines.get(routineId);
+        if (!routine) return;
+
+        const routineExercises = await db.routineExercises
+            .where('routineId')
+            .equals(routineId)
+            .sortBy('order');
+
+        const startTime = new Date();
+        const workoutId = await db.workouts.add({
+            date: startTime,
+            name: routine.name, // Use Routine Name
+            durationSeconds: 0,
+        });
+
+        const activeExercises: ActiveExerciseData[] = routineExercises.map(rex => {
+            const exerciseDef = exercises.find(e => e.id === rex.exerciseId);
+            if (!exerciseDef) return null;
+
+            // Generate rows based on targetSets
+            const sets: ActiveSetInput[] = Array.from({ length: rex.targetSets }).map(() => ({
+                weight: rex.targetWeight || '',
+                reps: rex.targetReps || '',
+                completed: false
+            }));
+
+            return {
+                exerciseId: rex.exerciseId,
+                name: exerciseDef.name,
+                muscleGroup: exerciseDef.muscleGroup,
+                sets
+            };
+        }).filter((e): e is ActiveExerciseData => e !== null);
+
+        set({
+            isWorkoutActive: true,
+            activeWorkoutId: workoutId as number,
+            activeWorkoutStartTime: startTime,
+            activeExercises
+        });
+
+    } catch (err) {
+        console.error('Failed to load routine', err);
     }
   },
 

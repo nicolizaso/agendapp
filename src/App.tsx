@@ -15,15 +15,18 @@ import { SettingsModal } from './features/settings/components/SettingsModal';
 import { HabitTracker } from './features/habits/HabitTracker';
 import { AnalyticsSection } from './features/analytics/AnalyticsSection';
 import { GymPage } from './features/gym/GymPage';
-import { LayoutDashboard, ListTodo, Loader2, Settings, BarChart3, Dumbbell } from 'lucide-react';
+import { LayoutDashboard, ListTodo, Loader2, Settings, BarChart3, Dumbbell, Menu } from 'lucide-react';
+import { BottomNav } from './components/BottomNav';
+import { MobileMenu } from './components/MobileMenu';
 
-type Tab = 'dashboard' | 'tasks' | 'analytics' | 'gym';
+type Tab = 'dashboard' | 'tasks' | 'analytics' | 'gym' | 'shop';
 
 function App() {
   const { init, isLoading, tasks } = useStore();
   const { openCreateModal, openSettingsModal } = useUIStore();
   const { requestPermission, sendNotification } = useNotifications();
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     init();
@@ -68,7 +71,7 @@ function App() {
 
   return (
     <Layout>
-      <header className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <header className="mb-8 flex items-center justify-between">
         <div className="flex items-center gap-4">
             <img
                 src="/logo.png"
@@ -80,7 +83,8 @@ function App() {
             </h1>
         </div>
 
-        <nav className="flex items-center gap-2 bg-neutral-900 p-1 rounded-lg border border-neutral-800">
+        {/* Desktop Nav */}
+        <nav className="hidden md:flex items-center gap-2 bg-neutral-900 p-1 rounded-lg border border-neutral-800">
             <Button
                 variant={activeTab === 'dashboard' ? 'primary' : 'ghost'}
                 onClick={() => setActiveTab('dashboard')}
@@ -123,15 +127,26 @@ function App() {
                 <Settings className="w-4 h-4" />
             </Button>
         </nav>
+
+        {/* Mobile Menu Button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="md:hidden"
+          onClick={() => setIsMobileMenuOpen(true)}
+        >
+           <Menu className="w-6 h-6 text-neutral-300" />
+        </Button>
       </header>
 
-      {activeTab === 'dashboard' && (
-        <div className="animate-in fade-in duration-500 grid grid-cols-1 gap-6">
-            <HabitTracker />
-            <TodaySection />
-            <CalendarSection />
-        </div>
-      )}
+      <div className="pb-20 md:pb-0">
+        {activeTab === 'dashboard' && (
+            <div className="animate-in fade-in duration-500 grid grid-cols-1 gap-6">
+                <HabitTracker />
+                <TodaySection />
+                <CalendarSection />
+            </div>
+        )}
 
       {activeTab === 'tasks' && (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-3xl mx-auto">
@@ -151,10 +166,26 @@ function App() {
         </div>
       )}
 
+      {activeTab === 'shop' && (
+         <div className="flex items-center justify-center h-64 border border-dashed border-neutral-800 rounded-2xl text-neutral-500">
+            Tienda próximamente
+         </div>
+      )}
+
+      </div> {/* End content wrapper */}
+
       <FAB onClick={() => openCreateModal()} />
       <CreateTaskModal />
       <SettingsModal />
       <ConfirmDialog />
+
+      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      <MobileMenu
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+        onNavigate={setActiveTab}
+        onOpenSettings={openSettingsModal}
+      />
     </Layout>
   );
 }

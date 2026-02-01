@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useGymStore } from '../../../hooks/useGymStore';
 import { Button } from '../../../components/Button';
-import { Dumbbell, History, TrendingUp, ChevronRight } from 'lucide-react';
+import { Select } from '../../../components/Select';
+import { CreateRoutineModal } from './CreateRoutineModal';
+import { Dumbbell, History, TrendingUp, ChevronRight, Plus } from 'lucide-react';
 import { db } from '../../../lib/db';
 import type { Workout } from '../../../types';
 import { LineChart, Line, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
@@ -9,9 +11,15 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 export function GymDashboard() {
-  const { startWorkout } = useGymStore();
+  const { startWorkout, routines, getRoutines, loadRoutineIntoWorkout } = useGymStore();
   const [recentWorkouts, setRecentWorkouts] = useState<Workout[]>([]);
   const [chartData, setChartData] = useState<{date: string, count: number}[]>([]);
+  const [selectedRoutine, setSelectedRoutine] = useState<string>('');
+  const [isCreateRoutineOpen, setIsCreateRoutineOpen] = useState(false);
+
+  useEffect(() => {
+    getRoutines();
+  }, [getRoutines]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -30,6 +38,14 @@ export function GymDashboard() {
     loadData();
   }, []);
 
+  const handleStart = () => {
+    if (selectedRoutine) {
+      loadRoutineIntoWorkout(parseInt(selectedRoutine));
+    } else {
+      startWorkout();
+    }
+  };
+
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-500">
 
@@ -38,18 +54,51 @@ export function GymDashboard() {
         <div className="relative z-10">
             <h2 className="text-3xl font-heading font-bold text-white mb-2">Gym Tracker</h2>
             <p className="text-neutral-400 mb-6">¿Listo para romper tus límites?</p>
+
+            {/* Routine Selector */}
+            <div className="mb-4 bg-neutral-950/50 p-4 rounded-xl border border-neutral-800/50 backdrop-blur-sm">
+              <label className="text-xs font-bold text-neutral-500 uppercase mb-2 block">Seleccionar Rutina</label>
+              <div className="flex gap-2">
+                <Select
+                  value={selectedRoutine}
+                  onChange={(e) => setSelectedRoutine(e.target.value)}
+                  className="flex-1"
+                >
+                  <option value="">Entrenamiento Libre</option>
+                  {routines.map(routine => (
+                    <option key={routine.id} value={routine.id}>
+                      {routine.name}
+                    </option>
+                  ))}
+                </Select>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setIsCreateRoutineOpen(true)}
+                  className="shrink-0"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
             <Button
-                onClick={startWorkout}
+                onClick={handleStart}
                 className="w-full bg-red-600 hover:bg-red-700 text-white font-bold text-lg py-6 shadow-[0_0_20px_rgba(220,38,38,0.4)] cursor-pointer"
             >
                 <Dumbbell className="w-6 h-6 mr-3" />
-                COMENZAR ENTRENAMIENTO
+                {selectedRoutine ? 'INICIAR RUTINA' : 'COMENZAR ENTRENAMIENTO'}
             </Button>
         </div>
 
         {/* Decorative BG */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-red-600/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
       </div>
+
+      <CreateRoutineModal
+        isOpen={isCreateRoutineOpen}
+        onClose={() => setIsCreateRoutineOpen(false)}
+      />
 
       {/* Analytics Sparkline */}
       {chartData.length > 1 && (

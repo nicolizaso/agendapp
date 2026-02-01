@@ -72,3 +72,19 @@ export interface WorkoutSet {
   rpe?: number;
   date: Date; // For efficient indexing [exerciseId+date]
 }
+
+export interface Routine {
+  id?: number;
+  name: string;
+  created_at: Date;
+}
+
+export interface RoutineExercise {
+  id?: number;
+  routineId: number;
+  exerciseId: number;
+  order: number;
+  targetSets: number;
+  targetReps: string; // string to pre-fill inputs directly
+  targetWeight?: string; // string to pre-fill inputs directly
+}
