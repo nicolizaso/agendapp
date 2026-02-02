@@ -1,5 +1,6 @@
-import { LayoutDashboard, ListTodo, Dumbbell, ShoppingBag, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, PlusCircle, Dumbbell, BarChart2 } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useUIStore } from '../hooks/useUIStore';
 
 interface BottomNavProps {
   activeTab: string;
@@ -7,12 +8,14 @@ interface BottomNavProps {
 }
 
 export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
+  const { openCreateModal } = useUIStore();
+
   const items = [
-    { id: 'dashboard', icon: LayoutDashboard, label: 'Home' },
-    { id: 'tasks', icon: ListTodo, label: 'Tareas' },
+    { id: 'dashboard', icon: LayoutDashboard, label: 'Inicio' },
+    { id: 'tasks', icon: CheckSquare, label: 'Tareas' },
+    { id: 'create', icon: PlusCircle, label: 'Crear' },
     { id: 'gym', icon: Dumbbell, label: 'Gym' },
-    { id: 'shop', icon: ShoppingBag, label: 'Tienda' },
-    { id: 'analytics', icon: BarChart3, label: 'Progreso' },
+    { id: 'analytics', icon: BarChart2, label: 'Progreso' },
   ];
 
   return (
@@ -20,6 +23,20 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
       <div className="flex items-center justify-between px-2 h-16">
         {items.map((item) => {
           const Icon = item.icon;
+
+          if (item.id === 'create') {
+            return (
+              <button
+                key={item.id}
+                onClick={() => openCreateModal()}
+                className="flex flex-col items-center justify-center w-full h-full gap-1 transition-colors text-rose-500 hover:text-rose-400"
+                aria-label="Crear"
+              >
+                <Icon className="w-8 h-8" />
+              </button>
+            );
+          }
+
           const isActive = activeTab === item.id;
           return (
             <button
