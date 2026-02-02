@@ -4,6 +4,7 @@ import { ExerciseCard } from './ExerciseCard';
 import { RestTimer } from './RestTimer';
 import { Button } from '../../../components/Button';
 import { Search, Plus } from 'lucide-react';
+import { CreateExerciseModal } from './CreateExerciseModal';
 
 export function ActiveWorkout() {
   const {
@@ -11,12 +12,13 @@ export function ActiveWorkout() {
     finishWorkout,
     activeExercises,
     exercises,
-    addExercise,
+    addActiveExercise,
     cancelWorkout
   } = useGymStore();
 
   const [duration, setDuration] = useState(0);
   const [isAdding, setIsAdding] = useState(false);
+  const [isCreateExerciseOpen, setIsCreateExerciseOpen] = useState(false);
   const [search, setSearch] = useState('');
 
   // Global Timer
@@ -74,16 +76,21 @@ export function ActiveWorkout() {
                 </Button>
             ) : (
                 <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-4 animate-in fade-in slide-in-from-bottom-2">
-                    <div className="relative mb-4">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
-                        <input
-                            type="text"
-                            placeholder="Buscar ejercicio..."
-                            className="w-full bg-neutral-950 border border-neutral-800 rounded-lg pl-10 pr-4 py-3 text-white focus:border-red-500 focus:outline-none"
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                            autoFocus
-                        />
+                    <div className="flex gap-2 mb-4">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
+                            <input
+                                type="text"
+                                placeholder="Buscar ejercicio..."
+                                className="w-full bg-neutral-950 border border-neutral-800 rounded-lg pl-10 pr-4 py-3 text-white focus:border-red-500 focus:outline-none"
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                autoFocus
+                            />
+                        </div>
+                        <Button variant="outline" size="icon" className="h-[46px] w-[46px]" onClick={() => setIsCreateExerciseOpen(true)}>
+                            <Plus className="w-5 h-5" />
+                        </Button>
                     </div>
                     <div className="max-h-60 overflow-y-auto space-y-2">
                         {filteredExercises.map(ex => (
@@ -91,7 +98,7 @@ export function ActiveWorkout() {
                                 key={ex.id}
                                 className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-neutral-800 transition-colors text-left"
                                 onClick={() => {
-                                    addExercise(ex);
+                                    addActiveExercise(ex);
                                     setIsAdding(false);
                                     setSearch('');
                                 }}
@@ -122,6 +129,14 @@ export function ActiveWorkout() {
         </div>
 
         <RestTimer />
+        <CreateExerciseModal
+            isOpen={isCreateExerciseOpen}
+            onClose={() => setIsCreateExerciseOpen(false)}
+            onExerciseCreated={(ex) => {
+                addActiveExercise(ex);
+                setIsAdding(false);
+            }}
+        />
     </div>
   );
 }

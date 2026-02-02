@@ -43,7 +43,8 @@ interface GymState {
   getRoutines: () => Promise<void>;
   loadRoutineIntoWorkout: (routineId: number) => Promise<void>;
 
-  addExercise: (exercise: Exercise) => void;
+  addActiveExercise: (exercise: Exercise) => void;
+  addExercise: (name: string, muscleGroup: string) => Promise<Exercise | null>;
   updateSet: (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps', value: string) => void;
   toggleSetComplete: (exerciseIndex: number, setIndex: number) => Promise<void>;
   addSet: (exerciseIndex: number) => void;
@@ -233,7 +234,7 @@ export const useGymStore = create<GymState>((set, get) => ({
     });
   },
 
-  addExercise: (exercise: Exercise) => {
+  addActiveExercise: (exercise: Exercise) => {
     const { activeExercises } = get();
     set({
       activeExercises: [
@@ -246,6 +247,38 @@ export const useGymStore = create<GymState>((set, get) => ({
         }
       ]
     });
+  },
+
+  addExercise: async (name: string, muscleGroup: string) => {
+    try {
+      const { exercises } = get();
+
+      // Check for duplicates (case insensitive)
+      const existing = exercises.find(
+        e => e.name.toLowerCase() === name.trim().toLowerCase()
+      );
+
+      if (existing) {
+        return existing;
+      }
+
+      // Add to DB
+      const id = await db.exercises.add({
+        name: name.trim(),
+        muscleGroup
+      });
+
+      // Reload exercises
+      const updatedExercises = await db.exercises.toArray();
+      set({ exercises: updatedExercises });
+
+      // Return the new exercise object
+      return updatedExercises.find(e => e.id === id) || null;
+
+    } catch (err) {
+      console.error('Failed to add exercise', err);
+      return null;
+    }
   },
 
   addSet: (exerciseIndex: number) => {
