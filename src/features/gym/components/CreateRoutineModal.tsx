@@ -5,6 +5,7 @@ import { Button } from '../../../components/Button';
 import { Input } from '../../../components/Input';
 import { Label } from '../../../components/Label';
 import { Plus, Trash2, ArrowLeft, Save } from 'lucide-react';
+import { CreateExerciseModal } from './CreateExerciseModal';
 
 interface CreateRoutineModalProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ export function CreateRoutineModal({ isOpen, onClose }: CreateRoutineModalProps)
   const [name, setName] = useState('');
   const [addedExercises, setAddedExercises] = useState<RoutineExerciseInput[]>([]);
   const [isSelecting, setIsSelecting] = useState(false);
+  const [isCreateExerciseOpen, setIsCreateExerciseOpen] = useState(false);
   const [search, setSearch] = useState('');
 
   const handleSave = async () => {
@@ -90,6 +92,9 @@ export function CreateRoutineModal({ isOpen, onClose }: CreateRoutineModalProps)
               onChange={(e) => setSearch(e.target.value)}
               autoFocus
             />
+            <Button variant="outline" size="icon" onClick={() => setIsCreateExerciseOpen(true)}>
+              <Plus className="w-4 h-4" />
+            </Button>
           </div>
           <div className="max-h-[60vh] overflow-y-auto space-y-2">
             {filteredExercises.map(ex => (
@@ -103,6 +108,11 @@ export function CreateRoutineModal({ isOpen, onClose }: CreateRoutineModalProps)
               </button>
             ))}
           </div>
+          <CreateExerciseModal
+            isOpen={isCreateExerciseOpen}
+            onClose={() => setIsCreateExerciseOpen(false)}
+            onExerciseCreated={handleAddExercise}
+          />
         </div>
       ) : (
         <div className="space-y-6">
