@@ -40,6 +40,8 @@ interface GymState {
 
   // Routine Actions
   createRoutine: (name: string, exercises: { exerciseId: number; targetSets: number; targetReps: string; targetWeight?: string }[]) => Promise<void>;
+  updateRoutine: (id: number, name: string, exercises: { exerciseId: number; targetSets: number; targetReps: string; targetWeight?: string }[]) => Promise<void>;
+  deleteRoutine: (id: number) => Promise<void>;
   getRoutines: () => Promise<void>;
   loadRoutineIntoWorkout: (routineId: number) => Promise<void>;
 
@@ -128,6 +130,44 @@ export const useGymStore = create<GymState>((set, get) => ({
       get().getRoutines();
     } catch (err) {
         console.error('Failed to create routine', err);
+    }
+  },
+
+  updateRoutine: async (id, name, exercises) => {
+    try {
+      await db.transaction('rw', db.routines, db.routineExercises, async () => {
+        await db.routines.update(id, { name });
+
+        // Delete existing exercises for this routine
+        await db.routineExercises.where('routineId').equals(id).delete();
+
+        // Add new exercises
+        const routineExercises = exercises.map((ex, index) => ({
+            routineId: id,
+            exerciseId: ex.exerciseId,
+            order: index,
+            targetSets: ex.targetSets,
+            targetReps: ex.targetReps,
+            targetWeight: ex.targetWeight
+        }));
+
+        await db.routineExercises.bulkAdd(routineExercises);
+      });
+      get().getRoutines();
+    } catch (err) {
+        console.error('Failed to update routine', err);
+    }
+  },
+
+  deleteRoutine: async (id) => {
+    try {
+      await db.transaction('rw', db.routines, db.routineExercises, async () => {
+        await db.routines.delete(id);
+        await db.routineExercises.where('routineId').equals(id).delete();
+      });
+      get().getRoutines();
+    } catch (err) {
+        console.error('Failed to delete routine', err);
     }
   },
 
