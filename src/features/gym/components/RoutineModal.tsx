@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGymStore } from '../../../hooks/useGymStore';
 import { Modal } from '../../../components/Modal';
 import { Button } from '../../../components/Button';
@@ -6,13 +6,9 @@ import { Input } from '../../../components/Input';
 import { Label } from '../../../components/Label';
 import { Plus, Trash2, ArrowLeft, Save } from 'lucide-react';
 import { CreateExerciseModal } from './CreateExerciseModal';
+import type { Routine } from '../../../types';
 
-interface CreateRoutineModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-interface RoutineExerciseInput {
+export interface RoutineExerciseInput {
   exerciseId: number;
   name: string; // for display
   targetSets: number;
@@ -20,8 +16,17 @@ interface RoutineExerciseInput {
   targetWeight: string;
 }
 
-export function CreateRoutineModal({ isOpen, onClose }: CreateRoutineModalProps) {
-  const { exercises, createRoutine } = useGymStore();
+interface RoutineModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  initialData?: {
+      routine: Routine;
+      exercises: RoutineExerciseInput[];
+  } | null;
+}
+
+export function RoutineModal({ isOpen, onClose, initialData }: RoutineModalProps) {
+  const { exercises, createRoutine, updateRoutine } = useGymStore();
 
   const [name, setName] = useState('');
   const [addedExercises, setAddedExercises] = useState<RoutineExerciseInput[]>([]);
@@ -29,11 +34,26 @@ export function CreateRoutineModal({ isOpen, onClose }: CreateRoutineModalProps)
   const [isCreateExerciseOpen, setIsCreateExerciseOpen] = useState(false);
   const [search, setSearch] = useState('');
 
+  useEffect(() => {
+    if (isOpen) {
+        if (initialData) {
+            setName(initialData.routine.name);
+            setAddedExercises(initialData.exercises);
+        } else {
+            reset();
+        }
+    }
+  }, [isOpen, initialData]);
+
   const handleSave = async () => {
     if (!name.trim()) return;
     if (addedExercises.length === 0) return;
 
-    await createRoutine(name, addedExercises);
+    if (initialData?.routine.id) {
+        await updateRoutine(initialData.routine.id, name, addedExercises);
+    } else {
+        await createRoutine(name, addedExercises);
+    }
     reset();
     onClose();
   };
@@ -79,7 +99,7 @@ export function CreateRoutineModal({ isOpen, onClose }: CreateRoutineModalProps)
   );
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={isSelecting ? "Agregar Ejercicio" : "Nueva Rutina"}>
+    <Modal isOpen={isOpen} onClose={onClose} title={initialData ? "Editar Rutina" : "Nueva Rutina"}>
       {isSelecting ? (
         <div className="space-y-4">
           <div className="flex items-center gap-2">
@@ -191,7 +211,7 @@ export function CreateRoutineModal({ isOpen, onClose }: CreateRoutineModalProps)
               onClick={handleSave}
               disabled={!name || addedExercises.length === 0}
             >
-              <Save className="w-4 h-4" /> Guardar Rutina
+              <Save className="w-4 h-4" /> {initialData ? "Guardar Cambios" : "Guardar Rutina"}
             </Button>
           </div>
         </div>

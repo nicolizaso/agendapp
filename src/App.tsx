@@ -15,11 +15,12 @@ import { SettingsModal } from './features/settings/components/SettingsModal';
 import { HabitTracker } from './features/habits/HabitTracker';
 import { AnalyticsSection } from './features/analytics/AnalyticsSection';
 import { GymPage } from './features/gym/GymPage';
-import { LayoutDashboard, ListTodo, Loader2, Settings, BarChart3, Dumbbell, Menu } from 'lucide-react';
+import { RoutinesManager } from './features/gym/RoutinesManager';
+import { LayoutDashboard, ListTodo, Loader2, Settings, BarChart3, Dumbbell, Menu, ClipboardList } from 'lucide-react';
 import { BottomNav } from './components/BottomNav';
 import { MobileMenu } from './components/MobileMenu';
 
-type Tab = 'dashboard' | 'tasks' | 'analytics' | 'gym' | 'shop';
+type Tab = 'dashboard' | 'tasks' | 'analytics' | 'gym' | 'shop' | 'routines';
 
 function App() {
   const { init, isLoading, tasks } = useStore();
@@ -110,6 +111,14 @@ function App() {
                 <Dumbbell className="w-4 h-4" /> Gym
             </Button>
             <Button
+                variant={activeTab === 'routines' ? 'primary' : 'ghost'}
+                onClick={() => setActiveTab('routines')}
+                size="sm"
+                className="gap-2"
+            >
+                <ClipboardList className="w-4 h-4" /> Rutinas
+            </Button>
+            <Button
                 variant={activeTab === 'analytics' ? 'primary' : 'ghost'}
                 onClick={() => setActiveTab('analytics')}
                 size="sm"
@@ -157,6 +166,12 @@ function App() {
       {activeTab === 'gym' && (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
              <GymPage />
+        </div>
+      )}
+
+      {activeTab === 'routines' && (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+             <RoutinesManager />
         </div>
       )}
 

@@ -20,6 +20,7 @@ import { cn } from '../../lib/utils';
 import { CustomSelect } from '../../components/ui/CustomSelect';
 import { DatePicker } from '../../components/ui/DatePicker';
 import { TimeWheelPicker } from '../../components/ui/TimeWheelPicker';
+import { CATEGORIES } from '../../lib/constants';
 
 export function CreateTaskModal() {
   const { isCreateModalOpen, closeCreateModal, createModalData, openConfirmDialog } = useUIStore();
@@ -207,6 +208,14 @@ export function CreateTaskModal() {
     }
   };
 
+  const categoryOptions = CATEGORIES.map(cat => ({
+    value: cat.id,
+    label: cat.label,
+    icon: cat.icon,
+    colorClass: cat.color,
+    bgClass: cat.bg
+  }));
+
   return (
     <Modal isOpen={isCreateModalOpen} onClose={closeCreateModal} title={taskToEdit ? "Editar Tarea" : "Nueva Tarea"}>
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -282,6 +291,7 @@ export function CreateTaskModal() {
                 value={category}
                 onChange={(val) => setCategory(val || null)}
                 placeholder="Sin categoría"
+                options={categoryOptions}
             />
         </div>
 
