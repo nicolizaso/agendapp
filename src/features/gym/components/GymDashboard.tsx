@@ -17,13 +17,10 @@ export function GymDashboard() {
   const [selectedRoutine, setSelectedRoutine] = useState<string>('');
   const [isCreateRoutineOpen, setIsCreateRoutineOpen] = useState(false);
 
-  const routineOptions = [
-    { value: '', label: 'Entrenamiento Libre' },
-    ...routines.map(r => ({
+  const routineOptions = routines.map(r => ({
         value: r.id!.toString(),
         label: r.name
-    }))
-  ];
+    }));
 
   useEffect(() => {
     getRoutines();
@@ -72,7 +69,7 @@ export function GymDashboard() {
                         value={selectedRoutine}
                         onChange={setSelectedRoutine}
                         options={routineOptions}
-                        placeholder="Entrenamiento Libre"
+                        placeholder="Seleccionar rutina..."
                     />
                 </div>
                 <Button
