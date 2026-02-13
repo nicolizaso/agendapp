@@ -69,13 +69,13 @@ export function CustomSelect({ value, onChange, options, placeholder = 'Seleccio
       {isOpen && (
         <>
           <div
-            className="fixed inset-0 z-[9990] bg-black/80 backdrop-blur-sm md:hidden"
+            className="fixed inset-0 z-[9998] bg-black/60 backdrop-blur-[2px] md:hidden"
             onClick={() => setIsOpen(false)}
           />
           <div
             className={cn(
-              "fixed inset-x-4 top-1/4 z-[9999] max-h-[60vh] overflow-y-auto overscroll-contain rounded-xl border border-neutral-700 bg-neutral-900 shadow-2xl ring-1 ring-black/5 p-2",
-              "md:absolute md:inset-x-0 md:top-full md:mt-1 md:max-h-60 md:w-full md:rounded-lg md:border-neutral-800 md:shadow-xl md:p-1"
+              "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] max-h-[50vh] z-[9999] overflow-y-auto overscroll-contain bg-neutral-900 border border-neutral-700 shadow-2xl rounded-xl p-2",
+              "md:absolute md:top-full md:left-0 md:translate-x-0 md:translate-y-1 md:w-full md:max-h-60 md:rounded-lg md:border-neutral-800 md:shadow-xl md:p-1"
             )}
           >
             <div className="space-y-1">
