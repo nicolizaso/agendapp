@@ -10,7 +10,14 @@ export function TodaySection() {
     const todayTasks = tasks.filter(task =>
         task.scheduledDate &&
         isSameDay(new Date(task.scheduledDate), today)
-    ).sort((a, b) => (a.status === b.status ? 0 : a.status === 'PENDING' ? -1 : 1));
+    ).sort((a, b) => {
+        if (a.status !== b.status) {
+            return a.status === 'PENDING' ? -1 : 1;
+        }
+        const dateA = new Date(a.scheduledDate || 0).getTime();
+        const dateB = new Date(b.scheduledDate || 0).getTime();
+        return dateA - dateB;
+    });
 
     return (
         <Card className="rounded-2xl bg-neutral-900/40 backdrop-blur border-neutral-800 animate-in slide-in-from-bottom-2 duration-500 h-full">

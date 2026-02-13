@@ -56,7 +56,7 @@ export function TaskCard({ task, className, showDelete = true }: TaskCardProps) 
     )}>
       <div className="flex-1 min-w-0 mr-4">
         <h3 className={cn(
-          "font-medium text-lg font-body truncate",
+          "font-medium text-lg font-body break-words leading-tight",
           task.status === 'COMPLETED' ? "line-through text-neutral-400" : "text-neutral-200"
         )}>
           {task.title}
