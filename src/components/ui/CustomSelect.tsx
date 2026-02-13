@@ -67,35 +67,57 @@ export function CustomSelect({ value, onChange, options, placeholder = 'Seleccio
       </button>
 
       {isOpen && (
-        <div className="absolute z-[100] w-full mt-1 bg-neutral-900 border border-neutral-800 rounded-lg shadow-xl max-h-[40vh] overflow-y-auto overscroll-contain">
-           <div className="p-1 space-y-1">
+        <>
+          <div
+            className="fixed inset-0 z-[9990] bg-black/80 backdrop-blur-sm md:hidden"
+            onClick={() => setIsOpen(false)}
+          />
+          <div
+            className={cn(
+              "fixed inset-x-4 top-1/4 z-[9999] max-h-[60vh] overflow-y-auto overscroll-contain rounded-xl border border-neutral-700 bg-neutral-900 shadow-2xl ring-1 ring-black/5 p-2",
+              "md:absolute md:inset-x-0 md:top-full md:mt-1 md:max-h-60 md:w-full md:rounded-lg md:border-neutral-800 md:shadow-xl md:p-1"
+            )}
+          >
+            <div className="space-y-1">
               {options.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => {
-                        onChange(opt.value);
-                        setIsOpen(false);
-                    }}
-                    className={cn(
-                        "w-full flex items-center justify-between p-2 rounded-md transition-colors",
-                        "hover:bg-neutral-800",
-                        value === opt.value ? "bg-neutral-800" : ""
-                    )}
-                  >
-                     <div className="flex items-center gap-2">
-                        {opt.icon && (
-                            <div className={cn("p-1.5 rounded-md", opt.bgClass, opt.colorClass)}>
-                                <opt.icon size={16} />
-                            </div>
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChange(opt.value);
+                    setIsOpen(false);
+                  }}
+                  className={cn(
+                    "w-full flex items-center justify-between p-2 rounded-md transition-colors",
+                    "hover:bg-neutral-800",
+                    value === opt.value ? "bg-neutral-800" : ""
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    {opt.icon && (
+                      <div
+                        className={cn(
+                          "p-1.5 rounded-md",
+                          opt.bgClass,
+                          opt.colorClass
                         )}
-                        <span className="text-neutral-200 text-base font-medium">{opt.label}</span>
-                     </div>
-                     {value === opt.value && <Check size={16} className="text-red-500" />}
-                  </button>
+                      >
+                        <opt.icon size={16} />
+                      </div>
+                    )}
+                    <span className="text-neutral-200 text-base font-medium">
+                      {opt.label}
+                    </span>
+                  </div>
+                  {value === opt.value && (
+                    <Check size={16} className="text-red-500" />
+                  )}
+                </button>
               ))}
-           </div>
-        </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
