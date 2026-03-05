@@ -20,25 +20,32 @@ export function TaskCard({ task, className, showDelete = true }: TaskCardProps) 
   const handleDelete = () => {
     if (!task.id) return;
 
-    if (task.recurrenceId) {
+    const recurrenceKey = task.recurringGroupId || task.recurrenceId;
+
+    if (recurrenceKey) {
       openConfirmDialog({
-        title: "Borrar evento recurrente",
-        message: "¿Qué deseas borrar?",
+        title: "¿Qué deseas eliminar?",
+        message: "Esta es una tarea recurrente.",
         actions: [
           {
-            label: "Cancelar",
-            onClick: () => {},
-            variant: 'ghost'
-          },
-          {
-            label: "Solo este evento",
+            label: "Solo esta tarea",
             onClick: () => deleteTask(task.id!),
             variant: 'secondary'
           },
           {
-            label: "Este y futuros",
-            onClick: () => deleteRecurringTasks(task.recurrenceId!, 'future', task.scheduledDate ? new Date(task.scheduledDate) : new Date()),
+            label: "Esta y siguientes",
+            onClick: () => deleteRecurringTasks(recurrenceKey, 'following', task.scheduledDate ? new Date(task.scheduledDate) : new Date()),
+            variant: 'secondary'
+          },
+          {
+            label: "Todas de la serie",
+            onClick: () => deleteRecurringTasks(recurrenceKey, 'all', task.scheduledDate ? new Date(task.scheduledDate) : new Date()),
             variant: 'danger'
+          },
+          {
+            label: "Cancelar",
+            onClick: () => {},
+            variant: 'ghost'
           }
         ]
       });

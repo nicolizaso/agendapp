@@ -130,18 +130,15 @@ export function CreateTaskModal() {
     };
 
     if (taskToEdit) {
-        if (taskToEdit.recurrenceId) {
+        const recurrenceKey = taskToEdit.recurringGroupId || taskToEdit.recurrenceId;
+
+        if (recurrenceKey) {
              openConfirmDialog({
-                 title: "Editar tarea recurrente",
-                 message: "¿Deseas aplicar los cambios solo a este evento o a todos los futuros de la serie?",
+                 title: "¿Qué deseas modificar?",
+                 message: "Esta es una tarea recurrente.",
                  actions: [
                      {
-                         label: "Cancelar",
-                         onClick: () => {},
-                         variant: 'ghost'
-                     },
-                     {
-                         label: "Solo este evento",
+                         label: "Solo esta tarea",
                          onClick: async () => {
                              if (taskToEdit.id) {
                                 await updateTask(taskToEdit.id, taskData);
@@ -151,15 +148,29 @@ export function CreateTaskModal() {
                          variant: 'secondary'
                      },
                      {
-                         label: "Este y futuros",
+                         label: "Esta y siguientes",
                          onClick: async () => {
-                             if (taskToEdit.recurrenceId && taskToEdit.scheduledDate) {
-                                // Use the original task date as reference to include it in the future update
-                                await updateRecurringTasks(taskToEdit.recurrenceId, taskData, 'future', new Date(taskToEdit.scheduledDate));
+                             if (recurrenceKey && taskToEdit.scheduledDate) {
+                                await updateRecurringTasks(recurrenceKey, taskData, 'following', new Date(taskToEdit.scheduledDate));
+                                closeCreateModal();
+                             }
+                         },
+                         variant: 'secondary'
+                     },
+                     {
+                         label: "Todas de la serie",
+                         onClick: async () => {
+                             if (recurrenceKey && taskToEdit.scheduledDate) {
+                                await updateRecurringTasks(recurrenceKey, taskData, 'all', new Date(taskToEdit.scheduledDate));
                                 closeCreateModal();
                              }
                          },
                          variant: 'primary'
+                     },
+                     {
+                         label: "Cancelar",
+                         onClick: () => {},
+                         variant: 'ghost'
                      }
                  ]
              });
@@ -173,12 +184,13 @@ export function CreateTaskModal() {
         // Create Logic
         if (isRecurring && scheduledDate) {
           const recurrenceId = crypto.randomUUID(); // Generate Recurrence ID
+          const recurringGroupId = crypto.randomUUID(); // Generate Recurring Group ID
           const tasksToCreate = [];
           let nextDate = scheduledDate;
           const limitYear = new Date().getFullYear();
 
           if (getYear(scheduledDate) > limitYear) {
-             await addTask({ ...taskData, recurrenceId });
+             await addTask({ ...taskData, recurrenceId, recurringGroupId });
           } else {
              while (getYear(nextDate) === limitYear) {
                 tasksToCreate.push({
@@ -188,7 +200,8 @@ export function CreateTaskModal() {
                     location,
                     notes,
                     isAllDay: !isTimeEnabled,
-                    recurrenceId
+                    recurrenceId,
+                    recurringGroupId
                 });
 
                 if (recurrenceUnit === 'day') nextDate = addDays(nextDate, recurrenceFrequency);
