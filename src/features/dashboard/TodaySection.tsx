@@ -1,14 +1,18 @@
 import { useState } from 'react';
 import { useStore } from '../../lib/store';
+import { useUIStore } from '../../hooks/useUIStore';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/Card';
 import { TaskCard } from '../tasks/components/TaskCard';
-import { isSameDay } from 'date-fns';
+import { isSameDay, isToday, format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { CATEGORIES } from '../../lib/constants';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus } from 'lucide-react';
+import { Button } from '../../components/Button';
 
 export function TodaySection() {
     const { tasks } = useStore();
-    const today = new Date();
+    const { selectedDashboardDate, openCreateModal } = useUIStore();
+    const today = selectedDashboardDate;
 
     const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
 
@@ -39,8 +43,18 @@ export function TodaySection() {
 
     return (
         <Card className="rounded-2xl bg-neutral-900/40 backdrop-blur border-neutral-800 animate-in slide-in-from-bottom-2 duration-500 h-full">
-            <CardHeader>
-                <CardTitle className="text-2xl font-heading text-neutral-200">Agenda de Hoy</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-2xl font-heading text-neutral-200">
+                    {isToday(selectedDashboardDate) ? "Agenda de Hoy" : "Agenda del " + format(selectedDashboardDate, "d 'de' MMMM", { locale: es })}
+                </CardTitle>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => openCreateModal({ initialDate: selectedDashboardDate })}
+                    className="text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50"
+                >
+                    <Plus className="w-5 h-5" />
+                </Button>
             </CardHeader>
             <CardContent className="space-y-4">
                 {todayTasks.length === 0 ? (

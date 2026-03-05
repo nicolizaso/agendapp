@@ -2,6 +2,10 @@ import { create } from 'zustand';
 import type { Task } from '../types';
 
 interface UIState {
+  // Dashboard State
+  selectedDashboardDate: Date;
+  setSelectedDashboardDate: (date: Date) => void;
+
   // Create Task Modal
   isCreateModalOpen: boolean;
   createModalData: {
@@ -36,6 +40,10 @@ interface UIState {
 }
 
 export const useUIStore = create<UIState>((set) => ({
+  // Dashboard State
+  selectedDashboardDate: new Date(),
+  setSelectedDashboardDate: (date) => set({ selectedDashboardDate: date }),
+
   // Create Modal
   isCreateModalOpen: false,
   createModalData: {},

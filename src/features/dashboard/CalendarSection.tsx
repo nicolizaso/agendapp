@@ -1,15 +1,12 @@
 import { useState } from 'react';
 import { useStore } from '../../lib/store';
 import { useUIStore } from '../../hooks/useUIStore';
-import { startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, format, isToday, addMonths, subMonths, startOfWeek, endOfWeek, isSameMonth } from 'date-fns';
+import { startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, format, addMonths, subMonths, startOfWeek, endOfWeek, isSameMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '../../lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/Card';
 import { Button } from '../../components/Button';
-import { ChevronLeft, ChevronRight, Plus, CalendarX } from 'lucide-react';
-import { Modal } from '../../components/Modal';
-import { TaskCard } from '../tasks/components/TaskCard';
-import { BrainDumpEditor } from '../journal/components/BrainDumpEditor';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 
 // Map specific bg colors for dots based on category ID
 const DOT_COLORS: Record<string, string> = {
@@ -27,10 +24,8 @@ const DOT_COLORS: Record<string, string> = {
 
 export function CalendarSection() {
     const { tasks } = useStore();
-    const { openCreateModal } = useUIStore();
+    const { setSelectedDashboardDate, selectedDashboardDate } = useUIStore();
     const [currentDate, setCurrentDate] = useState(new Date());
-    const [selectedDay, setSelectedDay] = useState<Date | null>(null);
-    const [activeTab, setActiveTab] = useState<'tasks' | 'journal'>('tasks');
 
     // Generate days for the grid (including prev/next month fillers)
     const start = startOfWeek(startOfMonth(currentDate), { weekStartsOn: 0 }); // Sunday start
@@ -45,8 +40,6 @@ export function CalendarSection() {
     const getTasksForDay = (day: Date) => {
         return tasks.filter(t => t.scheduledDate && isSameDay(new Date(t.scheduledDate), day));
     };
-
-    const selectedDayTasks = selectedDay ? getTasksForDay(selectedDay) : [];
 
     return (
         <Card className="rounded-2xl bg-neutral-900/40 backdrop-blur border-neutral-800 animate-in slide-in-from-bottom-4 duration-700 delay-100">
@@ -76,18 +69,15 @@ export function CalendarSection() {
                     {days.map((day) => {
                         const dayTasks = getTasksForDay(day);
                         const isCurrentMonth = isSameMonth(day, currentDate);
-                        const isCurrentDay = isToday(day);
+                        const isSelectedDay = isSameDay(day, selectedDashboardDate);
 
                         return (
                             <div
                                 key={day.toISOString()}
-                                onClick={() => {
-                                    setSelectedDay(day);
-                                    setActiveTab('tasks');
-                                }}
+                                onClick={() => setSelectedDashboardDate(day)}
                                 className={cn(
                                     "aspect-square rounded-md flex flex-col items-center justify-start pt-1.5 relative border transition-all duration-300 cursor-pointer select-none",
-                                    isCurrentDay
+                                    isSelectedDay
                                         ? "bg-red-600 border-red-500 text-white shadow-[0_0_10px_rgba(220,38,38,0.3)]"
                                         : isCurrentMonth
                                             ? "bg-neutral-900 border-neutral-800 text-neutral-400 hover:bg-neutral-800 hover:border-neutral-700"
@@ -116,80 +106,6 @@ export function CalendarSection() {
                     })}
                  </div>
              </CardContent>
-
-             {/* Day Details Modal */}
-             <Modal
-                isOpen={!!selectedDay}
-                onClose={() => setSelectedDay(null)}
-                title={selectedDay ? format(selectedDay, "EEEE, d 'de' MMMM", { locale: es }) : ''}
-             >
-                <div className="flex border-b border-neutral-800 mb-4">
-                    <button
-                        onClick={() => setActiveTab('tasks')}
-                        className={cn(
-                            "flex-1 pb-2 text-sm font-medium transition-colors relative",
-                            activeTab === 'tasks'
-                                ? "text-red-500"
-                                : "text-neutral-500 hover:text-neutral-300"
-                        )}
-                    >
-                        Tareas
-                        {activeTab === 'tasks' && (
-                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-500" />
-                        )}
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('journal')}
-                        className={cn(
-                            "flex-1 pb-2 text-sm font-medium transition-colors relative",
-                            activeTab === 'journal'
-                                ? "text-red-500"
-                                : "text-neutral-500 hover:text-neutral-300"
-                        )}
-                    >
-                        Brain Dump
-                        {activeTab === 'journal' && (
-                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-500" />
-                        )}
-                    </button>
-                </div>
-
-                {activeTab === 'tasks' ? (
-                    <>
-                        <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
-                            {selectedDayTasks.length > 0 ? (
-                                selectedDayTasks.map(task => (
-                                    <TaskCard key={task.id} task={task} showDelete={true} />
-                                ))
-                            ) : (
-                                <div className="flex flex-col items-center justify-center py-10 text-neutral-500 gap-3">
-                                    <CalendarX className="w-16 h-16 opacity-50" />
-                                    <p className="text-sm font-body">No hay eventos programados</p>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="mt-4 pt-4 border-t border-neutral-800/50 flex justify-end">
-                            <Button
-                                onClick={() => {
-                                    if (selectedDay) {
-                                        openCreateModal({ initialDate: selectedDay });
-                                        setSelectedDay(null);
-                                    }
-                                }}
-                                className="gap-2"
-                            >
-                                <Plus className="w-4 h-4" />
-                                Crear Tarea
-                            </Button>
-                        </div>
-                    </>
-                ) : (
-                    <div className="h-[60vh] -mx-4">
-                         {selectedDay && <BrainDumpEditor date={selectedDay} className="h-full" />}
-                    </div>
-                )}
-             </Modal>
         </Card>
     );
 }
