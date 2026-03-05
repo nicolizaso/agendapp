@@ -102,42 +102,44 @@ export function TodaySection() {
                             </>
                         )}
 
-                        {sortedCategoryEntries.map(([catId, tasks]) => {
-                            const category = CATEGORIES.find(c => c.id === catId) || CATEGORIES.find(c => c.id === 'otros')!;
-                            const isExpanded = expandedCategories.includes(catId);
-                            const isAllCompleted = tasks.length > 0 && tasks.every(task => task.status === 'COMPLETED');
-                            const Icon = category.icon;
+                        <div className="grid grid-cols-2 gap-3 items-start">
+                            {sortedCategoryEntries.map(([catId, tasks]) => {
+                                const category = CATEGORIES.find(c => c.id === catId) || CATEGORIES.find(c => c.id === 'otros')!;
+                                const isExpanded = expandedCategories.includes(catId);
+                                const isAllCompleted = tasks.length > 0 && tasks.every(task => task.status === 'COMPLETED');
+                                const Icon = category.icon;
 
-                            return (
-                                <div key={catId} className="space-y-2">
-                                    <button
-                                        onClick={() => toggleCategory(catId)}
-                                        className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
-                                            isAllCompleted
-                                                ? 'bg-neutral-800/40 border-neutral-700/50 text-neutral-500 opacity-60 hover:opacity-100'
-                                                : `${category.bg} ${category.border} ${category.color}`
-                                        }`}
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <Icon className="w-5 h-5" />
-                                            <span className={`font-heading font-medium ${isAllCompleted ? 'line-through' : ''}`}>
-                                                {category.label}
-                                            </span>
-                                            <span className="text-sm opacity-70">({tasks.length})</span>
-                                        </div>
-                                        {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                                    </button>
+                                return (
+                                    <div key={catId} className={`transition-all duration-300 ease-in-out space-y-2 ${isExpanded ? 'col-span-2' : 'col-span-1'}`}>
+                                        <button
+                                            onClick={() => toggleCategory(catId)}
+                                            className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer overflow-hidden ${
+                                                isAllCompleted
+                                                    ? 'bg-neutral-800/40 border-neutral-700/50 text-neutral-500 opacity-60 hover:opacity-100'
+                                                    : `${category.bg} ${category.border} ${category.color}`
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <Icon className="w-5 h-5 shrink-0" />
+                                                <span className={`font-heading font-medium truncate ${isAllCompleted ? 'line-through' : ''}`}>
+                                                    {category.label}
+                                                </span>
+                                                <span className="text-sm opacity-70 shrink-0">({tasks.length})</span>
+                                            </div>
+                                            {isExpanded ? <ChevronUp className="w-5 h-5 shrink-0" /> : <ChevronDown className="w-5 h-5 shrink-0" />}
+                                        </button>
 
-                                    {isExpanded && (
-                                        <div className="grid gap-3 pt-1 pl-1">
-                                            {tasks.map((task) => (
-                                                <TaskCard key={task.id} task={task} showDelete={false} />
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
+                                        {isExpanded && (
+                                            <div className="grid gap-3 pt-1 pl-1">
+                                                {tasks.map((task) => (
+                                                    <TaskCard key={task.id} task={task} showDelete={false} />
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 )}
             </CardContent>
