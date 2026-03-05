@@ -22,6 +22,7 @@ interface AppState {
     category?: string;
     location?: string;
     notes?: string;
+    endTime?: string;
     isAllDay?: boolean;
     recurrenceId?: string;
     recurringGroupId?: string;
@@ -34,6 +35,7 @@ interface AppState {
     category?: string;
     location?: string;
     notes?: string;
+    endTime?: string;
     isAllDay?: boolean;
     recurrenceId?: string;
     recurringGroupId?: string;

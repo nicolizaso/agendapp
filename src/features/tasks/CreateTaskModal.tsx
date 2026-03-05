@@ -35,6 +35,8 @@ export function CreateTaskModal() {
   const [isTimeEnabled, setIsTimeEnabled] = useState(false);
   const [time, setTime] = useState('');
   const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
+  const [endTime, setEndTime] = useState('');
+  const [isEndTimePickerOpen, setIsEndTimePickerOpen] = useState(false);
   const timeContainerRef = useRef<HTMLDivElement>(null);
   const [category, setCategory] = useState<string | null>(null);
 
@@ -42,13 +44,14 @@ export function CreateTaskModal() {
     function handleClickOutside(event: MouseEvent) {
       if (timeContainerRef.current && !timeContainerRef.current.contains(event.target as Node)) {
         setIsTimePickerOpen(false);
+        setIsEndTimePickerOpen(false);
       }
     }
-    if (isTimePickerOpen) {
+    if (isTimePickerOpen || isEndTimePickerOpen) {
         document.addEventListener('mousedown', handleClickOutside);
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isTimePickerOpen]);
+  }, [isTimePickerOpen, isEndTimePickerOpen]);
 
   // Recurrence
   const [isRecurring, setIsRecurring] = useState(false);
@@ -82,6 +85,12 @@ export function CreateTaskModal() {
           }
         }
 
+        if (taskToEdit.endTime) {
+            setEndTime(taskToEdit.endTime);
+        } else {
+            setEndTime('');
+        }
+
         // For simplicity, we don't pre-fill recurrence rules as decoding them from a list of tasks is complex
         // We assume editing is for the task content/date
         setIsRecurring(false);
@@ -103,6 +112,7 @@ export function CreateTaskModal() {
 
         setIsTimeEnabled(false);
         setTime('');
+        setEndTime('');
       }
     }
   }, [isCreateModalOpen, taskToEdit, initialDate]);
@@ -130,6 +140,7 @@ export function CreateTaskModal() {
         location,
         notes,
         isAllDay: !isTimeEnabled,
+        endTime: isTimeEnabled && endTime ? endTime : undefined,
     };
 
     if (taskToEdit) {
@@ -203,6 +214,7 @@ export function CreateTaskModal() {
                     location,
                     notes,
                     isAllDay: !isTimeEnabled,
+                    endTime: isTimeEnabled && endTime ? endTime : undefined,
                     recurrenceId,
                     recurringGroupId
                 });
@@ -276,26 +288,63 @@ export function CreateTaskModal() {
                         </label>
                     </div>
 
-                    <button
-                        type="button"
-                        onClick={() => isTimeEnabled && setIsTimePickerOpen(!isTimePickerOpen)}
-                        disabled={!isTimeEnabled}
-                        className={cn(
-                            "flex-1 flex items-center justify-center bg-neutral-900/50 border border-neutral-800 rounded-md p-2 text-neutral-200 focus:outline-none focus:ring-2 focus:ring-red-600 transition-all",
-                            !isTimeEnabled && "opacity-50 cursor-not-allowed text-neutral-500",
-                            isTimeEnabled && "hover:bg-neutral-800"
-                        )}
-                    >
-                        <span className="text-xl font-mono tracking-wider">
-                            {time || "--:--"}
-                        </span>
-                    </button>
-
-                    {isTimePickerOpen && isTimeEnabled && (
-                        <div className="absolute top-full right-0 mt-2 z-50 p-4 bg-neutral-900 border border-neutral-800 rounded-xl shadow-2xl w-[280px] animate-in fade-in zoom-in-95 duration-100">
-                             <TimeWheelPicker value={time || "12:00"} onChange={setTime} />
+                    <div className="flex-1 flex items-center gap-2">
+                        <div className="flex-1 relative">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (isTimeEnabled) {
+                                        setIsTimePickerOpen(!isTimePickerOpen);
+                                        setIsEndTimePickerOpen(false);
+                                    }
+                                }}
+                                disabled={!isTimeEnabled}
+                                className={cn(
+                                    "w-full flex items-center justify-center bg-neutral-900/50 border border-neutral-800 rounded-md p-2 text-neutral-200 focus:outline-none focus:ring-2 focus:ring-red-600 transition-all",
+                                    !isTimeEnabled && "opacity-50 cursor-not-allowed text-neutral-500",
+                                    isTimeEnabled && "hover:bg-neutral-800"
+                                )}
+                            >
+                                <span className="text-lg font-mono tracking-wider">
+                                    {time || "--:--"}
+                                </span>
+                            </button>
+                            {isTimePickerOpen && isTimeEnabled && (
+                                <div className="absolute top-full left-0 mt-2 z-50 p-4 bg-neutral-900 border border-neutral-800 rounded-xl shadow-2xl w-[280px] animate-in fade-in zoom-in-95 duration-100">
+                                    <TimeWheelPicker value={time || "12:00"} onChange={setTime} />
+                                </div>
+                            )}
                         </div>
-                    )}
+
+                        <span className="text-neutral-500 font-bold">-</span>
+
+                        <div className="flex-1 relative">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (isTimeEnabled) {
+                                        setIsEndTimePickerOpen(!isEndTimePickerOpen);
+                                        setIsTimePickerOpen(false);
+                                    }
+                                }}
+                                disabled={!isTimeEnabled}
+                                className={cn(
+                                    "w-full flex items-center justify-center bg-neutral-900/50 border border-neutral-800 rounded-md p-2 text-neutral-200 focus:outline-none focus:ring-2 focus:ring-red-600 transition-all",
+                                    !isTimeEnabled && "opacity-50 cursor-not-allowed text-neutral-500",
+                                    isTimeEnabled && "hover:bg-neutral-800"
+                                )}
+                            >
+                                <span className="text-lg font-mono tracking-wider">
+                                    {endTime || "--:--"}
+                                </span>
+                            </button>
+                            {isEndTimePickerOpen && isTimeEnabled && (
+                                <div className="absolute top-full right-0 mt-2 z-50 p-4 bg-neutral-900 border border-neutral-800 rounded-xl shadow-2xl w-[280px] animate-in fade-in zoom-in-95 duration-100">
+                                    <TimeWheelPicker value={endTime || "12:00"} onChange={setEndTime} />
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
