@@ -51,6 +51,7 @@ interface AppState {
   addLocation: (location: Location) => Promise<void>;
   updateLocation: (id: string, updates: Partial<Location>) => Promise<void>;
   deleteLocation: (id: string) => Promise<void>;
+  deleteTasks: (ids: number[]) => Promise<void>;
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -218,6 +219,12 @@ export const useStore = create<AppState>((set, get) => ({
   deleteTask: async (id) => {
     await db.tasks.delete(id);
     set((state) => ({ tasks: state.tasks.filter((t) => t.id !== id) }));
+  },
+
+  deleteTasks: async (ids) => {
+    await db.tasks.bulkDelete(ids);
+    const updatedTasks = await db.tasks.toArray();
+    set({ tasks: updatedTasks });
   },
 
   deleteRecurringTasks: async (recurrenceId, mode, referenceDate) => {

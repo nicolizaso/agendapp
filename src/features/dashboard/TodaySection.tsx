@@ -5,13 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/Card'
 import { TaskCard } from '../tasks/components/TaskCard';
 import { isSameDay, isToday, format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ChevronDown, ChevronUp, Plus } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, ClipboardList } from 'lucide-react';
 import { Button } from '../../components/Button';
 import { IconResolver } from '../../lib/categoryUtils';
 
 export function TodaySection() {
     const { tasks, categories } = useStore();
-    const { selectedDashboardDate, openCreateModal } = useUIStore();
+    const { selectedDashboardDate, openCreateModal, setAgendaModalOpen } = useUIStore();
     const today = selectedDashboardDate;
 
     const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
@@ -71,14 +71,24 @@ export function TodaySection() {
                 <CardTitle className="text-2xl font-heading text-neutral-200">
                     {isToday(selectedDashboardDate) ? "Agenda de Hoy" : "Agenda del " + format(selectedDashboardDate, "d 'de' MMMM", { locale: es })}
                 </CardTitle>
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => openCreateModal({ initialDate: selectedDashboardDate })}
-                    className="text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50"
-                >
-                    <Plus className="w-5 h-5" />
-                </Button>
+                <div className="flex items-center gap-1">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setAgendaModalOpen(true)}
+                        className="text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50"
+                    >
+                        <ClipboardList className="w-5 h-5" />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openCreateModal({ initialDate: selectedDashboardDate })}
+                        className="text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50"
+                    >
+                        <Plus className="w-5 h-5" />
+                    </Button>
+                </div>
             </CardHeader>
             <CardContent className="space-y-4">
                 {todayTasks.length === 0 ? (
