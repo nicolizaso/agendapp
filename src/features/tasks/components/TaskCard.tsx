@@ -1,7 +1,6 @@
 import type { Task } from '../../../types';
 import { useStore } from '../../../lib/store';
 import { useUIStore } from '../../../hooks/useUIStore';
-import { CATEGORIES } from '../../../lib/constants';
 import { Button } from '../../../components/Button';
 import { CheckCircle, Clock, Trash2, Pencil } from 'lucide-react';
 import { cn } from '../../../lib/utils';
@@ -14,9 +13,9 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task, className, showDelete = true }: TaskCardProps) {
-  const { completeTask, deleteTask, deleteRecurringTasks } = useStore();
+  const { completeTask, deleteTask, deleteRecurringTasks, categories } = useStore();
   const { openCreateModal, openConfirmDialog } = useUIStore();
-  const category = CATEGORIES.find(c => c.id === task.category);
+  const category = categories.find(c => c.id === task.category);
 
   const handleDelete = () => {
     if (!task.id) return;

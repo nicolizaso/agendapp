@@ -88,3 +88,13 @@ export interface RoutineExercise {
   targetReps: string; // string to pre-fill inputs directly
   targetWeight?: string; // string to pre-fill inputs directly
 }
+
+export interface Category {
+  id: string; // e.g. "trabajo"
+  label: string; // e.g. "Trabajo"
+  icon: string; // e.g. "Briefcase"
+  color: string;
+  bg: string;
+  border: string;
+  ring: string;
+}

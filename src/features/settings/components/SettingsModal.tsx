@@ -1,13 +1,22 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useUIStore } from '../../../hooks/useUIStore';
+import { useStore } from '../../../lib/store';
 import { Modal } from '../../../components/Modal';
 import { Button } from '../../../components/Button';
 import { exportData, importData } from '../../backup/utils/backup';
-import { Cloud, Upload, AlertTriangle } from 'lucide-react';
+import { Cloud, Upload, AlertTriangle, Settings, Grid, Plus, Pencil, Trash2 } from 'lucide-react';
+import { IconResolver } from '../../../lib/categoryUtils';
+import { CategoryForm } from './CategoryForm';
+import { cn } from '../../../lib/utils';
+import type { Category } from '../../../types';
 
 export function SettingsModal() {
   const { isSettingsModalOpen, closeSettingsModal, openConfirmDialog } = useUIStore();
+  const { categories, addCategory, updateCategory, deleteCategory } = useStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [activeTab, setActiveTab] = useState<'general' | 'categories'>('categories');
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
@@ -31,11 +40,105 @@ export function SettingsModal() {
     }
   };
 
+  const handleEditClick = (category: Category) => {
+    setEditingCategory(category);
+    setIsFormOpen(true);
+  };
+
+  const handleDeleteClick = (category: Category) => {
+    openConfirmDialog({
+      title: 'Eliminar Categoría',
+      message: `¿Estás seguro de que deseas eliminar la categoría "${category.label}"? Las tareas asociadas mantendrán el color temporalmente hasta que sean editadas.`,
+      variant: 'danger',
+      onConfirm: () => {
+        deleteCategory(category.id);
+      }
+    });
+  };
+
+  const handleSaveCategory = (categoryData: Omit<Category, 'id'>) => {
+    if (editingCategory) {
+      updateCategory(editingCategory.id, categoryData);
+    } else {
+      const id = categoryData.label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || `cat-${Date.now()}`;
+      addCategory({ id, ...categoryData });
+    }
+    setIsFormOpen(false);
+    setEditingCategory(null);
+  };
+
   return (
     <Modal isOpen={isSettingsModalOpen} onClose={closeSettingsModal} title="Configuración">
+      <div className="flex space-x-2 border-b border-neutral-800 pb-2 mb-4">
+         <button
+            onClick={() => { setActiveTab('categories'); setIsFormOpen(false); }}
+            className={cn(
+               "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
+               activeTab === 'categories' ? "bg-neutral-800 text-neutral-200" : "text-neutral-500 hover:text-neutral-300"
+            )}
+         >
+            <Grid className="w-4 h-4" />
+            Categorías
+         </button>
+         <button
+            onClick={() => { setActiveTab('general'); setIsFormOpen(false); }}
+            className={cn(
+               "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
+               activeTab === 'general' ? "bg-neutral-800 text-neutral-200" : "text-neutral-500 hover:text-neutral-300"
+            )}
+         >
+            <Settings className="w-4 h-4" />
+            General
+         </button>
+      </div>
+
       <div className="space-y-6">
-        {/* Danger Zone / Data */}
-        <div className="space-y-4">
+        {activeTab === 'categories' && (
+          <div className="space-y-4">
+             {isFormOpen ? (
+                <CategoryForm
+                   initialData={editingCategory}
+                   onSave={handleSaveCategory}
+                   onCancel={() => { setIsFormOpen(false); setEditingCategory(null); }}
+                />
+             ) : (
+                <>
+                   <div className="flex items-center justify-between mb-2">
+                       <h3 className="text-sm font-medium text-neutral-400 uppercase tracking-wider">
+                           Gestionar Categorías
+                       </h3>
+                       <Button size="sm" variant="outline" onClick={() => setIsFormOpen(true)} className="gap-2 text-xs py-1 h-auto border-neutral-700">
+                           <Plus className="w-3 h-3" />
+                           Nueva
+                       </Button>
+                   </div>
+                   <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-neutral-800">
+                       {categories.map((cat) => (
+                          <div key={cat.id} className="flex items-center justify-between bg-neutral-900/50 border border-neutral-800 p-3 rounded-lg hover:bg-neutral-800/80 transition-colors">
+                              <div className="flex items-center gap-3">
+                                  <div className={cn("p-2 rounded-lg flex items-center justify-center", cat.bg, cat.color, cat.border, "border")}>
+                                     <IconResolver iconName={cat.icon} size={18} />
+                                  </div>
+                                  <span className="font-medium text-neutral-200">{cat.label}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                  <Button size="icon" variant="ghost" onClick={() => handleEditClick(cat)} className="text-neutral-500 hover:text-neutral-200 w-8 h-8">
+                                     <Pencil className="w-4 h-4" />
+                                  </Button>
+                                  <Button size="icon" variant="ghost" onClick={() => handleDeleteClick(cat)} className="text-neutral-500 hover:text-red-500 w-8 h-8" disabled={cat.id === 'otros'}>
+                                     <Trash2 className="w-4 h-4" />
+                                  </Button>
+                              </div>
+                          </div>
+                       ))}
+                   </div>
+                </>
+             )}
+          </div>
+        )}
+
+        {activeTab === 'general' && (
+          <div className="space-y-4 mt-6">
             <h3 className="text-sm font-medium text-neutral-400 uppercase tracking-wider flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-red-600" />
                 Zona de Peligro / Datos
@@ -77,7 +180,8 @@ export function SettingsModal() {
                     * Al restaurar, se reemplazarán las tareas actuales.
                 </p>
             </div>
-        </div>
+          </div>
+        )}
       </div>
     </Modal>
   );
