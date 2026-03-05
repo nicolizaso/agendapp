@@ -4,7 +4,6 @@ import { useUIStore } from '../../hooks/useUIStore';
 import { startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, format, addMonths, subMonths, startOfWeek, endOfWeek, isSameMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '../../lib/utils';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/Card';
 import { Button } from '../../components/Button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -28,30 +27,29 @@ export function CalendarSection() {
     };
 
     return (
-        <Card className="rounded-2xl bg-neutral-900/40 backdrop-blur border-neutral-800 animate-in slide-in-from-bottom-4 duration-700 delay-100">
+        <div className="w-full animate-in slide-in-from-bottom-4 duration-700 delay-100 mt-2">
              {/* Header with Navigation */}
-             <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+             <div className="flex flex-row items-center justify-between pb-4">
                  <Button variant="ghost" size="icon" onClick={prevMonth} className="text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50">
                     <ChevronLeft className="w-5 h-5" />
                  </Button>
-                 <CardTitle className="text-xl font-heading text-neutral-200 capitalize text-center select-none">
+                 <h2 className="text-xl font-heading text-neutral-200 capitalize text-center select-none">
                     {format(currentDate, 'MMMM yyyy', { locale: es })}
-                 </CardTitle>
+                 </h2>
                  <Button variant="ghost" size="icon" onClick={nextMonth} className="text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50">
                     <ChevronRight className="w-5 h-5" />
                  </Button>
-             </CardHeader>
+             </div>
 
-             <CardContent>
-                 {/* Weekday Headers */}
-                 <div className="grid grid-cols-7 gap-1 text-center text-xs text-neutral-400 mb-4 font-body">
-                    {['D', 'L', 'M', 'M', 'J', 'V', 'S'].map((d, i) => (
-                        <div key={i} className="font-bold">{d}</div>
-                    ))}
-                 </div>
+             {/* Weekday Headers */}
+             <div className="grid grid-cols-7 gap-1 text-center text-xs text-neutral-400 mb-4 font-body">
+                {['D', 'L', 'M', 'M', 'J', 'V', 'S'].map((d, i) => (
+                    <div key={i} className="font-bold">{d}</div>
+                ))}
+             </div>
 
-                 {/* Calendar Grid */}
-                 <div className="grid grid-cols-7 gap-2 font-body">
+             {/* Calendar Grid */}
+             <div className="grid grid-cols-7 gap-1.5 font-body">
                     {days.map((day) => {
                         const dayTasks = getTasksForDay(day).sort((a, b) => {
                             const timeA = a.scheduledDate ? new Date(a.scheduledDate).getTime() : 0;
@@ -109,7 +107,6 @@ export function CalendarSection() {
                         );
                     })}
                  </div>
-             </CardContent>
-        </Card>
+        </div>
     );
 }
