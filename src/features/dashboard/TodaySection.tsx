@@ -31,7 +31,7 @@ export function TodaySection() {
         return dateA - dateB;
     });
 
-    const nextTask = todayTasks.find(t => t.status === 'PENDING');
+    const nextTask = todayTasks.find(t => t.status === 'PENDING' && !t.isAllDay);
     const remainingTasks = todayTasks.filter(t => t.id !== nextTask?.id);
 
     const groupedTasks = remainingTasks.reduce((acc, task) => {
