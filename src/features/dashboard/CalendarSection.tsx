@@ -6,12 +6,7 @@ import { es } from 'date-fns/locale';
 import { cn } from '../../lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/Card';
 import { Button } from '../../components/Button';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
-
-// Map tailwind text colors to background colors for dots
-const getDotColorFromCategory = (colorClass: string): string => {
-    return colorClass.replace('text-', 'bg-');
-};
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export function CalendarSection() {
     const { tasks, categories } = useStore();
@@ -58,7 +53,11 @@ export function CalendarSection() {
                  {/* Calendar Grid */}
                  <div className="grid grid-cols-7 gap-2 font-body">
                     {days.map((day) => {
-                        const dayTasks = getTasksForDay(day);
+                        const dayTasks = getTasksForDay(day).sort((a, b) => {
+                            const timeA = a.scheduledDate ? new Date(a.scheduledDate).getTime() : 0;
+                            const timeB = b.scheduledDate ? new Date(b.scheduledDate).getTime() : 0;
+                            return timeA - timeB;
+                        });
                         const isCurrentMonth = isSameMonth(day, currentDate);
                         const isSelectedDay = isSameDay(day, selectedDashboardDate);
 
@@ -67,7 +66,7 @@ export function CalendarSection() {
                                 key={day.toISOString()}
                                 onClick={() => setSelectedDashboardDate(day)}
                                 className={cn(
-                                    "aspect-square rounded-md flex flex-col items-center justify-start pt-1.5 relative border transition-all duration-300 cursor-pointer select-none",
+                                    "aspect-square rounded-md flex flex-col items-center pt-1 relative border transition-all duration-300 cursor-pointer select-none overflow-hidden",
                                     isSelectedDay
                                         ? "bg-red-600 border-red-500 text-white shadow-[0_0_10px_rgba(220,38,38,0.3)]"
                                         : isCurrentMonth
@@ -75,25 +74,35 @@ export function CalendarSection() {
                                             : "bg-neutral-950/50 border-neutral-900/30 text-neutral-800 hover:bg-neutral-900/30"
                                 )}
                             >
-                                <span className="text-sm font-medium leading-none">{format(day, 'd')}</span>
+                                <span className="text-sm font-medium leading-none mb-0.5">{format(day, 'd')}</span>
 
-                                {/* Dots Container */}
-                                <div className="flex gap-0.5 flex-wrap justify-center content-center mt-1 w-full px-1">
+                                {/* Labels Container */}
+                                <div className="flex flex-col gap-[2px] w-full px-0.5 mt-0.5 overflow-hidden">
                                     {dayTasks.slice(0, 3).map((task) => {
                                         const catDef = categories.find(c => c.id === task.category);
-                                        const dotColor = catDef ? getDotColorFromCategory(catDef.color) : 'bg-neutral-500';
+                                        // Usamos las clases directas de la categoría para evitar el purging de Tailwind
+                                        const bgClass = catDef?.bg || 'bg-neutral-800';
+                                        const textClass = catDef?.color || 'text-neutral-300';
+
                                         return (
                                             <div
                                                 key={task.id}
                                                 className={cn(
-                                                    "w-1.5 h-1.5 rounded-full shadow-sm",
-                                                    dotColor
+                                                    "w-full truncate text-[8px] md:text-[10px] leading-tight px-1 py-[1.5px] rounded-[3px] text-left font-medium",
+                                                    bgClass,
+                                                    textClass
                                                 )}
-                                            />
+                                            >
+                                                {task.title}
+                                            </div>
                                         );
                                     })}
+
+                                    {/* Contador de Tareas Extra */}
                                     {dayTasks.length > 3 && (
-                                        <Plus className="w-1.5 h-1.5 text-neutral-500" />
+                                        <div className="text-[9px] text-neutral-500 font-bold text-center leading-none mt-[1px]">
+                                            +{dayTasks.length - 3}
+                                        </div>
                                     )}
                                 </div>
                             </div>
