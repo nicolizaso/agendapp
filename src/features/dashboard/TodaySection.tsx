@@ -1,11 +1,22 @@
+import { useState } from 'react';
 import { useStore } from '../../lib/store';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/Card';
 import { TaskCard } from '../tasks/components/TaskCard';
 import { isSameDay } from 'date-fns';
+import { CATEGORIES } from '../../lib/constants';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 export function TodaySection() {
     const { tasks } = useStore();
     const today = new Date();
+
+    const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
+
+    const toggleCategory = (catId: string) => {
+        setExpandedCategories(prev =>
+            prev.includes(catId) ? prev.filter(id => id !== catId) : [...prev, catId]
+        );
+    };
 
     const todayTasks = tasks.filter(task =>
         task.scheduledDate &&
@@ -19,6 +30,13 @@ export function TodaySection() {
         return dateA - dateB;
     });
 
+    const groupedTasks = todayTasks.reduce((acc, task) => {
+        const cat = task.category || 'otros';
+        if (!acc[cat]) acc[cat] = [];
+        acc[cat].push(task);
+        return acc;
+    }, {} as Record<string, typeof todayTasks>);
+
     return (
         <Card className="rounded-2xl bg-neutral-900/40 backdrop-blur border-neutral-800 animate-in slide-in-from-bottom-2 duration-500 h-full">
             <CardHeader>
@@ -31,10 +49,36 @@ export function TodaySection() {
                         <p className="text-neutral-500 text-sm mt-2 font-body">No hay misiones para hoy.</p>
                     </div>
                 ) : (
-                    <div className="grid gap-3">
-                        {todayTasks.map((task) => (
-                            <TaskCard key={task.id} task={task} showDelete={false} />
-                        ))}
+                    <div className="space-y-3">
+                        {Object.entries(groupedTasks).map(([catId, tasks]) => {
+                            const category = CATEGORIES.find(c => c.id === catId) || CATEGORIES.find(c => c.id === 'otros')!;
+                            const isExpanded = expandedCategories.includes(catId);
+                            const Icon = category.icon;
+
+                            return (
+                                <div key={catId} className="space-y-2">
+                                    <button
+                                        onClick={() => toggleCategory(catId)}
+                                        className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${category.bg} ${category.border} ${category.color}`}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <Icon className="w-5 h-5" />
+                                            <span className="font-heading font-medium">{category.label}</span>
+                                            <span className="text-sm opacity-70">({tasks.length})</span>
+                                        </div>
+                                        {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                                    </button>
+
+                                    {isExpanded && (
+                                        <div className="grid gap-3 pt-1 pl-1">
+                                            {tasks.map((task) => (
+                                                <TaskCard key={task.id} task={task} showDelete={false} />
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
             </CardContent>
