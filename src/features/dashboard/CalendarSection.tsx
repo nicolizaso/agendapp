@@ -64,7 +64,7 @@ export function CalendarSection() {
                                 key={day.toISOString()}
                                 onClick={() => setSelectedDashboardDate(day)}
                                 className={cn(
-                                    "aspect-square rounded-md flex flex-col items-center pt-1 relative border transition-all duration-300 cursor-pointer select-none overflow-hidden",
+                                    "min-h-[5.5rem] sm:min-h-[6.5rem] rounded-md flex flex-col items-center justify-start pt-1 relative border transition-all duration-300 cursor-pointer select-none overflow-hidden",
                                     isSelectedDay
                                         ? "bg-red-600 border-red-500 text-white shadow-[0_0_10px_rgba(220,38,38,0.3)]"
                                         : isCurrentMonth
