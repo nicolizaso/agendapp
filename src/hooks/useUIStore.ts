@@ -20,6 +20,10 @@ interface UIState {
   openSettingsModal: () => void;
   closeSettingsModal: () => void;
 
+  // Agenda Modal
+  isAgendaModalOpen: boolean;
+  setAgendaModalOpen: (isOpen: boolean) => void;
+
   // Confirm Dialog
   confirmDialog: {
     isOpen: boolean;
@@ -54,6 +58,10 @@ export const useUIStore = create<UIState>((set) => ({
   isSettingsModalOpen: false,
   openSettingsModal: () => set({ isSettingsModalOpen: true }),
   closeSettingsModal: () => set({ isSettingsModalOpen: false }),
+
+  // Agenda Modal
+  isAgendaModalOpen: false,
+  setAgendaModalOpen: (isOpen) => set({ isAgendaModalOpen: isOpen }),
 
   // Confirm Dialog
   confirmDialog: {

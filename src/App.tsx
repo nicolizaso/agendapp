@@ -10,6 +10,7 @@ import { FAB } from './components/FAB';
 import { CreateTaskModal } from './features/tasks/CreateTaskModal';
 import { ConfirmDialog } from './components/ui/ConfirmDialog';
 import { TodaySection } from './features/dashboard/TodaySection';
+import { AgendaModal } from './features/dashboard/AgendaModal';
 import { CalendarSection } from './features/dashboard/CalendarSection';
 import { SettingsModal } from './features/settings/components/SettingsModal';
 import { HabitTracker } from './features/habits/HabitTracker';
@@ -193,6 +194,7 @@ function App() {
       <CreateTaskModal />
       <SettingsModal />
       <ConfirmDialog />
+      <AgendaModal />
 
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
       <MobileMenu
