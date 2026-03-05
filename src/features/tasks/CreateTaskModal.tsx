@@ -14,8 +14,10 @@ import {
 import {
   Clock,
   ChevronRight,
-  ChevronDown
+  ChevronDown,
+  Trash2
 } from 'lucide-react';
+import { useTaskDeletion } from '../../hooks/useTaskDeletion';
 import { cn } from '../../lib/utils';
 import { CustomSelect } from '../../components/ui/CustomSelect';
 import { DatePicker } from '../../components/ui/DatePicker';
@@ -26,6 +28,7 @@ export function CreateTaskModal() {
   const { isCreateModalOpen, closeCreateModal, createModalData, openConfirmDialog } = useUIStore();
   const { addTask, addTasks, updateTask, updateRecurringTasks, categories } = useStore();
   const { initialDate, taskToEdit } = createModalData;
+  const { handleDelete } = useTaskDeletion();
 
   const [title, setTitle] = useState('');
   const [date, setDate] = useState<string | null>(new Date().toISOString().split('T')[0]); // YYYY-MM-DD
@@ -388,8 +391,21 @@ export function CreateTaskModal() {
             )}
         </div>
 
-        <div className="pt-2 flex justify-end">
-             <Button type="submit">{taskToEdit ? 'Guardar Cambios' : 'Crear Tarea'}</Button>
+        <div className="pt-2 flex items-center justify-between">
+            {taskToEdit ? (
+                <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => handleDelete(taskToEdit, closeCreateModal)}
+                    className="text-red-500 hover:bg-red-500/10 hover:text-red-400 gap-2"
+                >
+                    <Trash2 className="w-4 h-4" />
+                    <span className="hidden sm:inline">Eliminar</span>
+                </Button>
+            ) : (
+                <div />
+            )}
+            <Button type="submit">{taskToEdit ? 'Guardar Cambios' : 'Crear Tarea'}</Button>
         </div>
       </form>
     </Modal>
