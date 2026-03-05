@@ -20,11 +20,11 @@ import { cn } from '../../lib/utils';
 import { CustomSelect } from '../../components/ui/CustomSelect';
 import { DatePicker } from '../../components/ui/DatePicker';
 import { TimeWheelPicker } from '../../components/ui/TimeWheelPicker';
-import { CATEGORIES } from '../../lib/constants';
+import { getIconComponent } from '../../lib/categoryUtils';
 
 export function CreateTaskModal() {
   const { isCreateModalOpen, closeCreateModal, createModalData, openConfirmDialog } = useUIStore();
-  const { addTask, addTasks, updateTask, updateRecurringTasks } = useStore();
+  const { addTask, addTasks, updateTask, updateRecurringTasks, categories } = useStore();
   const { initialDate, taskToEdit } = createModalData;
 
   const [title, setTitle] = useState('');
@@ -208,10 +208,10 @@ export function CreateTaskModal() {
     }
   };
 
-  const categoryOptions = CATEGORIES.map(cat => ({
+  const categoryOptions = categories.map(cat => ({
     value: cat.id,
     label: cat.label,
-    icon: cat.icon,
+    icon: getIconComponent(cat.icon),
     colorClass: cat.color,
     bgClass: cat.bg
   }));

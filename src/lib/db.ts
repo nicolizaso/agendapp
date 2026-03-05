@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { Task, Reward, UserStats, Habit, HabitLog, DailyNote, Exercise, Workout, WorkoutSet, Routine, RoutineExercise } from '../types';
+import type { Task, Reward, UserStats, Habit, HabitLog, DailyNote, Exercise, Workout, WorkoutSet, Routine, RoutineExercise, Category } from '../types';
 
 export class VectorLifeDB extends Dexie {
   tasks!: Table<Task>;
@@ -13,6 +13,7 @@ export class VectorLifeDB extends Dexie {
   sets!: Table<WorkoutSet>;
   routines!: Table<Routine>;
   routineExercises!: Table<RoutineExercise>;
+  categories!: Table<Category>;
 
   constructor() {
     super('VectorLifeDB');
@@ -44,6 +45,10 @@ export class VectorLifeDB extends Dexie {
     this.version(6).stores({
       routines: '++id, name, created_at',
       routineExercises: '++id, routineId, exerciseId, order'
+    });
+
+    this.version(7).stores({
+      categories: 'id, label, icon, color, bg, border, ring'
     });
   }
 }

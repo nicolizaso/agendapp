@@ -8,22 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/Card'
 import { Button } from '../../components/Button';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 
-// Map specific bg colors for dots based on category ID
-const DOT_COLORS: Record<string, string> = {
-  casa: 'bg-purple-500',
-  gym: 'bg-orange-500',
-  cultivo: 'bg-green-500',
-  trabajo: 'bg-blue-500',
-  facultad: 'bg-indigo-500',
-  salud: 'bg-red-500',
-  amigos: 'bg-yellow-500',
-  familia: 'bg-cyan-500',
-  cumpleanos: 'bg-pink-500',
-  otros: 'bg-stone-500',
+// Map tailwind text colors to background colors for dots
+const getDotColorFromCategory = (colorClass: string): string => {
+    return colorClass.replace('text-', 'bg-');
 };
 
 export function CalendarSection() {
-    const { tasks } = useStore();
+    const { tasks, categories } = useStore();
     const { setSelectedDashboardDate, selectedDashboardDate } = useUIStore();
     const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -88,15 +79,19 @@ export function CalendarSection() {
 
                                 {/* Dots Container */}
                                 <div className="flex gap-0.5 flex-wrap justify-center content-center mt-1 w-full px-1">
-                                    {dayTasks.slice(0, 3).map((task) => (
-                                        <div
-                                            key={task.id}
-                                            className={cn(
-                                                "w-1.5 h-1.5 rounded-full shadow-sm",
-                                                task.category ? DOT_COLORS[task.category] || 'bg-neutral-500' : 'bg-neutral-500'
-                                            )}
-                                        />
-                                    ))}
+                                    {dayTasks.slice(0, 3).map((task) => {
+                                        const catDef = categories.find(c => c.id === task.category);
+                                        const dotColor = catDef ? getDotColorFromCategory(catDef.color) : 'bg-neutral-500';
+                                        return (
+                                            <div
+                                                key={task.id}
+                                                className={cn(
+                                                    "w-1.5 h-1.5 rounded-full shadow-sm",
+                                                    dotColor
+                                                )}
+                                            />
+                                        );
+                                    })}
                                     {dayTasks.length > 3 && (
                                         <Plus className="w-1.5 h-1.5 text-neutral-500" />
                                     )}

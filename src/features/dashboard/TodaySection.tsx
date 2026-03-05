@@ -5,12 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/Card'
 import { TaskCard } from '../tasks/components/TaskCard';
 import { isSameDay, isToday, format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { CATEGORIES } from '../../lib/constants';
 import { ChevronDown, ChevronUp, Plus } from 'lucide-react';
 import { Button } from '../../components/Button';
+import { IconResolver } from '../../lib/categoryUtils';
 
 export function TodaySection() {
-    const { tasks } = useStore();
+    const { tasks, categories } = useStore();
     const { selectedDashboardDate, openCreateModal } = useUIStore();
     const today = selectedDashboardDate;
 
@@ -104,10 +104,9 @@ export function TodaySection() {
 
                         <div className="grid grid-cols-2 gap-3 items-start">
                             {sortedCategoryEntries.map(([catId, tasks]) => {
-                                const category = CATEGORIES.find(c => c.id === catId) || CATEGORIES.find(c => c.id === 'otros')!;
+                                const category = categories.find(c => c.id === catId) || categories.find(c => c.id === 'otros')!;
                                 const isExpanded = expandedCategories.includes(catId);
                                 const isAllCompleted = tasks.length > 0 && tasks.every(task => task.status === 'COMPLETED');
-                                const Icon = category.icon;
 
                                 return (
                                     <div key={catId} className={`transition-all duration-300 ease-in-out space-y-2 ${isExpanded ? 'col-span-2' : 'col-span-1'}`}>
@@ -116,13 +115,13 @@ export function TodaySection() {
                                             className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer overflow-hidden ${
                                                 isAllCompleted
                                                     ? 'bg-neutral-800/40 border-neutral-700/50 text-neutral-500 opacity-60 hover:opacity-100'
-                                                    : `${category.bg} ${category.border} ${category.color}`
+                                                    : category ? `${category.bg} ${category.border} ${category.color}` : 'bg-neutral-800/40 border-neutral-700/50 text-neutral-500'
                                             }`}
                                         >
                                             <div className="flex items-center gap-2 min-w-0">
-                                                <Icon className="w-5 h-5 shrink-0" />
+                                                {category && <IconResolver iconName={category.icon} className="w-5 h-5 shrink-0" />}
                                                 <span className={`font-heading font-medium truncate ${isAllCompleted ? 'line-through' : ''}`}>
-                                                    {category.label}
+                                                    {category?.label || 'Otros'}
                                                 </span>
                                                 <span className="text-sm opacity-70 shrink-0">({tasks.length})</span>
                                             </div>

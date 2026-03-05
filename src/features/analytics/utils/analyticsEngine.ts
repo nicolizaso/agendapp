@@ -1,29 +1,36 @@
 import { startOfWeek, endOfWeek, eachDayOfInterval, subDays, format, isSameDay, isWithinInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
-import type { Task } from '../../../types';
+import type { Task, Category } from '../../../types';
 import type { ChartData, Achievement } from './types';
-import { CATEGORIES } from '../../../lib/constants';
 import {
     Flame,
     CalendarCheck,
     Trophy
 } from 'lucide-react';
 
-// Hex colors mapping for Recharts (matching Tailwind -400 shades)
-const CATEGORY_COLORS: Record<string, string> = {
-    casa: '#c084fc',
-    gym: '#fb923c',
-    cultivo: '#4ade80',
-    trabajo: '#60a5fa',
-    facultad: '#818cf8',
-    salud: '#f87171',
-    amigos: '#facc15',
-    familia: '#22d3ee',
-    cumpleanos: '#f472b6',
-    otros: '#a8a29e'
+// Hex colors mapping for Recharts (matching Tailwind -400 shades) dynamically from Tailwind classes
+const getHexFromTailwindColor = (colorClass: string): string => {
+    const colorMap: Record<string, string> = {
+        'purple-400': '#c084fc',
+        'orange-400': '#fb923c',
+        'green-400': '#4ade80',
+        'blue-400': '#60a5fa',
+        'indigo-400': '#818cf8',
+        'red-400': '#f87171',
+        'yellow-400': '#facc15',
+        'cyan-400': '#22d3ee',
+        'pink-400': '#f472b6',
+        'stone-400': '#a8a29e',
+        'emerald-400': '#34d399',
+        'lime-400': '#a3e635',
+        'violet-400': '#a78bfa',
+        'rose-400': '#fb7185',
+    };
+    const key = colorClass.replace('text-', '');
+    return colorMap[key] || '#a8a29e';
 };
 
-export const calculateCategoryStats = (tasks: Task[]): ChartData[] => {
+export const calculateCategoryStats = (tasks: Task[], categories: Category[]): ChartData[] => {
     const completedTasks = tasks.filter(t => t.status === 'COMPLETED');
     const stats: Record<string, number> = {};
 
@@ -33,12 +40,13 @@ export const calculateCategoryStats = (tasks: Task[]): ChartData[] => {
     });
 
     return Object.keys(stats).map(catId => {
-        const categoryDef = CATEGORIES.find(c => c.id === catId);
+        const categoryDef = categories.find(c => c.id === catId);
+        const hexColor = categoryDef ? getHexFromTailwindColor(categoryDef.color) : '#a8a29e';
         return {
             name: categoryDef?.label || catId,
             value: stats[catId],
-            color: CATEGORY_COLORS[catId] || '#a8a29e',
-            fill: CATEGORY_COLORS[catId] || '#a8a29e'
+            color: hexColor,
+            fill: hexColor
         };
     }).sort((a, b) => b.value - a.value); // Sort desc
 };
@@ -64,7 +72,7 @@ export const calculateWeeklyPerformance = (tasks: Task[]): ChartData[] => {
     });
 };
 
-export const calculateAchievements = (tasks: Task[]): Achievement[] => {
+export const calculateAchievements = (tasks: Task[], categories: Category[]): Achievement[] => {
     const achievements: Achievement[] = [];
 
     // --- Logic 1: Maestro [Category] ---
@@ -75,7 +83,7 @@ export const calculateAchievements = (tasks: Task[]): Achievement[] => {
         completedByCategory[cat] = (completedByCategory[cat] || 0) + 1;
     });
 
-    CATEGORIES.forEach(cat => {
+    categories.forEach(cat => {
         const count = completedByCategory[cat.id] || 0;
         let level = 'BRONZE';
         let target = 10;
@@ -147,7 +155,7 @@ export const calculateAchievements = (tasks: Task[]): Achievement[] => {
     // Last 5 tasks of a category were consecutive (no fails? wait, prompt says "consecutivas").
     // Interpreting as: The last 5 tasks registered for this category are ALL completed.
 
-    CATEGORIES.forEach(cat => {
+    categories.forEach(cat => {
         const catTasks = tasks
             .filter(t => t.category === cat.id && t.scheduledDate)
             .sort((a, b) => new Date(b.scheduledDate!).getTime() - new Date(a.scheduledDate!).getTime()); // Newest first

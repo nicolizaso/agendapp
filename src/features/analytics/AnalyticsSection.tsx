@@ -11,11 +11,11 @@ import { AchievementsGrid } from './components/AchievementsGrid';
 import { BarChart3 } from 'lucide-react';
 
 export function AnalyticsSection() {
-    const { tasks } = useStore();
+    const { tasks, categories } = useStore();
 
-    const categoryData = useMemo(() => calculateCategoryStats(tasks), [tasks]);
+    const categoryData = useMemo(() => calculateCategoryStats(tasks, categories), [tasks, categories]);
     const weeklyData = useMemo(() => calculateWeeklyPerformance(tasks), [tasks]);
-    const achievements = useMemo(() => calculateAchievements(tasks), [tasks]);
+    const achievements = useMemo(() => calculateAchievements(tasks, categories), [tasks, categories]);
 
     return (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8 pb-20">

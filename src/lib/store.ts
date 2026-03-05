@@ -1,12 +1,14 @@
 import { create } from 'zustand';
 import { db } from './db';
-import type { Task, Reward, UserStats, Effort, TaskStatus } from '../types';
+import type { Task, Reward, UserStats, Effort, TaskStatus, Category } from '../types';
 import { calculateGoldReward, calculateXpReward, calculateLevel } from './economy';
+import { CATEGORIES as DEFAULT_CATEGORIES } from './constants';
 
 interface AppState {
   tasks: Task[];
   rewards: Reward[];
   userStats: UserStats;
+  categories: Category[];
   isLoading: boolean;
 
   // Actions
@@ -40,12 +42,16 @@ interface AppState {
   completeTask: (taskId: number) => Promise<void>;
   addReward: (rewardData: { title: string; cost: number; icon: string }) => Promise<void>;
   buyReward: (rewardId: number) => Promise<void>;
+  addCategory: (category: Category) => Promise<void>;
+  updateCategory: (id: string, updates: Partial<Category>) => Promise<void>;
+  deleteCategory: (id: string) => Promise<void>;
 }
 
 export const useStore = create<AppState>((set, get) => ({
   tasks: [],
   rewards: [],
   userStats: { currentGold: 0, currentXp: 0, level: 1 },
+  categories: [],
   isLoading: true,
 
   init: async () => {
@@ -55,9 +61,43 @@ export const useStore = create<AppState>((set, get) => ({
     }
 
     const tasks = await db.tasks.toArray();
-    const rewards = await db.rewards.toArray();
+    let rewards = await db.rewards.toArray();
     const userStatsArray = await db.userStats.toArray();
     const userStats = userStatsArray[0];
+    let categories = await db.categories.toArray();
+
+    if (categories.length === 0) {
+      const defaultCategories: Category[] = DEFAULT_CATEGORIES.map(cat => ({
+        id: cat.id,
+        label: cat.label,
+        icon: 'Circle', // Fallback, will be populated properly below
+        color: cat.color,
+        bg: cat.bg,
+        border: cat.border,
+        ring: cat.ring
+      }));
+
+      // A hardcoded map based on what we know is in constants
+      const DEFAULT_ICON_NAMES: Record<string, string> = {
+        'casa': 'Home',
+        'gym': 'Dumbbell',
+        'cultivo': 'Sprout',
+        'trabajo': 'Briefcase',
+        'facultad': 'GraduationCap',
+        'salud': 'HeartPulse',
+        'amigos': 'Users',
+        'familia': 'Heart',
+        'cumpleanos': 'Cake',
+        'otros': 'MoreHorizontal'
+      };
+
+      for (const cat of defaultCategories) {
+          cat.icon = DEFAULT_ICON_NAMES[cat.id] || 'Circle';
+      }
+
+      await db.categories.bulkAdd(defaultCategories);
+      categories = await db.categories.toArray();
+    }
 
     if (rewards.length === 0) {
       const defaults: Reward[] = [
@@ -66,11 +106,10 @@ export const useStore = create<AppState>((set, get) => ({
         { title: 'Gaming Session', cost: 200, icon: 'Gamepad2' }
       ];
       await db.rewards.bulkAdd(defaults);
-      const newRewards = await db.rewards.toArray();
-       set({ tasks, rewards: newRewards, userStats, isLoading: false });
-    } else {
-      set({ tasks, rewards, userStats, isLoading: false });
+      rewards = await db.rewards.toArray();
     }
+
+    set({ tasks, rewards, userStats, categories, isLoading: false });
   },
 
   addTask: async (taskData) => {
@@ -227,5 +266,22 @@ export const useStore = create<AppState>((set, get) => ({
     }
 
     set({ userStats: newStats });
+  },
+
+  addCategory: async (category) => {
+    await db.categories.add(category);
+    set((state) => ({ categories: [...state.categories, category] }));
+  },
+
+  updateCategory: async (id, updates) => {
+    await db.categories.update(id, updates);
+    set((state) => ({
+      categories: state.categories.map((c) => (c.id === id ? { ...c, ...updates } : c)),
+    }));
+  },
+
+  deleteCategory: async (id) => {
+    await db.categories.delete(id);
+    set((state) => ({ categories: state.categories.filter((c) => c.id !== id) }));
   }
 }));
