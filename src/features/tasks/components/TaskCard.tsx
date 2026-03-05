@@ -1,6 +1,7 @@
 import type { Task } from '../../../types';
 import { useStore } from '../../../lib/store';
 import { useUIStore } from '../../../hooks/useUIStore';
+import { useTaskDeletion } from '../../../hooks/useTaskDeletion';
 import { Button } from '../../../components/Button';
 import { CheckCircle, Clock, Trash2, Pencil } from 'lucide-react';
 import { cn } from '../../../lib/utils';
@@ -13,46 +14,10 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task, className, showDelete = true }: TaskCardProps) {
-  const { completeTask, deleteTask, deleteRecurringTasks, categories } = useStore();
-  const { openCreateModal, openConfirmDialog } = useUIStore();
+  const { completeTask, categories } = useStore();
+  const { openCreateModal } = useUIStore();
+  const { handleDelete } = useTaskDeletion();
   const category = categories.find(c => c.id === task.category);
-
-  const handleDelete = () => {
-    if (!task.id) return;
-
-    const recurrenceKey = task.recurringGroupId || task.recurrenceId;
-
-    if (recurrenceKey) {
-      openConfirmDialog({
-        title: "¿Qué deseas eliminar?",
-        message: "Esta es una tarea recurrente.",
-        actions: [
-          {
-            label: "Solo esta tarea",
-            onClick: () => deleteTask(task.id!),
-            variant: 'secondary'
-          },
-          {
-            label: "Esta y siguientes",
-            onClick: () => deleteRecurringTasks(recurrenceKey, 'following', task.scheduledDate ? new Date(task.scheduledDate) : new Date()),
-            variant: 'secondary'
-          },
-          {
-            label: "Todas de la serie",
-            onClick: () => deleteRecurringTasks(recurrenceKey, 'all', task.scheduledDate ? new Date(task.scheduledDate) : new Date()),
-            variant: 'danger'
-          },
-          {
-            label: "Cancelar",
-            onClick: () => {},
-            variant: 'ghost'
-          }
-        ]
-      });
-    } else {
-      deleteTask(task.id);
-    }
-  };
 
   return (
     <div className={cn(
@@ -109,7 +74,7 @@ export function TaskCard({ task, className, showDelete = true }: TaskCardProps) 
            <Button
             size="icon"
             variant="ghost"
-            onClick={handleDelete}
+            onClick={() => handleDelete(task)}
             className="text-neutral-500 hover:text-red-500 transition-colors duration-200"
           >
             <Trash2 className="w-4 h-4" />
