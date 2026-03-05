@@ -4,19 +4,22 @@ import { useStore } from '../../../lib/store';
 import { Modal } from '../../../components/Modal';
 import { Button } from '../../../components/Button';
 import { exportData, importData } from '../../backup/utils/backup';
-import { Cloud, Upload, AlertTriangle, Settings, Grid, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Cloud, Upload, AlertTriangle, Settings, Grid, Plus, Pencil, Trash2, MapPin } from 'lucide-react';
 import { IconResolver } from '../../../lib/categoryUtils';
 import { CategoryForm } from './CategoryForm';
+import { LocationForm } from './LocationForm';
 import { cn } from '../../../lib/utils';
-import type { Category } from '../../../types';
+import type { Category, Location } from '../../../types';
 
 export function SettingsModal() {
   const { isSettingsModalOpen, closeSettingsModal, openConfirmDialog } = useUIStore();
-  const { categories, addCategory, updateCategory, deleteCategory } = useStore();
+  const { categories, locations, addCategory, updateCategory, deleteCategory, deleteLocation } = useStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [activeTab, setActiveTab] = useState<'general' | 'categories'>('categories');
+  const [activeTab, setActiveTab] = useState<'general' | 'categories' | 'locations'>('categories');
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isLocationFormOpen, setIsLocationFormOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editingLocation, setEditingLocation] = useState<Location | null>(null);
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
@@ -67,11 +70,27 @@ export function SettingsModal() {
     setEditingCategory(null);
   };
 
+  const handleEditLocationClick = (location: Location) => {
+    setEditingLocation(location);
+    setIsLocationFormOpen(true);
+  };
+
+  const handleDeleteLocationClick = (location: Location) => {
+    openConfirmDialog({
+      title: 'Eliminar Lugar',
+      message: `¿Estás seguro de que deseas eliminar el lugar "${location.name}"?`,
+      variant: 'danger',
+      onConfirm: () => {
+        deleteLocation(location.id);
+      }
+    });
+  };
+
   return (
     <Modal isOpen={isSettingsModalOpen} onClose={closeSettingsModal} title="Configuración">
-      <div className="flex space-x-2 border-b border-neutral-800 pb-2 mb-4">
+      <div className="flex space-x-2 border-b border-neutral-800 pb-2 mb-4 overflow-x-auto scrollbar-none">
          <button
-            onClick={() => { setActiveTab('categories'); setIsFormOpen(false); }}
+            onClick={() => { setActiveTab('categories'); setIsFormOpen(false); setIsLocationFormOpen(false); }}
             className={cn(
                "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
                activeTab === 'categories' ? "bg-neutral-800 text-neutral-200" : "text-neutral-500 hover:text-neutral-300"
@@ -81,7 +100,17 @@ export function SettingsModal() {
             Categorías
          </button>
          <button
-            onClick={() => { setActiveTab('general'); setIsFormOpen(false); }}
+            onClick={() => { setActiveTab('locations'); setIsFormOpen(false); setIsLocationFormOpen(false); }}
+            className={cn(
+               "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap",
+               activeTab === 'locations' ? "bg-neutral-800 text-neutral-200" : "text-neutral-500 hover:text-neutral-300"
+            )}
+         >
+            <MapPin className="w-4 h-4" />
+            Lugares
+         </button>
+         <button
+            onClick={() => { setActiveTab('general'); setIsFormOpen(false); setIsLocationFormOpen(false); }}
             className={cn(
                "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
                activeTab === 'general' ? "bg-neutral-800 text-neutral-200" : "text-neutral-500 hover:text-neutral-300"
@@ -132,6 +161,65 @@ export function SettingsModal() {
                           </div>
                        ))}
                    </div>
+                </>
+             )}
+          </div>
+        )}
+
+        {activeTab === 'locations' && (
+          <div className="space-y-4">
+             {isLocationFormOpen ? (
+                <LocationForm
+                   initialData={editingLocation || undefined}
+                   onCancel={() => { setIsLocationFormOpen(false); setEditingLocation(null); }}
+                   onComplete={() => { setIsLocationFormOpen(false); setEditingLocation(null); }}
+                />
+             ) : (
+                <>
+                   <div className="flex items-center justify-between mb-2">
+                       <h3 className="text-sm font-medium text-neutral-400 uppercase tracking-wider">
+                           Lugares Frecuentes
+                       </h3>
+                   </div>
+
+                   {locations.length === 0 ? (
+                      <div className="text-center py-8 bg-neutral-900/50 border border-neutral-800 rounded-lg">
+                          <MapPin className="w-8 h-8 mx-auto text-neutral-600 mb-2" />
+                          <p className="text-neutral-400 text-sm">No tienes lugares guardados.</p>
+                      </div>
+                   ) : (
+                      <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-neutral-800">
+                          {locations.map((loc) => (
+                             <div key={loc.id} className="flex items-center justify-between bg-neutral-900/50 border border-neutral-800 p-3 rounded-lg hover:bg-neutral-800/80 transition-colors">
+                                 <div className="flex flex-col">
+                                     <span className="font-medium text-neutral-200 text-lg">{loc.name}</span>
+                                     <span className="text-sm text-neutral-500">
+                                        {loc.address}
+                                        {loc.floor ? ` - Piso ${loc.floor}` : ''}
+                                        {loc.apt ? ` Dpto ${loc.apt}` : ''}
+                                     </span>
+                                 </div>
+                                 <div className="flex items-center gap-1">
+                                     <Button size="icon" variant="ghost" onClick={() => handleEditLocationClick(loc)} className="text-neutral-500 hover:text-neutral-200 w-8 h-8">
+                                        <Pencil className="w-4 h-4" />
+                                     </Button>
+                                     <Button size="icon" variant="ghost" onClick={() => handleDeleteLocationClick(loc)} className="text-neutral-500 hover:text-red-500 w-8 h-8">
+                                        <Trash2 className="w-4 h-4" />
+                                     </Button>
+                                 </div>
+                             </div>
+                          ))}
+                      </div>
+                   )}
+
+                   <Button
+                      variant="outline"
+                      onClick={() => setIsLocationFormOpen(true)}
+                      className="w-full gap-2 border-neutral-700 text-neutral-300 mt-4 hover:bg-neutral-800 hover:text-neutral-100"
+                   >
+                       <Plus className="w-4 h-4" />
+                       Nuevo Lugar
+                   </Button>
                 </>
              )}
           </div>
