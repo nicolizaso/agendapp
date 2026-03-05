@@ -41,6 +41,14 @@ export function TodaySection() {
         return acc;
     }, {} as Record<string, typeof remainingTasks>);
 
+    const sortedCategoryEntries = Object.entries(groupedTasks).sort(([, tasksA], [, tasksB]) => {
+        const aAllCompleted = tasksA.length > 0 && tasksA.every(t => t.status === 'COMPLETED');
+        const bAllCompleted = tasksB.length > 0 && tasksB.every(t => t.status === 'COMPLETED');
+
+        if (aAllCompleted === bAllCompleted) return 0; // Mantienen su orden original si tienen el mismo estado
+        return aAllCompleted ? 1 : -1; // Los completados (true) se van al final (1)
+    });
+
     const isNextTaskNow = (task: typeof nextTask) => {
         if (!task || !task.scheduledDate) return false;
         const now = new Date();
@@ -94,7 +102,7 @@ export function TodaySection() {
                             </>
                         )}
 
-                        {Object.entries(groupedTasks).map(([catId, tasks]) => {
+                        {sortedCategoryEntries.map(([catId, tasks]) => {
                             const category = CATEGORIES.find(c => c.id === catId) || CATEGORIES.find(c => c.id === 'otros')!;
                             const isExpanded = expandedCategories.includes(catId);
                             const isAllCompleted = tasks.length > 0 && tasks.every(task => task.status === 'COMPLETED');
