@@ -53,15 +53,22 @@ export function TodaySection() {
         if (!task || !task.scheduledDate) return false;
         const now = new Date();
         const scheduled = new Date(task.scheduledDate);
-        const duration = task.durationMinutes || 0;
-        const endTime = new Date(scheduled.getTime() + duration * 60000);
+        let endTimeObj: Date | null = null;
 
-        // If duration exists, check if currently inside the window
-        if (duration > 0) {
-            return now >= scheduled && now < endTime;
+        if (task.endTime) {
+            const [hours, minutes] = task.endTime.split(':').map(Number);
+            endTimeObj = new Date(scheduled);
+            endTimeObj.setHours(hours, minutes, 0, 0);
+        } else if (task.durationMinutes && task.durationMinutes > 0) {
+            endTimeObj = new Date(scheduled.getTime() + task.durationMinutes * 60000);
         }
 
-        // If no duration, it's "now" if we are past the scheduled time but still same day
+        // If end time exists (either explicit or calculated via duration), check if currently inside the window
+        if (endTimeObj) {
+            return now >= scheduled && now < endTimeObj;
+        }
+
+        // If no duration or end time, it's "now" if we are past the scheduled time but still same day
         return now >= scheduled;
     };
 

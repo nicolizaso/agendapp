@@ -47,6 +47,7 @@ export function TaskCard({ task, className, showDelete = true }: TaskCardProps) 
             <span className="text-neutral-400 flex items-center gap-1 shrink-0">
               <Clock className="w-3 h-3" />
               {format(new Date(task.scheduledDate), 'HH:mm')}
+              {task.endTime && ` - ${task.endTime}`}
             </span>
           )}
         </div>

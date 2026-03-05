@@ -14,6 +14,7 @@ export interface Task {
   category?: string;
   location?: string;
   notes?: string;
+  endTime?: string; // Formato "HH:mm"
   isAllDay?: boolean;
   recurrenceId?: string;
   recurringGroupId?: string;
