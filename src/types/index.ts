@@ -98,3 +98,12 @@ export interface Category {
   border: string;
   ring: string;
 }
+
+export interface Location {
+  id: string;
+  name: string;
+  address: string;
+  floor?: string;
+  apt?: string;
+  notes?: string;
+}

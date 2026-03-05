@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { db } from './db';
-import type { Task, Reward, UserStats, Effort, TaskStatus, Category } from '../types';
+import type { Task, Reward, UserStats, Effort, TaskStatus, Category, Location } from '../types';
 import { calculateGoldReward, calculateXpReward, calculateLevel } from './economy';
 import { CATEGORIES as DEFAULT_CATEGORIES } from './constants';
 
@@ -9,6 +9,7 @@ interface AppState {
   rewards: Reward[];
   userStats: UserStats;
   categories: Category[];
+  locations: Location[];
   isLoading: boolean;
 
   // Actions
@@ -45,6 +46,9 @@ interface AppState {
   addCategory: (category: Category) => Promise<void>;
   updateCategory: (id: string, updates: Partial<Category>) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
+  addLocation: (location: Location) => Promise<void>;
+  updateLocation: (id: string, updates: Partial<Location>) => Promise<void>;
+  deleteLocation: (id: string) => Promise<void>;
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -52,6 +56,7 @@ export const useStore = create<AppState>((set, get) => ({
   rewards: [],
   userStats: { currentGold: 0, currentXp: 0, level: 1 },
   categories: [],
+  locations: [],
   isLoading: true,
 
   init: async () => {
@@ -65,6 +70,7 @@ export const useStore = create<AppState>((set, get) => ({
     const userStatsArray = await db.userStats.toArray();
     const userStats = userStatsArray[0];
     let categories = await db.categories.toArray();
+    const locations = await db.locations.toArray();
 
     if (categories.length === 0) {
       const defaultCategories: Category[] = DEFAULT_CATEGORIES.map(cat => ({
@@ -109,7 +115,7 @@ export const useStore = create<AppState>((set, get) => ({
       rewards = await db.rewards.toArray();
     }
 
-    set({ tasks, rewards, userStats, categories, isLoading: false });
+    set({ tasks, rewards, userStats, categories, locations, isLoading: false });
   },
 
   addTask: async (taskData) => {
@@ -283,5 +289,22 @@ export const useStore = create<AppState>((set, get) => ({
   deleteCategory: async (id) => {
     await db.categories.delete(id);
     set((state) => ({ categories: state.categories.filter((c) => c.id !== id) }));
+  },
+
+  addLocation: async (location) => {
+    await db.locations.add(location);
+    set((state) => ({ locations: [...state.locations, location] }));
+  },
+
+  updateLocation: async (id, updates) => {
+    await db.locations.update(id, updates);
+    set((state) => ({
+      locations: state.locations.map((l) => (l.id === id ? { ...l, ...updates } : l)),
+    }));
+  },
+
+  deleteLocation: async (id) => {
+    await db.locations.delete(id);
+    set((state) => ({ locations: state.locations.filter((l) => l.id !== id) }));
   }
 }));
