@@ -8,8 +8,9 @@ import {
   addWeeks,
   addMonths,
   addYears,
-  getYear,
-  format
+  format,
+  isBefore,
+  isSameDay
 } from 'date-fns';
 import {
   Clock,
@@ -23,6 +24,7 @@ import { CustomSelect } from '../../components/ui/CustomSelect';
 import { DatePicker } from '../../components/ui/DatePicker';
 import { TimeWheelPicker } from '../../components/ui/TimeWheelPicker';
 import { getIconComponent } from '../../lib/categoryUtils';
+import { toast } from 'sonner';
 
 export function CreateTaskModal() {
   const { isCreateModalOpen, closeCreateModal, createModalData, openConfirmDialog } = useUIStore();
@@ -57,6 +59,7 @@ export function CreateTaskModal() {
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceFrequency, setRecurrenceFrequency] = useState(1);
   const [recurrenceUnit, setRecurrenceUnit] = useState<'day' | 'week' | 'month' | 'year'>('day');
+  const [recurringEndDate, setRecurringEndDate] = useState<string | null>(null);
 
   // Additional Data
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -103,6 +106,7 @@ export function CreateTaskModal() {
         setIsRecurring(false);
         setRecurrenceFrequency(1);
         setRecurrenceUnit('day');
+        setRecurringEndDate(null);
 
         if (initialDate) {
           setDate(format(initialDate, 'yyyy-MM-dd'));
@@ -142,6 +146,21 @@ export function CreateTaskModal() {
         isAllDay: !isTimeEnabled,
         endTime: isTimeEnabled && endTime ? endTime : undefined,
     };
+
+    if (isRecurring && !taskToEdit) {
+        if (!recurringEndDate) {
+            toast.error("Debes seleccionar una fecha de fin para la repetición");
+            return;
+        }
+
+        const [rYear, rMonth, rDay] = recurringEndDate.split('-').map(Number);
+        const parsedRecurringEndDate = new Date(rYear, rMonth - 1, rDay);
+
+        if (scheduledDate && isBefore(parsedRecurringEndDate, scheduledDate)) {
+            toast.error("La fecha de fin debe ser posterior a la fecha inicial");
+            return;
+        }
+    }
 
     if (taskToEdit) {
         const recurrenceKey = taskToEdit.recurringGroupId || taskToEdit.recurrenceId;
@@ -196,38 +215,44 @@ export function CreateTaskModal() {
         }
     } else {
         // Create Logic
-        if (isRecurring && scheduledDate) {
+        if (isRecurring && scheduledDate && recurringEndDate) {
           const recurrenceId = crypto.randomUUID(); // Generate Recurrence ID
           const recurringGroupId = crypto.randomUUID(); // Generate Recurring Group ID
           const tasksToCreate = [];
           let nextDate = scheduledDate;
-          const limitYear = new Date().getFullYear();
+          const [rYear, rMonth, rDay] = recurringEndDate.split('-').map(Number);
+          const parsedRecurringEndDate = new Date(rYear, rMonth - 1, rDay);
+          parsedRecurringEndDate.setHours(23, 59, 59, 999);
 
-          if (getYear(scheduledDate) > limitYear) {
-             await addTask({ ...taskData, recurrenceId, recurringGroupId });
-          } else {
-             while (getYear(nextDate) === limitYear) {
-                tasksToCreate.push({
-                    title,
-                    scheduledDate: nextDate,
-                    category: category || undefined,
-                    location,
-                    notes,
-                    isAllDay: !isTimeEnabled,
-                    endTime: isTimeEnabled && endTime ? endTime : undefined,
-                    recurrenceId,
-                    recurringGroupId
-                });
+          let iterations = 0;
+          const MAX_ITERATIONS = 365;
 
-                if (recurrenceUnit === 'day') nextDate = addDays(nextDate, recurrenceFrequency);
-                if (recurrenceUnit === 'week') nextDate = addWeeks(nextDate, recurrenceFrequency);
-                if (recurrenceUnit === 'month') nextDate = addMonths(nextDate, recurrenceFrequency);
-                if (recurrenceUnit === 'year') nextDate = addYears(nextDate, recurrenceFrequency);
-             }
+          while (
+            (isBefore(nextDate, parsedRecurringEndDate) || isSameDay(nextDate, parsedRecurringEndDate)) &&
+            iterations < MAX_ITERATIONS
+          ) {
+            tasksToCreate.push({
+                title,
+                scheduledDate: nextDate,
+                category: category || undefined,
+                location,
+                notes,
+                isAllDay: !isTimeEnabled,
+                endTime: isTimeEnabled && endTime ? endTime : undefined,
+                recurrenceId,
+                recurringGroupId
+            });
 
-             if (tasksToCreate.length > 0) {
-                 await addTasks(tasksToCreate);
-             }
+            if (recurrenceUnit === 'day') nextDate = addDays(nextDate, recurrenceFrequency);
+            if (recurrenceUnit === 'week') nextDate = addWeeks(nextDate, recurrenceFrequency);
+            if (recurrenceUnit === 'month') nextDate = addMonths(nextDate, recurrenceFrequency);
+            if (recurrenceUnit === 'year') nextDate = addYears(nextDate, recurrenceFrequency);
+
+            iterations++;
+          }
+
+          if (tasksToCreate.length > 0) {
+              await addTasks(tasksToCreate);
           }
         } else {
           await addTask(taskData);
@@ -377,27 +402,33 @@ export function CreateTaskModal() {
                 </div>
 
                 {isRecurring && (
-                    <div className="flex gap-4 p-3 bg-neutral-900/20 border border-neutral-800/30 rounded-md animate-in fade-in slide-in-from-top-1">
-                        <div className="w-20">
-                            <input
-                                type="number"
-                                min="1"
-                                max="99"
-                                value={recurrenceFrequency}
-                                onChange={(e) => setRecurrenceFrequency(Math.max(1, parseInt(e.target.value) || 1))}
-                                className="w-full bg-neutral-900/50 border border-neutral-800 rounded-md p-2 text-neutral-200 focus:outline-none focus:ring-2 focus:ring-red-600 text-center"
-                            />
+                    <div className="flex flex-col gap-3 p-3 bg-neutral-900/20 border border-neutral-800/30 rounded-md animate-in fade-in slide-in-from-top-1">
+                        <div className="flex gap-4">
+                            <div className="w-20">
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max="99"
+                                    value={recurrenceFrequency}
+                                    onChange={(e) => setRecurrenceFrequency(Math.max(1, parseInt(e.target.value) || 1))}
+                                    className="w-full bg-neutral-900/50 border border-neutral-800 rounded-md p-2 text-neutral-200 focus:outline-none focus:ring-2 focus:ring-red-600 text-center"
+                                />
+                            </div>
+                            <select
+                                value={recurrenceUnit}
+                                onChange={(e) => setRecurrenceUnit(e.target.value as 'day' | 'week' | 'month' | 'year')}
+                                className="flex-1 bg-neutral-900/50 border border-neutral-800 rounded-md p-2 text-neutral-200 focus:outline-none focus:ring-2 focus:ring-red-600"
+                            >
+                                <option value="day">Día(s)</option>
+                                <option value="week">Semana(s)</option>
+                                <option value="month">Mes(es)</option>
+                                <option value="year">Año(s)</option>
+                            </select>
                         </div>
-                        <select
-                            value={recurrenceUnit}
-                            onChange={(e) => setRecurrenceUnit(e.target.value as 'day' | 'week' | 'month' | 'year')}
-                            className="flex-1 bg-neutral-900/50 border border-neutral-800 rounded-md p-2 text-neutral-200 focus:outline-none focus:ring-2 focus:ring-red-600"
-                        >
-                            <option value="day">Día(s)</option>
-                            <option value="week">Semana(s)</option>
-                            <option value="month">Mes(es)</option>
-                            <option value="year">Año(s)</option>
-                        </select>
+                        <div className="relative">
+                            <label className="block text-xs font-medium text-neutral-400 mb-1">Termina el...</label>
+                            <DatePicker value={recurringEndDate} onChange={setRecurringEndDate} />
+                        </div>
                     </div>
                 )}
             </div>
