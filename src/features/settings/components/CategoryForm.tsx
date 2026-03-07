@@ -69,19 +69,6 @@ export function CategoryForm({ initialData, onSave, onCancel }: CategoryFormProp
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-neutral-200 mb-1">Puntos por defecto</label>
-        <input
-          type="number"
-          value={points}
-          onChange={(e) => setPoints(parseInt(e.target.value) || 0)}
-          className="w-full bg-neutral-900 border border-neutral-700 rounded-md p-2.5 text-neutral-200 focus:outline-none focus:ring-2 focus:ring-red-600"
-          placeholder="Ej: 10"
-          required
-          min="0"
-        />
-      </div>
-
-      <div>
         <label className="block text-sm font-medium text-neutral-200 mb-2">Icono</label>
         <div className="grid grid-cols-6 sm:grid-cols-8 gap-2 max-h-40 overflow-y-auto p-1 scrollbar-thin scrollbar-thumb-neutral-700">
           {AVAILABLE_ICONS.map((iconName) => (
