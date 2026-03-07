@@ -3,7 +3,7 @@ import { db } from './db';
 import type { Task, Reward, UserStats, TaskStatus, Effort, Category, Location, GamificationSettings } from '../types';
 import { calculateGoldReward, calculateXpReward, calculateLevel } from './economy';
 import { CATEGORIES as DEFAULT_CATEGORIES } from './constants';
-import { startOfWeek } from 'date-fns';
+import { startOfWeek, format } from 'date-fns';
 
 interface AppState {
   tasks: Task[];
@@ -85,7 +85,7 @@ export const useStore = create<AppState>((set, get) => ({
 
     let gamificationSettings = await db.gamificationSettings.get('default');
     if (!gamificationSettings) {
-      const currentMonday = startOfWeek(new Date(), { weekStartsOn: 1 }).toISOString().split('T')[0];
+      const currentMonday = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
       gamificationSettings = {
         id: 'default',
         penaltyPoints: 5,
@@ -339,7 +339,7 @@ export const useStore = create<AppState>((set, get) => ({
     set((state) => ({ rewards: state.rewards.filter(r => r.id !== id) }));
   },
 
-  buyReward: async (rewardId) => {
+  buyReward: async (_rewardId) => {
     // With the new Gamification, rewards are unlocked based on pointsThreshold, not bought with gold.
     // I am keeping this signature if any component still uses it, but it shouldn't be used for the new rewards logic.
     // If you need to keep shop behavior, you'd need to adapt it.

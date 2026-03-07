@@ -16,8 +16,9 @@ export function RewardList() {
             {rewards.map((reward) => {
                 // Dynamic icon lookup (fallback to Gift)
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const IconComponent = (Icons as any)[reward.icon] || Icons.Gift;
-                const canAfford = userStats.currentGold >= reward.cost;
+                const iconName = reward.icon || 'Gift';
+                const IconComponent = (Icons as any)[iconName] || Icons.Gift;
+                const canAfford = userStats.currentGold >= reward.pointsThreshold;
 
                 return (
                     <Card key={reward.id} className="bg-neutral-900 border-neutral-800 flex flex-col justify-between transition-colors hover:border-neutral-700/50">
@@ -37,7 +38,7 @@ export function RewardList() {
                                 <span className="group-hover:hidden">Comprar</span>
                                 <span className="hidden group-hover:inline">Confirmar</span>
                                 <span className="flex items-center">
-                                    {reward.cost} <Coins className="w-4 h-4 ml-1" />
+                                    {reward.pointsThreshold} <Coins className="w-4 h-4 ml-1" />
                                 </span>
                             </Button>
                         </CardFooter>

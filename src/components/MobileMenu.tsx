@@ -1,4 +1,4 @@
-import { LayoutDashboard, CheckSquare, Settings, Database, User, X, BarChart3, Dumbbell, ClipboardList, ShoppingBag, Trophy } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Settings, Database, User, X, BarChart3, Dumbbell, ClipboardList, Trophy } from 'lucide-react';
 import { Button } from './Button';
 
 interface MobileMenuProps {

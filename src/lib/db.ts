@@ -58,6 +58,10 @@ export class VectorLifeDB extends Dexie {
     });
 
     this.version(9).stores({
+      rewards: null // Drop old table
+    });
+
+    this.version(10).stores({
       rewards: 'id, pointsThreshold',
       gamificationSettings: 'id'
     });

@@ -18,7 +18,7 @@ import { AnalyticsSection } from './features/analytics/AnalyticsSection';
 import { GymPage } from './features/gym/GymPage';
 import { RoutinesManager } from './features/gym/RoutinesManager';
 import { GamificationDashboard } from './features/gamification/GamificationDashboard';
-import { LayoutDashboard, ListTodo, Loader2, Settings, BarChart3, Dumbbell, Menu, ClipboardList, Trophy } from 'lucide-react';
+import { LayoutDashboard, ListTodo, Loader2, Settings, BarChart3, Dumbbell, Menu, ClipboardList } from 'lucide-react';
 import { BottomNav } from './components/BottomNav';
 import { MobileMenu } from './components/MobileMenu';
 

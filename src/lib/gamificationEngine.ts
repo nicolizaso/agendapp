@@ -1,4 +1,4 @@
-import { isBefore, startOfWeek, isAfter, startOfDay } from 'date-fns';
+import { isBefore, startOfWeek, isAfter, format } from 'date-fns';
 import type { Task, Category, GamificationSettings, Reward } from '../types';
 
 export function calculateCurrentPoints(
@@ -36,7 +36,7 @@ export function performWeeklyReset(
   rewards: Reward[]
 ): GamificationSettings | null {
   const currentMonday = startOfWeek(new Date(), { weekStartsOn: 1 });
-  const currentMondayStr = currentMonday.toISOString().split('T')[0];
+  const currentMondayStr = format(currentMonday, 'yyyy-MM-dd');
   const lastResetDateStr = settings.lastResetDate;
 
   // Si no hemos pasado al siguiente lunes, no hacemos reset

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useStore } from '../../lib/store';
 import { calculateCurrentPoints } from '../../lib/gamificationEngine';
 import { Button } from '../../components/Button';
-import { Trophy, Plus, Lock, Unlock, AlertTriangle, Settings2, Trash2, Edit2 } from 'lucide-react';
+import { Trophy, Plus, Lock, AlertTriangle, Settings2, Trash2, Edit2 } from 'lucide-react';
 import { IconResolver, AVAILABLE_ICONS } from '../../lib/categoryUtils';
 import { cn } from '../../lib/utils';
 import type { Reward } from '../../types';
