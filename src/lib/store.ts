@@ -142,17 +142,8 @@ export const useStore = create<AppState>((set, get) => ({
       }
     }
 
-    if (rewards.length === 0) {
-      // Clean up any old rewards if they somehow don't match the schema
-      await db.rewards.clear();
-      const defaults: Reward[] = [
-        { id: '1', title: 'Coffee Break', pointsThreshold: 50, icon: 'Coffee' },
-        { id: '2', title: 'Episode of TV', pointsThreshold: 100, icon: 'Tv' },
-        { id: '3', title: 'Gaming Session', pointsThreshold: 200, icon: 'Gamepad2' }
-      ];
-      await db.rewards.bulkAdd(defaults);
-      rewards = await db.rewards.toArray();
-    }
+    await db.rewards.clear();
+    rewards = await db.rewards.toArray();
 
     set({ tasks, rewards, userStats, categories, locations, gamificationSettings, isLoading: false });
   },

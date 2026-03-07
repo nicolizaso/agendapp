@@ -8,7 +8,7 @@ import { cn } from '../../lib/utils';
 import type { Reward } from '../../types';
 
 export function GamificationDashboard() {
-  const { tasks, categories, gamificationSettings, rewards, addReward, updateReward, deleteReward, updateGamificationSettings } = useStore();
+  const { tasks, categories, gamificationSettings, rewards, addReward, updateReward, deleteReward, updateGamificationSettings, updateCategory } = useStore();
 
   const [isCreating, setIsCreating] = useState(false);
   const [editingReward, setEditingReward] = useState<Reward | null>(null);
@@ -82,15 +82,43 @@ export function GamificationDashboard() {
         )}
 
         {isSettingsOpen && (
-          <div className="mt-6 pt-6 border-t border-neutral-800 animate-in slide-in-from-top-4">
-            <label className="block text-sm font-medium text-neutral-300 mb-2">Penalización por tarea no completada (Pts)</label>
-            <input
-              type="number"
-              value={gamificationSettings.penaltyPoints}
-              onChange={handlePenaltyChange}
-              className="w-32 bg-neutral-950 border border-neutral-700 rounded-md p-2 text-white focus:outline-none focus:ring-2 focus:ring-red-600"
-              min="0"
-            />
+          <div className="mt-6 pt-6 border-t border-neutral-800 animate-in slide-in-from-top-4 space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-neutral-300 mb-2">Penalización por tarea no completada (pts)</label>
+              <input
+                type="number"
+                value={gamificationSettings.penaltyPoints}
+                onChange={handlePenaltyChange}
+                className="w-32 bg-neutral-950 border border-neutral-700 rounded-md p-2 text-white focus:outline-none focus:ring-2 focus:ring-red-600"
+                min="0"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-300 mb-4">Puntos por Categoría</label>
+              <div className="space-y-3">
+                {categories.map((category) => (
+                  <div key={category.id} className="flex items-center justify-between bg-neutral-950/50 p-3 rounded-xl border border-neutral-800">
+                    <div className="flex items-center gap-3">
+                      <div className={cn("w-8 h-8 rounded-full flex items-center justify-center", category.bg, category.color)}>
+                        <IconResolver iconName={category.icon} size={16} />
+                      </div>
+                      <span className="text-neutral-200 font-medium">{category.label}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={category.points ?? 10}
+                        onChange={(e) => updateCategory(category.id, { points: parseInt(e.target.value) || 0 })}
+                        className="w-20 bg-neutral-900 border border-neutral-700 rounded-md p-1.5 text-center text-white focus:outline-none focus:ring-2 focus:ring-red-600"
+                        min="0"
+                      />
+                      <span className="text-sm text-neutral-500">pts</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -209,7 +237,7 @@ export function GamificationDashboard() {
           })}
           {sortedRewards.length === 0 && (
             <div className="col-span-full py-12 text-center text-neutral-500 border border-dashed border-neutral-800 rounded-2xl">
-              No has configurado ningún premio aún.
+              Aún no has creado premios. ¡Crea el primero!
             </div>
           )}
         </div>
