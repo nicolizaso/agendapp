@@ -32,22 +32,7 @@ function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    init().then(async () => {
-      // Run gamification reset if needed
-      const state = useStore.getState();
-      if (state.gamificationSettings) {
-        const { performWeeklyReset } = await import('./lib/gamificationEngine');
-        const updatedSettings = performWeeklyReset(
-          state.tasks,
-          state.categories,
-          state.gamificationSettings,
-          state.rewards
-        );
-        if (updatedSettings) {
-          await state.updateGamificationSettings(updatedSettings);
-        }
-      }
-    });
+    init();
   }, [init]);
 
   useEffect(() => {

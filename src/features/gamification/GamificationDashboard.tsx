@@ -1,39 +1,26 @@
 import { useState } from 'react';
 import { useStore } from '../../lib/store';
-import { calculateCurrentPoints } from '../../lib/gamificationEngine';
+import { useTicketWallet } from '../../lib/gamificationEngine';
 import { Button } from '../../components/Button';
-import { Trophy, Plus, Lock, AlertTriangle, Settings2, Trash2, Edit2 } from 'lucide-react';
+import { Trophy, Plus, Lock, Trash2, Edit2, Ticket, Wallet } from 'lucide-react';
 import { IconResolver, AVAILABLE_ICONS } from '../../lib/categoryUtils';
 import { cn } from '../../lib/utils';
+import { CustomSelect } from '../../components/ui/CustomSelect';
+import { getIconComponent } from '../../lib/categoryUtils';
+import { toast } from 'sonner';
 import type { Reward } from '../../types';
 
 export function GamificationDashboard() {
-  const { tasks, categories, gamificationSettings, rewards, addReward, updateReward, deleteReward, updateGamificationSettings, updateCategory } = useStore();
+  const { tasks, rewardClaims, categories, rewards, addReward, updateReward, deleteReward, claimReward } = useStore();
 
   const [isCreating, setIsCreating] = useState(false);
   const [editingReward, setEditingReward] = useState<Reward | null>(null);
 
-  const [formData, setFormData] = useState({ title: '', pointsThreshold: 100, icon: AVAILABLE_ICONS[0] });
+  const defaultCategory = categories.length > 0 ? categories[0].id : '';
+  const [formData, setFormData] = useState({ title: '', cost: 1, categoryId: defaultCategory, icon: AVAILABLE_ICONS[0] });
 
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-
-  if (!gamificationSettings) return null;
-
-  const currentPoints = calculateCurrentPoints(tasks, categories, gamificationSettings);
-
-  const sortedRewards = [...rewards].sort((a, b) => a.pointsThreshold - b.pointsThreshold);
-
-  const nextReward = sortedRewards.find(r => r.pointsThreshold > currentPoints);
-
-  let progressPercentage = 100;
-  if (nextReward) {
-    const previousRewardThreshold = sortedRewards.reverse().find(r => r.pointsThreshold <= currentPoints)?.pointsThreshold || 0;
-    const pointsNeeded = nextReward.pointsThreshold - previousRewardThreshold;
-    const pointsGained = currentPoints - previousRewardThreshold;
-    progressPercentage = Math.min(100, Math.max(0, (pointsGained / pointsNeeded) * 100));
-    // restore the array back to ascending
-    sortedRewards.reverse();
-  }
+  const wallet = useTicketWallet(tasks, rewardClaims, categories);
+  const sortedRewards = [...rewards].sort((a, b) => a.cost - b.cost);
 
   const handleSaveReward = () => {
     if (editingReward) {
@@ -48,110 +35,63 @@ export function GamificationDashboard() {
     setEditingReward(null);
   };
 
-  const handlePenaltyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = parseInt(e.target.value) || 0;
-    updateGamificationSettings({ penaltyPoints: val });
+  const handleClaim = (reward: Reward) => {
+    claimReward(reward);
+    toast.success(`¡Premio canjeado con éxito! Disfruta de: ${reward.title}`);
   };
+
+  const categoryOptions = categories.map(cat => ({
+    value: cat.id,
+    label: cat.label,
+    icon: getIconComponent(cat.icon),
+    colorClass: cat.color,
+    bgClass: cat.bg
+  }));
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 max-w-4xl mx-auto pb-24 md:pb-8">
 
-      {/* Header & Stats */}
+      {/* Header & Stats - Billetera */}
       <div className="bg-neutral-900/50 rounded-2xl p-6 border border-neutral-800">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-yellow-500/20 flex items-center justify-center border-2 border-yellow-500/50">
-              <Trophy className="w-8 h-8 text-yellow-500" />
-            </div>
-            <div>
-              <h2 className="text-3xl font-bold text-white">{currentPoints} <span className="text-xl text-neutral-400 font-normal">pts</span></h2>
-              <p className="text-neutral-400">Puntos Actuales Disponibles</p>
-            </div>
-          </div>
-
-          <Button variant="ghost" onClick={() => setIsSettingsOpen(!isSettingsOpen)} className="self-start md:self-auto gap-2">
-            <Settings2 className="w-4 h-4" /> Configuración
-          </Button>
+        <div className="flex items-center gap-3 mb-6">
+          <Wallet className="w-6 h-6 text-yellow-500" />
+          <h2 className="text-2xl font-bold text-white">Mi Billetera</h2>
         </div>
 
-        {gamificationSettings.carryOverPoints < 0 && (
-          <div className="mt-4 flex items-center gap-2 text-red-400 text-sm bg-red-500/10 p-3 rounded-xl border border-red-500/20">
-            <AlertTriangle className="w-4 h-4" />
-            <span>Arrastras una penalización de {Math.abs(gamificationSettings.carryOverPoints)} puntos de la semana anterior.</span>
-          </div>
-        )}
-
-        {isSettingsOpen && (
-          <div className="mt-6 pt-6 border-t border-neutral-800 animate-in slide-in-from-top-4 space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-neutral-300 mb-2">Penalización por tarea no completada (pts)</label>
-              <input
-                type="number"
-                value={gamificationSettings.penaltyPoints}
-                onChange={handlePenaltyChange}
-                className="w-32 bg-neutral-950 border border-neutral-700 rounded-md p-2 text-white focus:outline-none focus:ring-2 focus:ring-red-600"
-                min="0"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-neutral-300 mb-4">Puntos por Categoría</label>
-              <div className="space-y-3">
-                {categories.map((category) => (
-                  <div key={category.id} className="flex items-center justify-between bg-neutral-950/50 p-3 rounded-xl border border-neutral-800">
-                    <div className="flex items-center gap-3">
-                      <div className={cn("w-8 h-8 rounded-full flex items-center justify-center", category.bg, category.color)}>
-                        <IconResolver iconName={category.icon} size={16} />
-                      </div>
-                      <span className="text-neutral-200 font-medium">{category.label}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        value={category.points ?? 10}
-                        onChange={(e) => updateCategory(category.id, { points: parseInt(e.target.value) || 0 })}
-                        className="w-20 bg-neutral-900 border border-neutral-700 rounded-md p-1.5 text-center text-white focus:outline-none focus:ring-2 focus:ring-red-600"
-                        min="0"
-                      />
-                      <span className="text-sm text-neutral-500">pts</span>
-                    </div>
-                  </div>
-                ))}
+        <div className="flex flex-wrap gap-3">
+          {wallet.filter(b => b.earned > 0).map(balance => (
+            <div
+              key={balance.category.id}
+              className={cn(
+                "flex items-center gap-3 p-3 rounded-xl border border-neutral-800/50 bg-neutral-950/50"
+              )}
+            >
+              <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", balance.category.bg, balance.category.color)}>
+                <IconResolver iconName={balance.category.icon} size={20} />
+              </div>
+              <div>
+                <div className="text-sm font-medium text-neutral-400">{balance.category.label}</div>
+                <div className="text-xl font-bold text-white flex items-center gap-1">
+                  {balance.available} <Ticket className="w-4 h-4 text-yellow-500" />
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </div>
+          ))}
 
-      {/* Progress Bar */}
-      {nextReward && (
-        <div className="bg-neutral-900 rounded-2xl p-6 border border-neutral-800">
-          <div className="flex justify-between items-end mb-4">
-            <div>
-              <p className="text-sm font-medium text-neutral-400">Próximo Premio</p>
-              <h3 className="text-lg font-semibold text-white">{nextReward.title}</h3>
+          {wallet.filter(b => b.earned > 0).length === 0 && (
+            <div className="text-neutral-500 italic py-2">
+              Aún no has ganado tickets. Completa tareas para empezar a ahorrar.
             </div>
-            <div className="text-right">
-              <span className="text-sm text-neutral-400">Faltan {nextReward.pointsThreshold - currentPoints} pts</span>
-            </div>
-          </div>
-          <div className="h-4 bg-neutral-800 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-yellow-600 to-yellow-400 transition-all duration-1000 ease-out relative"
-              style={{ width: `${progressPercentage}%` }}
-            >
-              <div className="absolute inset-0 bg-white/20 animate-pulse" />
-            </div>
-          </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Rewards List */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-xl font-bold text-white">Mis Premios</h3>
           <Button onClick={() => {
-            setFormData({ title: '', pointsThreshold: 100, icon: AVAILABLE_ICONS[0] });
+            setFormData({ title: '', cost: 1, categoryId: defaultCategory, icon: AVAILABLE_ICONS[0] });
             setIsCreating(true);
             setEditingReward(null);
           }} size="sm" className="gap-2">
@@ -161,15 +101,19 @@ export function GamificationDashboard() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {sortedRewards.map(reward => {
-            const isUnlocked = currentPoints >= reward.pointsThreshold;
+            const categoryBalance = wallet.find(b => b.category.id === reward.categoryId);
+            const availableTickets = categoryBalance?.available || 0;
+            const canAfford = availableTickets >= reward.cost;
+            const rewardCategory = categories.find(c => c.id === reward.categoryId);
+
             return (
               <div
                 key={reward.id}
                 className={cn(
-                  "relative p-5 rounded-2xl border transition-all duration-300 overflow-hidden group",
-                  isUnlocked
+                  "flex flex-col relative p-5 rounded-2xl border transition-all duration-300 overflow-hidden group",
+                  canAfford
                     ? "bg-neutral-900 border-yellow-500/30 hover:border-yellow-500/50"
-                    : "bg-neutral-950 border-neutral-800 opacity-70 grayscale"
+                    : "bg-neutral-950 border-neutral-800 opacity-80"
                 )}
               >
                 {/* Actions */}
@@ -177,7 +121,7 @@ export function GamificationDashboard() {
                   <button
                     onClick={() => {
                       setEditingReward(reward);
-                      setFormData({ title: reward.title, pointsThreshold: reward.pointsThreshold, icon: reward.icon || AVAILABLE_ICONS[0] });
+                      setFormData({ title: reward.title, cost: reward.cost, categoryId: reward.categoryId, icon: reward.icon || AVAILABLE_ICONS[0] });
                       setIsCreating(true);
                     }}
                     className="p-1.5 text-neutral-400 hover:text-white bg-neutral-800 rounded-lg transition-colors"
@@ -196,41 +140,55 @@ export function GamificationDashboard() {
                   </button>
                 </div>
 
-                <div className="flex flex-col items-center text-center gap-3">
+                <div className="flex-1 flex flex-col items-center text-center gap-3 mb-4 mt-2">
                   <div className={cn(
-                    "w-12 h-12 rounded-full flex items-center justify-center relative",
-                    isUnlocked ? "bg-yellow-500/20 text-yellow-500" : "bg-neutral-800 text-neutral-500"
+                    "w-14 h-14 rounded-full flex items-center justify-center relative",
+                    canAfford ? "bg-yellow-500/20 text-yellow-500" : "bg-neutral-800 text-neutral-500 grayscale"
                   )}>
                     {reward.icon ? (
-                       <IconResolver iconName={reward.icon} size={24} />
+                       <IconResolver iconName={reward.icon} size={28} />
                     ) : (
-                       <Trophy className="w-6 h-6" />
+                       <Trophy className="w-7 h-7" />
                     )}
 
-                    {!isUnlocked && (
-                      <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-neutral-900 rounded-full flex items-center justify-center border border-neutral-800">
-                        <Lock className="w-3 h-3 text-neutral-400" />
+                    {!canAfford && (
+                      <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-neutral-900 rounded-full flex items-center justify-center border border-neutral-800">
+                        <Lock className="w-3.5 h-3.5 text-neutral-400" />
                       </div>
                     )}
                   </div>
 
                   <div>
-                    <h4 className={cn("font-semibold mb-1", isUnlocked ? "text-white" : "text-neutral-400")}>
+                    <h4 className={cn("font-semibold text-lg mb-1 leading-tight", canAfford ? "text-white" : "text-neutral-400")}>
                       {reward.title}
                     </h4>
-                    <span className={cn(
-                      "text-sm font-medium px-2.5 py-0.5 rounded-full inline-block",
-                      isUnlocked ? "bg-yellow-500/10 text-yellow-500" : "bg-neutral-800 text-neutral-500"
-                    )}>
-                      {reward.pointsThreshold} pts
-                    </span>
+                    <div className="flex items-center justify-center gap-1.5 mt-2">
+                      <span className={cn(
+                        "text-sm font-medium px-2.5 py-1 rounded-md inline-flex items-center gap-1.5",
+                        canAfford ? "bg-yellow-500/10 text-yellow-500" : "bg-neutral-800 text-neutral-500"
+                      )}>
+                        {reward.cost} <Ticket className="w-3.5 h-3.5" />
+                        <span className="text-xs opacity-80">de {rewardCategory?.label || 'Categoría'}</span>
+                      </span>
+                    </div>
                   </div>
 
-                  {isUnlocked && (
+                  {canAfford && (
                     <div className="absolute -right-4 -bottom-4 opacity-10 blur-xl pointer-events-none">
                       <div className="w-24 h-24 rounded-full bg-yellow-500" />
                     </div>
                   )}
+                </div>
+
+                <div className="pt-3 border-t border-neutral-800 mt-auto">
+                    <Button
+                        onClick={() => handleClaim(reward)}
+                        disabled={!canAfford}
+                        className="w-full"
+                        variant={canAfford ? 'primary' : 'ghost'}
+                    >
+                        {canAfford ? 'Canjear' : `Faltan ${reward.cost - availableTickets} tickets`}
+                    </Button>
                 </div>
               </div>
             );
@@ -265,15 +223,26 @@ export function GamificationDashboard() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-neutral-300 mb-1">Puntos Requeridos</label>
-                  <input
-                    type="number"
-                    value={formData.pointsThreshold}
-                    onChange={e => setFormData({ ...formData, pointsThreshold: parseInt(e.target.value) || 0 })}
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-3 text-white focus:outline-none focus:border-red-500"
-                    min="1"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-300 mb-1">Costo (Tickets)</label>
+                      <input
+                        type="number"
+                        value={formData.cost}
+                        onChange={e => setFormData({ ...formData, cost: parseInt(e.target.value) || 0 })}
+                        className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-3 text-white focus:outline-none focus:border-red-500"
+                        min="1"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-300 mb-1">Categoría</label>
+                      <CustomSelect
+                          value={formData.categoryId}
+                          onChange={(val) => setFormData({ ...formData, categoryId: val || '' })}
+                          placeholder="Seleccionar..."
+                          options={categoryOptions}
+                      />
+                    </div>
                 </div>
 
                 <div>
@@ -307,7 +276,7 @@ export function GamificationDashboard() {
                 </Button>
                 <Button
                   onClick={handleSaveReward}
-                  disabled={!formData.title.trim() || formData.pointsThreshold <= 0}
+                  disabled={!formData.title.trim() || formData.cost <= 0 || !formData.categoryId}
                   className="bg-yellow-600 hover:bg-yellow-500 text-white"
                 >
                   Guardar

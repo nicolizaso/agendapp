@@ -1,88 +1,42 @@
-import { isBefore, startOfWeek, isAfter, format } from 'date-fns';
-import type { Task, Category, GamificationSettings, Reward } from '../types';
+import { useMemo } from 'react';
+import type { Task, Category, RewardClaim } from '../types';
 
-export function calculateCurrentPoints(
-  tasks: Task[],
-  categories: Category[],
-  settings: GamificationSettings
-): number {
-  const lastResetDate = new Date(settings.lastResetDate);
-  const currentMonday = startOfWeek(new Date(), { weekStartsOn: 1 });
-
-  // Use the max of lastResetDate or currentMonday (in case we are in the middle of a week and no reset triggered yet, though the reset should trigger)
-  const startDate = isAfter(lastResetDate, currentMonday) ? lastResetDate : currentMonday;
-
-  const completedTasksThisWeek = tasks.filter(task => {
-    if (task.status !== 'COMPLETED' || !task.scheduledDate) return false;
-    const taskDate = new Date(task.scheduledDate);
-    // Task must be scheduled on or after the start date of this week
-    return !isBefore(taskDate, startDate);
-  });
-
-  const earnedPoints = completedTasksThisWeek.reduce((total, task) => {
-    const categoryId = task.category || 'otros';
-    const category = categories.find(c => c.id === categoryId);
-    const points = task.points ?? category?.points ?? 10;
-    return total + points;
-  }, 0);
-
-  return settings.carryOverPoints + earnedPoints;
+export interface CategoryBalance {
+  category: Category;
+  earned: number;
+  spent: number;
+  available: number;
 }
 
-export function performWeeklyReset(
-  tasks: Task[],
-  categories: Category[],
-  settings: GamificationSettings,
-  rewards: Reward[]
-): GamificationSettings | null {
-  const currentMonday = startOfWeek(new Date(), { weekStartsOn: 1 });
-  const currentMondayStr = format(currentMonday, 'yyyy-MM-dd');
-  const lastResetDateStr = settings.lastResetDate;
+export function useTicketWallet(tasks: Task[], rewardClaims: RewardClaim[], categories: Category[]): CategoryBalance[] {
+  return useMemo(() => {
+    return categories.map(category => {
+      // 1. Calculate Earned Tickets for this category
+      const earned = tasks.reduce((total, task) => {
+        const catId = task.category || 'otros';
+        if (catId === category.id && task.status === 'COMPLETED') {
+          return total + (task.tickets ?? 1);
+        }
+        return total;
+      }, 0);
 
-  // Si no hemos pasado al siguiente lunes, no hacemos reset
-  if (currentMondayStr <= lastResetDateStr) {
-    return null;
-  }
+      // 2. Calculate Spent Tickets for this category
+      const spent = rewardClaims.reduce((total, claim) => {
+        if (claim.categoryId === category.id) {
+          return total + claim.cost;
+        }
+        return total;
+      }, 0);
 
-  const lastResetDate = new Date(lastResetDateStr);
+      // 3. Calculate Available
+      const available = Math.max(0, earned - spent);
 
-  // Filtrar tareas de la semana pasada (desde lastResetDate hasta antes de currentMonday)
-  const lastWeekTasks = tasks.filter(task => {
-    if (!task.scheduledDate) return false;
-    const taskDate = new Date(task.scheduledDate);
-    return !isBefore(taskDate, lastResetDate) && isBefore(taskDate, currentMonday);
-  });
-
-  const completedLastWeek = lastWeekTasks.filter(t => t.status === 'COMPLETED');
-  const pendingLastWeek = lastWeekTasks.filter(t => t.status === 'PENDING');
-
-  const earnedPoints = completedLastWeek.reduce((total, task) => {
-    const categoryId = task.category || 'otros';
-    const category = categories.find(c => c.id === categoryId);
-    const points = task.points ?? category?.points ?? 10;
-    return total + points;
-  }, 0) + settings.carryOverPoints;
-
-  // Encontrar el premio más alto desbloqueado
-  let maxUnlockedThreshold = 0;
-  for (const reward of rewards) {
-    if (reward.pointsThreshold <= earnedPoints && reward.pointsThreshold > maxUnlockedThreshold) {
-      maxUnlockedThreshold = reward.pointsThreshold;
-    }
-  }
-
-  const remainder = earnedPoints - maxUnlockedThreshold;
-  const totalPenalty = pendingLastWeek.reduce((total, task) => {
-    const categoryId = task.category || 'otros';
-    const category = categories.find(c => c.id === categoryId);
-    const points = task.points ?? category?.points ?? settings.penaltyPoints;
-    return total + points;
-  }, 0);
-  const newCarryOver = remainder - totalPenalty;
-
-  return {
-    ...settings,
-    carryOverPoints: newCarryOver,
-    lastResetDate: currentMondayStr
-  };
+      return {
+        category,
+        earned,
+        spent,
+        available
+      };
+    });
+  }, [tasks, rewardClaims, categories]);
 }

@@ -16,7 +16,8 @@ import {
   Clock,
   ChevronRight,
   ChevronDown,
-  Trash2
+  Trash2,
+  Ticket
 } from 'lucide-react';
 import { useTaskDeletion } from '../../hooks/useTaskDeletion';
 import { cn } from '../../lib/utils';
@@ -67,15 +68,7 @@ export function CreateTaskModal() {
   const [location, setLocation] = useState('');
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [notes, setNotes] = useState('');
-  const [points, setPoints] = useState<number>(10);
-
-  // Sync points when category changes
-  useEffect(() => {
-    if (isCreateModalOpen && !taskToEdit) {
-      const selectedCat = categories.find(c => c.id === category);
-      setPoints(selectedCat?.points ?? 10);
-    }
-  }, [category, isCreateModalOpen, taskToEdit, categories]);
+  const [tickets, setTickets] = useState<number>(1);
 
   // Effect to sync state when modal opens or data changes
   useEffect(() => {
@@ -86,8 +79,7 @@ export function CreateTaskModal() {
         setLocation(taskToEdit.location || '');
         setNotes(taskToEdit.notes || '');
 
-        const selectedCat = categories.find(c => c.id === taskToEdit.category);
-        setPoints(taskToEdit.points ?? selectedCat?.points ?? 10);
+        setTickets(taskToEdit.tickets ?? 1);
 
         if (taskToEdit.scheduledDate) {
           const d = new Date(taskToEdit.scheduledDate);
@@ -131,8 +123,7 @@ export function CreateTaskModal() {
         setIsTimeEnabled(false);
         setTime('');
         setEndTime('');
-        // points state is managed by the other useEffect when category is null, or it defaults to 10
-        setPoints(10);
+        setTickets(1);
       }
     }
   }, [isCreateModalOpen, taskToEdit, initialDate, categories]);
@@ -161,7 +152,7 @@ export function CreateTaskModal() {
         notes,
         isAllDay: !isTimeEnabled,
         endTime: isTimeEnabled && endTime ? endTime : undefined,
-        points,
+        tickets,
     };
 
     if (isRecurring && !taskToEdit) {
@@ -258,7 +249,7 @@ export function CreateTaskModal() {
                 endTime: isTimeEnabled && endTime ? endTime : undefined,
                 recurrenceId,
                 recurringGroupId,
-                points
+                tickets
             });
 
             if (recurrenceUnit === 'day') nextDate = addDays(nextDate, recurrenceFrequency);
@@ -393,7 +384,7 @@ export function CreateTaskModal() {
             </div>
         </div>
 
-        {/* Categories & Points */}
+        {/* Categories & Tickets */}
         <div className="grid grid-cols-3 gap-4">
             <div className="col-span-2">
                 <label className="block text-sm font-medium text-neutral-200 mb-2">Categorías</label>
@@ -405,15 +396,26 @@ export function CreateTaskModal() {
                 />
             </div>
             <div className="col-span-1">
-                <label className="block text-sm font-medium text-neutral-200 mb-2">Puntos</label>
-                <input
-                    type="number"
-                    min="0"
-                    value={points}
-                    onChange={(e) => setPoints(parseInt(e.target.value) || 0)}
-                    className="w-full bg-neutral-900 border border-neutral-700 rounded-md p-2.5 text-neutral-200 focus:outline-none focus:ring-2 focus:ring-red-600"
-                    placeholder="10"
-                />
+                <label className="block text-sm font-medium text-neutral-200 mb-2 flex items-center gap-1">
+                  <Ticket className="w-4 h-4 text-yellow-500" /> Tickets
+                </label>
+                <div className="flex bg-neutral-900 border border-neutral-700 rounded-md p-1 overflow-hidden">
+                    {[1, 2, 3].map(val => (
+                        <button
+                            key={val}
+                            type="button"
+                            onClick={() => setTickets(val)}
+                            className={cn(
+                                "flex-1 py-1.5 text-sm font-medium transition-colors rounded",
+                                tickets === val
+                                    ? "bg-yellow-500/20 text-yellow-500"
+                                    : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+                            )}
+                        >
+                            {val}
+                        </button>
+                    ))}
+                </div>
             </div>
         </div>
 
