@@ -12,17 +12,20 @@ interface CategoryFormProps {
 
 export function CategoryForm({ initialData, onSave, onCancel }: CategoryFormProps) {
   const [label, setLabel] = useState('');
+  const [points, setPoints] = useState(10);
   const [selectedIcon, setSelectedIcon] = useState(AVAILABLE_ICONS[0]);
   const [selectedColorIndex, setSelectedColorIndex] = useState(0);
 
   useEffect(() => {
     if (initialData) {
       setLabel(initialData.label);
+      setPoints(initialData.points ?? 10);
       setSelectedIcon(initialData.icon);
       const colorIndex = AVAILABLE_COLORS.findIndex(c => c.color === initialData.color);
       setSelectedColorIndex(colorIndex >= 0 ? colorIndex : 0);
     } else {
       setLabel('');
+      setPoints(10);
       setSelectedIcon(AVAILABLE_ICONS[0]);
       setSelectedColorIndex(0);
     }
@@ -40,6 +43,7 @@ export function CategoryForm({ initialData, onSave, onCancel }: CategoryFormProp
       bg: theme.bg,
       border: theme.border,
       ring: theme.ring,
+      points: points,
     });
   };
 
@@ -55,6 +59,19 @@ export function CategoryForm({ initialData, onSave, onCancel }: CategoryFormProp
           placeholder="Ej: Proyectos"
           required
           autoFocus
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-neutral-200 mb-1">Puntos por Tarea</label>
+        <input
+          type="number"
+          value={points}
+          onChange={(e) => setPoints(parseInt(e.target.value) || 0)}
+          className="w-full bg-neutral-900 border border-neutral-700 rounded-md p-2.5 text-neutral-200 focus:outline-none focus:ring-2 focus:ring-red-600"
+          placeholder="Ej: 10"
+          required
+          min="0"
         />
       </div>
 

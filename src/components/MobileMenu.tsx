@@ -1,4 +1,4 @@
-import { X, Settings, LayoutDashboard, ListTodo, Dumbbell, ShoppingBag, BarChart3, Database, User, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Settings, Database, User, X, BarChart3, Dumbbell, ClipboardList, ShoppingBag, Trophy } from 'lucide-react';
 import { Button } from './Button';
 
 interface MobileMenuProps {
@@ -13,10 +13,10 @@ export function MobileMenu({ isOpen, onClose, onNavigate, onOpenSettings }: Mobi
 
   const menuItems = [
     { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { id: 'tasks', icon: ListTodo, label: 'Tareas' },
+    { id: 'tasks', icon: CheckSquare, label: 'Tareas' },
     { id: 'gym', icon: Dumbbell, label: 'Entrenamiento' },
     { id: 'routines', icon: ClipboardList, label: 'Rutinas' },
-    { id: 'shop', icon: ShoppingBag, label: 'Tienda' },
+    { id: 'gamification', icon: Trophy, label: 'Recompensas' },
     { id: 'analytics', icon: BarChart3, label: 'Rendimiento' },
   ];
 

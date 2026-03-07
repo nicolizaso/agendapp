@@ -17,11 +17,12 @@ import { HabitTracker } from './features/habits/HabitTracker';
 import { AnalyticsSection } from './features/analytics/AnalyticsSection';
 import { GymPage } from './features/gym/GymPage';
 import { RoutinesManager } from './features/gym/RoutinesManager';
-import { LayoutDashboard, ListTodo, Loader2, Settings, BarChart3, Dumbbell, Menu, ClipboardList } from 'lucide-react';
+import { GamificationDashboard } from './features/gamification/GamificationDashboard';
+import { LayoutDashboard, ListTodo, Loader2, Settings, BarChart3, Dumbbell, Menu, ClipboardList, Trophy } from 'lucide-react';
 import { BottomNav } from './components/BottomNav';
 import { MobileMenu } from './components/MobileMenu';
 
-type Tab = 'dashboard' | 'tasks' | 'analytics' | 'gym' | 'shop' | 'routines';
+type Tab = 'dashboard' | 'tasks' | 'analytics' | 'gym' | 'shop' | 'routines' | 'gamification';
 
 function App() {
   const { init, isLoading, tasks } = useStore();
@@ -31,7 +32,22 @@ function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    init();
+    init().then(async () => {
+      // Run gamification reset if needed
+      const state = useStore.getState();
+      if (state.gamificationSettings) {
+        const { performWeeklyReset } = await import('./lib/gamificationEngine');
+        const updatedSettings = performWeeklyReset(
+          state.tasks,
+          state.categories,
+          state.gamificationSettings,
+          state.rewards
+        );
+        if (updatedSettings) {
+          await state.updateGamificationSettings(updatedSettings);
+        }
+      }
+    });
   }, [init]);
 
   useEffect(() => {
@@ -179,6 +195,12 @@ function App() {
       {activeTab === 'analytics' && (
         <div className="max-w-5xl mx-auto">
              <AnalyticsSection />
+        </div>
+      )}
+
+      {activeTab === 'gamification' && (
+        <div className="max-w-5xl mx-auto">
+             <GamificationDashboard />
         </div>
       )}
 

@@ -21,10 +21,17 @@ export interface Task {
 }
 
 export interface Reward {
-  id?: number;
+  id: string;
   title: string;
-  cost: number;
-  icon: string;
+  pointsThreshold: number;
+  icon?: string;
+}
+
+export interface GamificationSettings {
+  id: string;
+  penaltyPoints: number;
+  lastResetDate: string;
+  carryOverPoints: number;
 }
 
 export interface UserStats {
@@ -99,6 +106,7 @@ export interface Category {
   bg: string;
   border: string;
   ring: string;
+  points: number;
 }
 
 export interface Location {
