@@ -23,12 +23,13 @@ import { cn } from '../../lib/utils';
 import { CustomSelect } from '../../components/ui/CustomSelect';
 import { DatePicker } from '../../components/ui/DatePicker';
 import { TimeWheelPicker } from '../../components/ui/TimeWheelPicker';
+import { LocationForm } from '../settings/components/LocationForm';
 import { getIconComponent } from '../../lib/categoryUtils';
 import { toast } from 'sonner';
 
 export function CreateTaskModal() {
   const { isCreateModalOpen, closeCreateModal, createModalData, openConfirmDialog } = useUIStore();
-  const { addTask, addTasks, updateTask, updateRecurringTasks, categories } = useStore();
+  const { addTask, addTasks, updateTask, updateRecurringTasks, categories, locations } = useStore();
   const { initialDate, taskToEdit } = createModalData;
   const { handleDelete } = useTaskDeletion();
 
@@ -64,6 +65,7 @@ export function CreateTaskModal() {
   // Additional Data
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [location, setLocation] = useState('');
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [notes, setNotes] = useState('');
 
   // Effect to sync state when modal opens or data changes
@@ -270,7 +272,8 @@ export function CreateTaskModal() {
   }));
 
   return (
-    <Modal isOpen={isCreateModalOpen} onClose={closeCreateModal} title={taskToEdit ? "Editar Tarea" : "Nueva Tarea"}>
+    <>
+      <Modal isOpen={isCreateModalOpen} onClose={closeCreateModal} title={taskToEdit ? "Editar Tarea" : "Nueva Tarea"}>
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Title */}
         <div>
@@ -449,12 +452,24 @@ export function CreateTaskModal() {
                 <div className="mt-2 space-y-4 p-2 animate-in fade-in slide-in-from-top-2">
                     <div>
                         <label className="block text-xs font-medium text-neutral-400 mb-1">Ubicación</label>
-                        <input
-                            type="text"
-                            value={location}
-                            onChange={(e) => setLocation(e.target.value)}
-                            className="w-full bg-neutral-900/30 border border-neutral-800/50 rounded-md p-2 text-sm text-neutral-300 focus:outline-none focus:ring-1 focus:ring-red-600"
-                            placeholder="Ej: Gimnasio, Oficina..."
+                        <CustomSelect
+                            value={location || ''}
+                            onChange={(val) => {
+                                if (val === 'NEW_LOCATION') {
+                                    setIsLocationModalOpen(true);
+                                } else {
+                                    setLocation(val);
+                                }
+                            }}
+                            options={[
+                                { value: '', label: 'Sin ubicación específica' },
+                                ...locations.map(loc => ({
+                                    value: loc.id,
+                                    label: `${loc.name} ${loc.address ? `(${loc.address})` : ''}`
+                                })),
+                                { value: 'NEW_LOCATION', label: '+ Crear nuevo lugar...' }
+                            ]}
+                            placeholder="Seleccionar ubicación..."
                         />
                     </div>
                     <div>
@@ -489,5 +504,18 @@ export function CreateTaskModal() {
         </div>
       </form>
     </Modal>
+
+    {isLocationModalOpen && (
+      <Modal isOpen={true} onClose={() => setIsLocationModalOpen(false)} title="Nuevo Lugar Frecuente">
+        <LocationForm
+          onSuccess={(newLocationId) => {
+            setIsLocationModalOpen(false);
+            setLocation(newLocationId);
+          }}
+          onCancel={() => setIsLocationModalOpen(false)}
+        />
+      </Modal>
+    )}
+    </>
   );
 }

@@ -5,11 +5,12 @@ import type { Location } from '../../../types';
 
 interface LocationFormProps {
   initialData?: Location;
-  onCancel: () => void;
-  onComplete: () => void;
+  onCancel?: () => void;
+  onComplete?: () => void;
+  onSuccess?: (id: string) => void;
 }
 
-export function LocationForm({ initialData, onCancel, onComplete }: LocationFormProps) {
+export function LocationForm({ initialData, onCancel, onComplete, onSuccess }: LocationFormProps) {
   const { addLocation, updateLocation } = useStore();
   const [formData, setFormData] = useState<Omit<Location, 'id'>>({
     name: initialData?.name || '',
@@ -26,16 +27,19 @@ export function LocationForm({ initialData, onCancel, onComplete }: LocationForm
       return; // Basic validation
     }
 
-    if (initialData?.id) {
-      updateLocation(initialData.id, formData);
+    let idToUse = initialData?.id;
+    if (idToUse) {
+      updateLocation(idToUse, formData);
     } else {
+      idToUse = crypto.randomUUID();
       addLocation({
-        id: crypto.randomUUID(),
+        id: idToUse,
         ...formData
       });
     }
 
-    onComplete();
+    onComplete?.();
+    onSuccess?.(idToUse);
   };
 
   return (
@@ -114,14 +118,16 @@ export function LocationForm({ initialData, onCancel, onComplete }: LocationForm
       </div>
 
       <div className="flex gap-2 pt-2">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
-          className="flex-1 border-neutral-700 text-neutral-300 hover:bg-neutral-800"
-        >
-          Cancelar
-        </Button>
+        {onCancel && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            className="flex-1 border-neutral-700 text-neutral-300 hover:bg-neutral-800"
+          >
+            Cancelar
+          </Button>
+        )}
         <Button
           type="submit"
           className="flex-1 bg-neutral-200 text-neutral-900 hover:bg-white"
