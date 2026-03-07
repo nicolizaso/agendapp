@@ -12,7 +12,6 @@ interface CategoryFormProps {
 
 export function CategoryForm({ initialData, onSave, onCancel }: CategoryFormProps) {
   const [label, setLabel] = useState(initialData?.label ?? '');
-  const [points, setPoints] = useState(initialData?.points ?? 10);
   const [selectedIcon, setSelectedIcon] = useState(initialData?.icon ?? AVAILABLE_ICONS[0]);
   const [selectedColorIndex, setSelectedColorIndex] = useState(() => {
     if (initialData) {
@@ -25,13 +24,11 @@ export function CategoryForm({ initialData, onSave, onCancel }: CategoryFormProp
   useEffect(() => {
     if (initialData) {
       setLabel(initialData.label);
-      setPoints(initialData.points ?? 10);
       setSelectedIcon(initialData.icon);
       const colorIndex = AVAILABLE_COLORS.findIndex(c => c.color === initialData.color);
       setSelectedColorIndex(colorIndex >= 0 ? colorIndex : 0);
     } else {
       setLabel('');
-      setPoints(10);
       setSelectedIcon(AVAILABLE_ICONS[0]);
       setSelectedColorIndex(0);
     }
@@ -49,7 +46,6 @@ export function CategoryForm({ initialData, onSave, onCancel }: CategoryFormProp
       bg: theme.bg,
       border: theme.border,
       ring: theme.ring,
-      points: points,
     });
   };
 
