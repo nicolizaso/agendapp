@@ -1,17 +1,16 @@
 import { create } from 'zustand';
 import { db } from './db';
-import type { Task, Reward, UserStats, TaskStatus, Effort, Category, Location, GamificationSettings } from '../types';
+import type { Task, Reward, RewardClaim, UserStats, TaskStatus, Effort, Category, Location } from '../types';
 import { calculateGoldReward, calculateXpReward, calculateLevel } from './economy';
 import { CATEGORIES as DEFAULT_CATEGORIES } from './constants';
-import { startOfWeek, format } from 'date-fns';
 
 interface AppState {
   tasks: Task[];
   rewards: Reward[];
+  rewardClaims: RewardClaim[];
   userStats: UserStats;
   categories: Category[];
   locations: Location[];
-  gamificationSettings: GamificationSettings | null;
   isLoading: boolean;
 
   // Actions
@@ -28,6 +27,7 @@ interface AppState {
     isAllDay?: boolean;
     recurrenceId?: string;
     recurringGroupId?: string;
+    tickets?: number;
   }) => Promise<void>;
   addTasks: (tasksData: {
     title: string;
@@ -41,6 +41,7 @@ interface AppState {
     isAllDay?: boolean;
     recurrenceId?: string;
     recurringGroupId?: string;
+    tickets?: number;
   }[]) => Promise<void>;
   updateTask: (id: number, updates: Partial<Task>) => Promise<void>;
   updateRecurringTasks: (recurrenceId: string, updates: Partial<Task>, mode: 'this' | 'future' | 'single' | 'following' | 'all', referenceDate: Date) => Promise<void>;
@@ -50,8 +51,7 @@ interface AppState {
   addReward: (reward: Reward) => Promise<void>;
   updateReward: (id: string, updates: Partial<Reward>) => Promise<void>;
   deleteReward: (id: string) => Promise<void>;
-  buyReward: (rewardId: string) => Promise<void>;
-  updateGamificationSettings: (updates: Partial<GamificationSettings>) => Promise<void>;
+  claimReward: (reward: Reward) => Promise<void>;
   addCategory: (category: Category) => Promise<void>;
   updateCategory: (id: string, updates: Partial<Category>) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
@@ -64,10 +64,10 @@ interface AppState {
 export const useStore = create<AppState>((set, get) => ({
   tasks: [],
   rewards: [],
+  rewardClaims: [],
   userStats: { currentGold: 0, currentXp: 0, level: 1 },
   categories: [],
   locations: [],
-  gamificationSettings: null,
   isLoading: true,
 
   init: async () => {
@@ -78,22 +78,11 @@ export const useStore = create<AppState>((set, get) => ({
 
     const tasks = await db.tasks.toArray();
     let rewards = await db.rewards.toArray();
+    let rewardClaims = await db.rewardClaims.toArray();
     const userStatsArray = await db.userStats.toArray();
     const userStats = userStatsArray[0];
     let categories = await db.categories.toArray();
     const locations = await db.locations.toArray();
-
-    let gamificationSettings = await db.gamificationSettings.get('default');
-    if (!gamificationSettings) {
-      const currentMonday = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
-      gamificationSettings = {
-        id: 'default',
-        penaltyPoints: 5,
-        lastResetDate: currentMonday,
-        carryOverPoints: 0
-      };
-      await db.gamificationSettings.add(gamificationSettings);
-    }
 
     if (categories.length === 0) {
       const defaultCategories: Category[] = DEFAULT_CATEGORIES.map(cat => ({
@@ -103,8 +92,7 @@ export const useStore = create<AppState>((set, get) => ({
         color: cat.color,
         bg: cat.bg,
         border: cat.border,
-        ring: cat.ring,
-        points: 10
+        ring: cat.ring
       }));
 
       // A hardcoded map based on what we know is in constants
@@ -127,25 +115,14 @@ export const useStore = create<AppState>((set, get) => ({
 
       await db.categories.bulkAdd(defaultCategories);
       categories = await db.categories.toArray();
-    } else {
-      let updated = false;
-      const updatedCategories = categories.map(cat => {
-        if (cat.points === undefined) {
-          updated = true;
-          return { ...cat, points: 10 };
-        }
-        return cat;
-      });
-      if (updated) {
-        await db.categories.bulkPut(updatedCategories);
-        categories = updatedCategories;
-      }
     }
 
     await db.rewards.clear();
+    await db.rewardClaims.clear();
     rewards = await db.rewards.toArray();
+    rewardClaims = await db.rewardClaims.toArray();
 
-    set({ tasks, rewards, userStats, categories, locations, gamificationSettings, isLoading: false });
+    set({ tasks, rewards, rewardClaims, userStats, categories, locations, isLoading: false });
   },
 
   addTask: async (taskData) => {
@@ -330,20 +307,16 @@ export const useStore = create<AppState>((set, get) => ({
     set((state) => ({ rewards: state.rewards.filter(r => r.id !== id) }));
   },
 
-  buyReward: async (_rewardId) => {
-    // With the new Gamification, rewards are unlocked based on pointsThreshold, not bought with gold.
-    // I am keeping this signature if any component still uses it, but it shouldn't be used for the new rewards logic.
-    // If you need to keep shop behavior, you'd need to adapt it.
-    console.warn("buyReward is deprecated in new Gamification system.");
-  },
-
-  updateGamificationSettings: async (updates) => {
-    await db.gamificationSettings.update('default', updates);
-    set((state) => ({
-      gamificationSettings: state.gamificationSettings
-        ? { ...state.gamificationSettings, ...updates }
-        : null
-    }));
+  claimReward: async (reward) => {
+    const claim: RewardClaim = {
+      id: crypto.randomUUID(),
+      rewardId: reward.id,
+      categoryId: reward.categoryId,
+      cost: reward.cost,
+      claimedAt: new Date().toISOString()
+    };
+    await db.rewardClaims.add(claim);
+    set((state) => ({ rewardClaims: [...state.rewardClaims, claim] }));
   },
 
   addCategory: async (category) => {

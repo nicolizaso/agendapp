@@ -18,21 +18,23 @@ export interface Task {
   isAllDay?: boolean;
   recurrenceId?: string;
   recurringGroupId?: string;
-  points?: number;
+  tickets?: number;
 }
 
 export interface Reward {
   id: string;
   title: string;
-  pointsThreshold: number;
+  cost: number;
+  categoryId: string;
   icon?: string;
 }
 
-export interface GamificationSettings {
+export interface RewardClaim {
   id: string;
-  penaltyPoints: number;
-  lastResetDate: string;
-  carryOverPoints: number;
+  rewardId: string;
+  categoryId: string;
+  cost: number;
+  claimedAt: string;
 }
 
 export interface UserStats {
@@ -107,7 +109,6 @@ export interface Category {
   bg: string;
   border: string;
   ring: string;
-  points?: number;
 }
 
 export interface Location {

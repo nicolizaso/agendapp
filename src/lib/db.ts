@@ -1,9 +1,10 @@
 import Dexie, { type Table } from 'dexie';
-import type { Task, Reward, UserStats, Habit, HabitLog, DailyNote, Exercise, Workout, WorkoutSet, Routine, RoutineExercise, Category, Location, GamificationSettings } from '../types';
+import type { Task, Reward, RewardClaim, UserStats, Habit, HabitLog, DailyNote, Exercise, Workout, WorkoutSet, Routine, RoutineExercise, Category, Location } from '../types';
 
 export class VectorLifeDB extends Dexie {
   tasks!: Table<Task>;
   rewards!: Table<Reward>;
+  rewardClaims!: Table<RewardClaim>;
   userStats!: Table<UserStats>;
   habits!: Table<Habit>;
   habitLogs!: Table<HabitLog>;
@@ -15,7 +16,6 @@ export class VectorLifeDB extends Dexie {
   routineExercises!: Table<RoutineExercise>;
   categories!: Table<Category>;
   locations!: Table<Location>;
-  gamificationSettings!: Table<GamificationSettings>;
 
   constructor() {
     super('VectorLifeDB');
@@ -64,6 +64,12 @@ export class VectorLifeDB extends Dexie {
     this.version(10).stores({
       rewards: 'id, pointsThreshold',
       gamificationSettings: 'id'
+    });
+
+    this.version(11).stores({
+      rewards: 'id, cost, categoryId',
+      rewardClaims: 'id, categoryId',
+      gamificationSettings: null // Drop old table
     });
   }
 }
