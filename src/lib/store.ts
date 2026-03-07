@@ -1,8 +1,9 @@
 import { create } from 'zustand';
 import { db } from './db';
-import type { Task, Reward, UserStats, Effort, TaskStatus, Category, Location } from '../types';
+import type { Task, Reward, UserStats, TaskStatus, Effort, Category, Location, GamificationSettings } from '../types';
 import { calculateGoldReward, calculateXpReward, calculateLevel } from './economy';
 import { CATEGORIES as DEFAULT_CATEGORIES } from './constants';
+import { startOfWeek, format } from 'date-fns';
 
 interface AppState {
   tasks: Task[];
@@ -10,6 +11,7 @@ interface AppState {
   userStats: UserStats;
   categories: Category[];
   locations: Location[];
+  gamificationSettings: GamificationSettings | null;
   isLoading: boolean;
 
   // Actions
@@ -45,8 +47,11 @@ interface AppState {
   deleteTask: (id: number) => Promise<void>;
   deleteRecurringTasks: (recurrenceId: string, mode: 'this' | 'future' | 'single' | 'following' | 'all', referenceDate: Date) => Promise<void>;
   completeTask: (taskId: number) => Promise<void>;
-  addReward: (rewardData: { title: string; cost: number; icon: string }) => Promise<void>;
-  buyReward: (rewardId: number) => Promise<void>;
+  addReward: (reward: Reward) => Promise<void>;
+  updateReward: (id: string, updates: Partial<Reward>) => Promise<void>;
+  deleteReward: (id: string) => Promise<void>;
+  buyReward: (rewardId: string) => Promise<void>;
+  updateGamificationSettings: (updates: Partial<GamificationSettings>) => Promise<void>;
   addCategory: (category: Category) => Promise<void>;
   updateCategory: (id: string, updates: Partial<Category>) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
@@ -62,6 +67,7 @@ export const useStore = create<AppState>((set, get) => ({
   userStats: { currentGold: 0, currentXp: 0, level: 1 },
   categories: [],
   locations: [],
+  gamificationSettings: null,
   isLoading: true,
 
   init: async () => {
@@ -77,6 +83,18 @@ export const useStore = create<AppState>((set, get) => ({
     let categories = await db.categories.toArray();
     const locations = await db.locations.toArray();
 
+    let gamificationSettings = await db.gamificationSettings.get('default');
+    if (!gamificationSettings) {
+      const currentMonday = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
+      gamificationSettings = {
+        id: 'default',
+        penaltyPoints: 5,
+        lastResetDate: currentMonday,
+        carryOverPoints: 0
+      };
+      await db.gamificationSettings.add(gamificationSettings);
+    }
+
     if (categories.length === 0) {
       const defaultCategories: Category[] = DEFAULT_CATEGORIES.map(cat => ({
         id: cat.id,
@@ -85,7 +103,8 @@ export const useStore = create<AppState>((set, get) => ({
         color: cat.color,
         bg: cat.bg,
         border: cat.border,
-        ring: cat.ring
+        ring: cat.ring,
+        points: 10
       }));
 
       // A hardcoded map based on what we know is in constants
@@ -108,19 +127,34 @@ export const useStore = create<AppState>((set, get) => ({
 
       await db.categories.bulkAdd(defaultCategories);
       categories = await db.categories.toArray();
+    } else {
+      let updated = false;
+      const updatedCategories = categories.map(cat => {
+        if (cat.points === undefined) {
+          updated = true;
+          return { ...cat, points: 10 };
+        }
+        return cat;
+      });
+      if (updated) {
+        await db.categories.bulkPut(updatedCategories);
+        categories = updatedCategories;
+      }
     }
 
     if (rewards.length === 0) {
+      // Clean up any old rewards if they somehow don't match the schema
+      await db.rewards.clear();
       const defaults: Reward[] = [
-        { title: 'Coffee Break', cost: 50, icon: 'Coffee' },
-        { title: 'Episode of TV', cost: 100, icon: 'Tv' },
-        { title: 'Gaming Session', cost: 200, icon: 'Gamepad2' }
+        { id: '1', title: 'Coffee Break', pointsThreshold: 50, icon: 'Coffee' },
+        { id: '2', title: 'Episode of TV', pointsThreshold: 100, icon: 'Tv' },
+        { id: '3', title: 'Gaming Session', pointsThreshold: 200, icon: 'Gamepad2' }
       ];
       await db.rewards.bulkAdd(defaults);
       rewards = await db.rewards.toArray();
     }
 
-    set({ tasks, rewards, userStats, categories, locations, isLoading: false });
+    set({ tasks, rewards, userStats, categories, locations, gamificationSettings, isLoading: false });
   },
 
   addTask: async (taskData) => {
@@ -290,29 +324,35 @@ export const useStore = create<AppState>((set, get) => ({
     }));
   },
 
-  addReward: async (rewardData) => {
-    const id = await db.rewards.add(rewardData);
-    set((state) => ({ rewards: [...state.rewards, { ...rewardData, id } as Reward] }));
+  addReward: async (reward) => {
+    await db.rewards.add(reward);
+    set((state) => ({ rewards: [...state.rewards, reward] }));
   },
 
-  buyReward: async (rewardId) => {
-    const state = get();
-    const reward = state.rewards.find((r) => r.id === rewardId);
+  updateReward: async (id, updates) => {
+    await db.rewards.update(id, updates);
+    set((state) => ({ rewards: state.rewards.map(r => r.id === id ? { ...r, ...updates } : r) }));
+  },
 
-    if (!reward) return;
-    if (state.userStats.currentGold < reward.cost) {
-      alert("No tienes suficiente oro!");
-      return;
-    }
+  deleteReward: async (id) => {
+    await db.rewards.delete(id);
+    set((state) => ({ rewards: state.rewards.filter(r => r.id !== id) }));
+  },
 
-    const newGold = state.userStats.currentGold - reward.cost;
-    const newStats = { ...state.userStats, currentGold: newGold };
+  buyReward: async (_rewardId) => {
+    // With the new Gamification, rewards are unlocked based on pointsThreshold, not bought with gold.
+    // I am keeping this signature if any component still uses it, but it shouldn't be used for the new rewards logic.
+    // If you need to keep shop behavior, you'd need to adapt it.
+    console.warn("buyReward is deprecated in new Gamification system.");
+  },
 
-    if (state.userStats.id) {
-        await db.userStats.update(state.userStats.id, newStats);
-    }
-
-    set({ userStats: newStats });
+  updateGamificationSettings: async (updates) => {
+    await db.gamificationSettings.update('default', updates);
+    set((state) => ({
+      gamificationSettings: state.gamificationSettings
+        ? { ...state.gamificationSettings, ...updates }
+        : null
+    }));
   },
 
   addCategory: async (category) => {

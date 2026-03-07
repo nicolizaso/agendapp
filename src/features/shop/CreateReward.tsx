@@ -12,15 +12,15 @@ const AVAILABLE_ICONS = ['Coffee', 'Gamepad2', 'Tv', 'ShoppingBag', 'Beer', 'Piz
 export function CreateReward() {
   const addReward = useStore((state) => state.addReward);
   const [title, setTitle] = useState('');
-  const [cost, setCost] = useState(50);
+  const [pointsThreshold, setPointsThreshold] = useState(50);
   const [icon, setIcon] = useState('Gift');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title) return;
-    await addReward({ title, cost, icon });
+    await addReward({ id: crypto.randomUUID(), title, pointsThreshold, icon });
     setTitle('');
-    setCost(50);
+    setPointsThreshold(50);
     setIcon('Gift');
   };
 
@@ -50,8 +50,8 @@ export function CreateReward() {
             <Input
                 id="reward-cost"
                 type="number"
-                value={cost}
-                onChange={(e) => setCost(Number(e.target.value))}
+                value={pointsThreshold}
+                onChange={(e) => setPointsThreshold(Number(e.target.value))}
                 min={1}
                 required
             />
