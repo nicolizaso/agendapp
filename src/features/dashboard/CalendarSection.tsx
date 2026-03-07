@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useStore } from '../../lib/store';
 import { useUIStore } from '../../hooks/useUIStore';
-import { startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, format, addMonths, subMonths, startOfWeek, endOfWeek, isSameMonth } from 'date-fns';
+import { startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, format, addMonths, subMonths, startOfWeek, endOfWeek, isSameMonth, isToday } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '../../lib/utils';
 import { Button } from '../../components/Button';
@@ -66,13 +66,24 @@ export function CalendarSection() {
                                 className={cn(
                                     "min-h-[5.5rem] sm:min-h-[6.5rem] rounded-md flex flex-col items-center justify-start pt-1 relative border transition-all duration-300 cursor-pointer select-none overflow-hidden",
                                     isSelectedDay
-                                        ? "bg-red-600 border-red-500 text-white shadow-[0_0_10px_rgba(220,38,38,0.3)]"
+                                        ? "bg-neutral-800 border-neutral-500 shadow-sm z-10"
                                         : isCurrentMonth
                                             ? "bg-neutral-900 border-neutral-800 text-neutral-400 hover:bg-neutral-800 hover:border-neutral-700"
                                             : "bg-neutral-950/50 border-neutral-900/30 text-neutral-800 hover:bg-neutral-900/30"
                                 )}
                             >
-                                <span className="text-sm font-medium leading-none mb-0.5">{format(day, 'd')}</span>
+                                <span className={cn(
+                                    "text-[11px] font-medium mb-[2px] mt-[2px] flex items-center justify-center w-6 h-6 rounded-full transition-colors",
+                                    isSelectedDay
+                                        ? "bg-red-600 text-white shadow-md font-bold"
+                                        : isToday(day)
+                                            ? "text-red-400 font-bold bg-red-400/10"
+                                            : isCurrentMonth
+                                                ? "text-neutral-300"
+                                                : "text-neutral-600"
+                                )}>
+                                    {format(day, 'd')}
+                                </span>
 
                                 {/* Labels Container */}
                                 <div className="flex flex-col gap-[2px] w-full px-0.5 mt-0.5 overflow-hidden">
