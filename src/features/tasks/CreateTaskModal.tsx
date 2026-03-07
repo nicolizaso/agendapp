@@ -67,6 +67,15 @@ export function CreateTaskModal() {
   const [location, setLocation] = useState('');
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [notes, setNotes] = useState('');
+  const [points, setPoints] = useState<number>(10);
+
+  // Sync points when category changes
+  useEffect(() => {
+    if (isCreateModalOpen && !taskToEdit) {
+      const selectedCat = categories.find(c => c.id === category);
+      setPoints(selectedCat?.points ?? 10);
+    }
+  }, [category, isCreateModalOpen, taskToEdit, categories]);
 
   // Effect to sync state when modal opens or data changes
   useEffect(() => {
@@ -76,6 +85,9 @@ export function CreateTaskModal() {
         setCategory(taskToEdit.category || null);
         setLocation(taskToEdit.location || '');
         setNotes(taskToEdit.notes || '');
+
+        const selectedCat = categories.find(c => c.id === taskToEdit.category);
+        setPoints(taskToEdit.points ?? selectedCat?.points ?? 10);
 
         if (taskToEdit.scheduledDate) {
           const d = new Date(taskToEdit.scheduledDate);
@@ -119,9 +131,11 @@ export function CreateTaskModal() {
         setIsTimeEnabled(false);
         setTime('');
         setEndTime('');
+        // points state is managed by the other useEffect when category is null, or it defaults to 10
+        setPoints(10);
       }
     }
-  }, [isCreateModalOpen, taskToEdit, initialDate]);
+  }, [isCreateModalOpen, taskToEdit, initialDate, categories]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,6 +161,7 @@ export function CreateTaskModal() {
         notes,
         isAllDay: !isTimeEnabled,
         endTime: isTimeEnabled && endTime ? endTime : undefined,
+        points,
     };
 
     if (isRecurring && !taskToEdit) {
@@ -242,7 +257,8 @@ export function CreateTaskModal() {
                 isAllDay: !isTimeEnabled,
                 endTime: isTimeEnabled && endTime ? endTime : undefined,
                 recurrenceId,
-                recurringGroupId
+                recurringGroupId,
+                points
             });
 
             if (recurrenceUnit === 'day') nextDate = addDays(nextDate, recurrenceFrequency);
@@ -377,15 +393,28 @@ export function CreateTaskModal() {
             </div>
         </div>
 
-        {/* Categories */}
-        <div>
-            <label className="block text-sm font-medium text-neutral-200 mb-2">Categorías</label>
-            <CustomSelect
-                value={category}
-                onChange={(val) => setCategory(val || null)}
-                placeholder="Sin categoría"
-                options={categoryOptions}
-            />
+        {/* Categories & Points */}
+        <div className="grid grid-cols-3 gap-4">
+            <div className="col-span-2">
+                <label className="block text-sm font-medium text-neutral-200 mb-2">Categorías</label>
+                <CustomSelect
+                    value={category}
+                    onChange={(val) => setCategory(val || null)}
+                    placeholder="Sin categoría"
+                    options={categoryOptions}
+                />
+            </div>
+            <div className="col-span-1">
+                <label className="block text-sm font-medium text-neutral-200 mb-2">Puntos</label>
+                <input
+                    type="number"
+                    min="0"
+                    value={points}
+                    onChange={(e) => setPoints(parseInt(e.target.value) || 0)}
+                    className="w-full bg-neutral-900 border border-neutral-700 rounded-md p-2.5 text-neutral-200 focus:outline-none focus:ring-2 focus:ring-red-600"
+                    placeholder="10"
+                />
+            </div>
         </div>
 
         {/* Recurrence - Only show if creating new task (to avoid complex edit logic) */}
