@@ -15,6 +15,7 @@ export function AgendaModal() {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [selectedTaskIds, setSelectedTaskIds] = useState<number[]>([]);
+    const [activeTab, setActiveTab] = useState<'pending' | 'archived'>('pending');
 
     const filteredTasks = useMemo(() => {
         let result = tasks;
@@ -31,12 +32,18 @@ export function AgendaModal() {
             });
         }
 
+        if (activeTab === 'pending') {
+            result = result.filter(t => t.status !== 'COMPLETED' && t.scheduledDate);
+        } else {
+            result = result.filter(t => t.status === 'COMPLETED' || !t.scheduledDate);
+        }
+
         return result.sort((a, b) => {
             const timeA = a.scheduledDate ? new Date(a.scheduledDate).getTime() : 0;
             const timeB = b.scheduledDate ? new Date(b.scheduledDate).getTime() : 0;
-            return timeB - timeA; // Descending (newest/future first)
+            return timeA - timeB; // Ascending (oldest/next first)
         });
-    }, [tasks, searchTerm, selectedCategories]);
+    }, [tasks, searchTerm, selectedCategories, activeTab]);
 
     const toggleCategory = (catId: string) => {
         setSelectedCategories(prev =>
@@ -106,6 +113,38 @@ export function AgendaModal() {
                                 </button>
                             );
                         })}
+                    </div>
+
+                    {/* Tabs */}
+                    <div className="flex bg-neutral-900 p-1 rounded-lg border border-neutral-800 mb-4">
+                        <button
+                            onClick={() => {
+                                setActiveTab('pending');
+                                setSelectedTaskIds([]);
+                            }}
+                            className={cn(
+                                "flex-1 transition-colors rounded-md py-1.5 text-sm font-medium",
+                                activeTab === 'pending'
+                                    ? "bg-neutral-800 text-white"
+                                    : "text-neutral-500 hover:text-neutral-300"
+                            )}
+                        >
+                            Pendientes
+                        </button>
+                        <button
+                            onClick={() => {
+                                setActiveTab('archived');
+                                setSelectedTaskIds([]);
+                            }}
+                            className={cn(
+                                "flex-1 transition-colors rounded-md py-1.5 text-sm font-medium",
+                                activeTab === 'archived'
+                                    ? "bg-neutral-800 text-white"
+                                    : "text-neutral-500 hover:text-neutral-300"
+                            )}
+                        >
+                            Completadas / Sin Fecha
+                        </button>
                     </div>
                 </div>
 
