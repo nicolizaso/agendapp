@@ -18,6 +18,7 @@ export interface Task {
   isAllDay?: boolean;
   recurrenceId?: string;
   recurringGroupId?: string;
+  points?: number;
 }
 
 export interface Reward {
@@ -106,7 +107,7 @@ export interface Category {
   bg: string;
   border: string;
   ring: string;
-  points: number;
+  points?: number;
 }
 
 export interface Location {

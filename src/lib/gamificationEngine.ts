@@ -22,7 +22,7 @@ export function calculateCurrentPoints(
   const earnedPoints = completedTasksThisWeek.reduce((total, task) => {
     const categoryId = task.category || 'otros';
     const category = categories.find(c => c.id === categoryId);
-    const points = category?.points ?? 10;
+    const points = task.points ?? category?.points ?? 10;
     return total + points;
   }, 0);
 
@@ -59,7 +59,7 @@ export function performWeeklyReset(
   const earnedPoints = completedLastWeek.reduce((total, task) => {
     const categoryId = task.category || 'otros';
     const category = categories.find(c => c.id === categoryId);
-    const points = category?.points ?? 10;
+    const points = task.points ?? category?.points ?? 10;
     return total + points;
   }, 0) + settings.carryOverPoints;
 
@@ -72,7 +72,12 @@ export function performWeeklyReset(
   }
 
   const remainder = earnedPoints - maxUnlockedThreshold;
-  const totalPenalty = pendingLastWeek.length * settings.penaltyPoints;
+  const totalPenalty = pendingLastWeek.reduce((total, task) => {
+    const categoryId = task.category || 'otros';
+    const category = categories.find(c => c.id === categoryId);
+    const points = task.points ?? category?.points ?? settings.penaltyPoints;
+    return total + points;
+  }, 0);
   const newCarryOver = remainder - totalPenalty;
 
   return {

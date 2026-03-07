@@ -11,10 +11,16 @@ interface CategoryFormProps {
 }
 
 export function CategoryForm({ initialData, onSave, onCancel }: CategoryFormProps) {
-  const [label, setLabel] = useState('');
-  const [points, setPoints] = useState(10);
-  const [selectedIcon, setSelectedIcon] = useState(AVAILABLE_ICONS[0]);
-  const [selectedColorIndex, setSelectedColorIndex] = useState(0);
+  const [label, setLabel] = useState(initialData?.label ?? '');
+  const [points, setPoints] = useState(initialData?.points ?? 10);
+  const [selectedIcon, setSelectedIcon] = useState(initialData?.icon ?? AVAILABLE_ICONS[0]);
+  const [selectedColorIndex, setSelectedColorIndex] = useState(() => {
+    if (initialData) {
+      const colorIndex = AVAILABLE_COLORS.findIndex(c => c.color === initialData.color);
+      return colorIndex >= 0 ? colorIndex : 0;
+    }
+    return 0;
+  });
 
   useEffect(() => {
     if (initialData) {
@@ -63,7 +69,7 @@ export function CategoryForm({ initialData, onSave, onCancel }: CategoryFormProp
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-neutral-200 mb-1">Puntos por Tarea</label>
+        <label className="block text-sm font-medium text-neutral-200 mb-1">Puntos por defecto</label>
         <input
           type="number"
           value={points}
