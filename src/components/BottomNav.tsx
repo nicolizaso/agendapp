@@ -1,4 +1,4 @@
-import { LayoutDashboard, CheckSquare, PlusCircle, Dumbbell, BarChart2 } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, PlusCircle, Dumbbell, Ticket } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useUIStore } from '../hooks/useUIStore';
 
@@ -15,7 +15,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
     { id: 'tasks', icon: CheckSquare, label: 'Tareas' },
     { id: 'create', icon: PlusCircle, label: 'Crear' },
     { id: 'gym', icon: Dumbbell, label: 'Gym' },
-    { id: 'analytics', icon: BarChart2, label: 'Progreso' },
+    { id: 'gamification', icon: Ticket, label: 'Premios' },
   ];
 
   return (
