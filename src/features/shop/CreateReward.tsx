@@ -7,24 +7,36 @@ import { Label } from '../../components/Label';
 import { Select } from '../../components/Select';
 import * as Icons from 'lucide-react';
 import { Trash2, Plus } from 'lucide-react';
+import type { Reward } from '../../types';
 
 const AVAILABLE_ICONS = ['Coffee', 'Gamepad2', 'Tv', 'ShoppingBag', 'Beer', 'Pizza', 'Plane', 'Music', 'Gift', 'Book', 'Smartphone', 'Zap', 'Star', 'Heart'];
 
-export function CreateReward() {
+export function CreateReward({ initialData, onClose }: { initialData?: Reward, onClose?: () => void }) {
   const addReward = useStore((state) => state.addReward);
+  const updateReward = useStore((state) => state.updateReward);
   const categories = useStore((state) => state.categories);
-  const [title, setTitle] = useState('');
-  const [icon, setIcon] = useState('Gift');
-  const [costs, setCosts] = useState<{ categoryId: string; amount: number }[]>([{ categoryId: categories[0]?.id || '', amount: 1 }]);
+  const [title, setTitle] = useState(initialData?.title || '');
+  const [icon, setIcon] = useState(initialData?.icon || 'Gift');
+  const [costs, setCosts] = useState<{ categoryId: string; amount: number }[]>(initialData?.costs || [{ categoryId: categories[0]?.id || '', amount: 1 }]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const isValidCosts = costs.every(c => c.categoryId && c.amount > 0);
     if (!title || !isValidCosts) return;
-    await addReward({ id: crypto.randomUUID(), title, costs, icon });
+
+    if (initialData?.id) {
+      await updateReward(initialData.id, { title, costs, icon });
+    } else {
+      await addReward({ id: crypto.randomUUID(), title, costs, icon });
+    }
+
     setTitle('');
     setCosts([{ categoryId: categories[0]?.id || '', amount: 1 }]);
     setIcon('Gift');
+
+    if (onClose) {
+      onClose();
+    }
   };
 
   const handleAddCost = () => {
@@ -47,7 +59,7 @@ export function CreateReward() {
   return (
     <Card className="mb-8 border-neutral-800 bg-neutral-900/50">
       <CardHeader>
-        <CardTitle>Add New Reward</CardTitle>
+        <CardTitle>{initialData ? 'Editar Premio' : 'Nuevo Premio'}</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
@@ -118,7 +130,12 @@ export function CreateReward() {
             </Button>
           </div>
 
-          <Button type="submit" className="w-full">Add Reward</Button>
+          <div className="flex gap-3 mt-4">
+            {onClose && (
+              <Button type="button" variant="ghost" onClick={onClose} className="w-full">Cancelar</Button>
+            )}
+            <Button type="submit" className="w-full">{initialData ? 'Guardar Cambios' : 'Add Reward'}</Button>
+          </div>
         </form>
       </CardContent>
     </Card>

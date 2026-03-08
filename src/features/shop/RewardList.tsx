@@ -1,14 +1,28 @@
 import { useStore } from '../../lib/store';
 import { Card, CardFooter, CardHeader, CardTitle } from '../../components/Card';
 import { Button } from '../../components/Button';
-import { Ticket } from 'lucide-react';
+import { useState } from 'react';
+import { Ticket, Pencil, Trash2 } from 'lucide-react';
 import * as Icons from 'lucide-react';
 import { useTicketWallet } from '../../lib/gamificationEngine';
 import { cn } from '../../lib/utils';
+import { CreateReward } from './CreateReward';
+import type { Reward } from '../../types';
 
 export function RewardList() {
-    const { rewards, tasks, rewardClaims, categories, claimReward } = useStore();
+    const { rewards, tasks, rewardClaims, categories, claimReward, deleteReward } = useStore();
     const wallet = useTicketWallet(tasks, rewardClaims, categories);
+    const [editingReward, setEditingReward] = useState<Reward | null>(null);
+
+    const handleDelete = (id: string) => {
+        if (window.confirm('¿Seguro que quieres borrar este premio?')) {
+            deleteReward(id);
+        }
+    };
+
+    if (editingReward) {
+        return <CreateReward initialData={editingReward} onClose={() => setEditingReward(null)} />;
+    }
 
     if (rewards.length === 0) {
         return <div className="text-center text-neutral-400 py-10">No hay recompensas disponibles. ¡Añade una!</div>
@@ -32,7 +46,23 @@ export function RewardList() {
                         <CardHeader className="pb-2">
                              <div className="flex justify-between items-start">
                                 <CardTitle className="text-lg text-neutral-200">{reward.title}</CardTitle>
-                                <IconComponent className="w-6 h-6 text-neutral-400" />
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setEditingReward(reward)}
+                                        className="text-neutral-500 hover:text-neutral-200 transition-colors"
+                                    >
+                                        <Pencil className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                        onClick={() => handleDelete(reward.id)}
+                                        className="text-neutral-500 hover:text-red-500 transition-colors"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
+                             </div>
+                             <div className="flex justify-center mt-2">
+                                <IconComponent className="w-10 h-10 text-neutral-400" />
                              </div>
                         </CardHeader>
                         <CardFooter className="pt-4 flex-col items-stretch gap-2">
