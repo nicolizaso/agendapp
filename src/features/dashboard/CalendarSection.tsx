@@ -13,8 +13,8 @@ export function CalendarSection() {
     const [currentDate, setCurrentDate] = useState(new Date());
 
     // Generate days for the grid (including prev/next month fillers)
-    const start = startOfWeek(startOfMonth(currentDate), { weekStartsOn: 0 }); // Sunday start
-    const end = endOfWeek(endOfMonth(currentDate), { weekStartsOn: 0 });
+    const start = startOfWeek(startOfMonth(currentDate), { weekStartsOn: 1 }); // Monday start
+    const end = endOfWeek(endOfMonth(currentDate), { weekStartsOn: 1 });
     const days = eachDayOfInterval({ start, end });
 
     // Navigation handlers
@@ -43,7 +43,7 @@ export function CalendarSection() {
 
              {/* Weekday Headers */}
              <div className="grid grid-cols-7 gap-1 text-center text-xs text-neutral-400 mb-4 font-body">
-                {['D', 'L', 'M', 'M', 'J', 'V', 'S'].map((d, i) => (
+                {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, i) => (
                     <div key={i} className="font-bold">{d}</div>
                 ))}
              </div>
