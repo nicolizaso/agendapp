@@ -11,16 +11,18 @@ const AVAILABLE_ICONS = ['Coffee', 'Gamepad2', 'Tv', 'ShoppingBag', 'Beer', 'Piz
 
 export function CreateReward() {
   const addReward = useStore((state) => state.addReward);
+  const categories = useStore((state) => state.categories);
   const [title, setTitle] = useState('');
-  const [pointsThreshold, setPointsThreshold] = useState(50);
+  const [cost, setCost] = useState(1);
   const [icon, setIcon] = useState('Gift');
+  const [categoryId, setCategoryId] = useState(categories[0]?.id || '');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title) return;
-    await addReward({ id: crypto.randomUUID(), title, pointsThreshold, icon });
+    if (!title || !categoryId) return;
+    await addReward({ id: crypto.randomUUID(), title, cost, categoryId, icon });
     setTitle('');
-    setPointsThreshold(50);
+    setCost(1);
     setIcon('Gift');
   };
 
@@ -45,13 +47,28 @@ export function CreateReward() {
             />
           </div>
 
+          <div className="grid gap-2 w-full sm:w-32">
+            <Label htmlFor="reward-category">Categoría</Label>
+            <Select
+              id="reward-category"
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+              required
+            >
+              <option value="" disabled>Selecciona...</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>{c.label}</option>
+              ))}
+            </Select>
+          </div>
+
           <div className="grid gap-2 w-full sm:w-24">
-            <Label htmlFor="reward-cost">Cost</Label>
+            <Label htmlFor="reward-cost">Costo</Label>
             <Input
                 id="reward-cost"
                 type="number"
-                value={pointsThreshold}
-                onChange={(e) => setPointsThreshold(Number(e.target.value))}
+                value={cost}
+                onChange={(e) => setCost(Number(e.target.value))}
                 min={1}
                 required
             />
