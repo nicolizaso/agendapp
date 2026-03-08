@@ -5,7 +5,7 @@ def test_gamification():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
-        page.goto("http://localhost:5174/")
+        page.goto("http://localhost:5173/")
         time.sleep(2)
 
         # Go to Gamification Tab
