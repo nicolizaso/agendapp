@@ -1,7 +1,7 @@
 import { useStore } from '../../lib/store';
 import { Card, CardFooter, CardHeader, CardTitle } from '../../components/Card';
 import { Button } from '../../components/Button';
-import { Coins, Ticket } from 'lucide-react';
+import { Ticket } from 'lucide-react';
 import * as Icons from 'lucide-react';
 import { useTicketWallet } from '../../lib/gamificationEngine';
 import { cn } from '../../lib/utils';
