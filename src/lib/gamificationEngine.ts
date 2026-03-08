@@ -34,10 +34,8 @@ export function useTicketWallet(tasks: Task[], rewardClaims: RewardClaim[], cate
 
       // 2. Calculate Spent Tickets for this category
       const spent = currentWeekClaims.reduce((total, claim) => {
-        if (claim.categoryId === category.id) {
-          return total + claim.cost;
-        }
-        return total;
+        const categorySpent = claim.costs?.find(c => c.categoryId === category.id)?.amount || 0;
+        return total + categorySpent;
       }, 0);
 
       // 3. Calculate Available

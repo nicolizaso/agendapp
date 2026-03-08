@@ -311,8 +311,7 @@ export const useStore = create<AppState>((set, get) => ({
     const claim: RewardClaim = {
       id: crypto.randomUUID(),
       rewardId: reward.id,
-      categoryId: reward.categoryId,
-      cost: reward.cost,
+      costs: reward.costs,
       claimedAt: new Date().toISOString()
     };
     await db.rewardClaims.add(claim);

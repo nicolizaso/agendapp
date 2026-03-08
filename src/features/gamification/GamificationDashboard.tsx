@@ -17,10 +17,10 @@ export function GamificationDashboard() {
   const [editingReward, setEditingReward] = useState<Reward | null>(null);
 
   const defaultCategory = categories.length > 0 ? categories[0].id : '';
-  const [formData, setFormData] = useState({ title: '', cost: 1, categoryId: defaultCategory, icon: AVAILABLE_ICONS[0] });
+  const [formData, setFormData] = useState({ title: '', costs: [{ categoryId: defaultCategory, amount: 1 }], icon: AVAILABLE_ICONS[0] });
 
   const wallet = useTicketWallet(tasks, rewardClaims, categories);
-  const sortedRewards = [...rewards].sort((a, b) => a.cost - b.cost);
+  const sortedRewards = [...rewards].sort((a, b) => (a.costs[0]?.amount || 0) - (b.costs[0]?.amount || 0));
 
   const handleSaveReward = () => {
     if (editingReward) {
@@ -33,6 +33,20 @@ export function GamificationDashboard() {
     }
     setIsCreating(false);
     setEditingReward(null);
+  };
+
+  const handleAddCost = () => {
+    setFormData({ ...formData, costs: [...formData.costs, { categoryId: defaultCategory, amount: 1 }] });
+  };
+
+  const handleRemoveCost = (index: number) => {
+    setFormData({ ...formData, costs: formData.costs.filter((_, i) => i !== index) });
+  };
+
+  const handleCostChange = (index: number, field: 'categoryId' | 'amount', value: string | number) => {
+    const newCosts = [...formData.costs];
+    newCosts[index] = { ...newCosts[index], [field]: value as never };
+    setFormData({ ...formData, costs: newCosts });
   };
 
   const handleClaim = (reward: Reward) => {
@@ -91,7 +105,7 @@ export function GamificationDashboard() {
         <div className="flex items-center justify-between">
           <h3 className="text-xl font-bold text-white">Mis Premios</h3>
           <Button onClick={() => {
-            setFormData({ title: '', cost: 1, categoryId: defaultCategory, icon: AVAILABLE_ICONS[0] });
+            setFormData({ title: '', costs: [{ categoryId: defaultCategory, amount: 1 }], icon: AVAILABLE_ICONS[0] });
             setIsCreating(true);
             setEditingReward(null);
           }} size="sm" className="gap-2">
@@ -101,10 +115,10 @@ export function GamificationDashboard() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {sortedRewards.map(reward => {
-            const categoryBalance = wallet.find(b => b.category.id === reward.categoryId);
-            const availableTickets = categoryBalance?.available || 0;
-            const canAfford = availableTickets >= reward.cost;
-            const rewardCategory = categories.find(c => c.id === reward.categoryId);
+            const canAfford = reward.costs.every(c => {
+              const catWallet = wallet.find(w => w.category.id === c.categoryId);
+              return (catWallet?.available || 0) >= c.amount;
+            });
 
             return (
               <div
@@ -121,7 +135,7 @@ export function GamificationDashboard() {
                   <button
                     onClick={() => {
                       setEditingReward(reward);
-                      setFormData({ title: reward.title, cost: reward.cost, categoryId: reward.categoryId, icon: reward.icon || AVAILABLE_ICONS[0] });
+                      setFormData({ title: reward.title, costs: reward.costs, icon: reward.icon || AVAILABLE_ICONS[0] });
                       setIsCreating(true);
                     }}
                     className="p-1.5 text-neutral-400 hover:text-white bg-neutral-800 rounded-lg transition-colors"
@@ -162,14 +176,19 @@ export function GamificationDashboard() {
                     <h4 className={cn("font-semibold text-lg mb-1 leading-tight", canAfford ? "text-white" : "text-neutral-400")}>
                       {reward.title}
                     </h4>
-                    <div className="flex items-center justify-center gap-1.5 mt-2">
-                      <span className={cn(
-                        "text-sm font-medium px-2.5 py-1 rounded-md inline-flex items-center gap-1.5",
-                        canAfford ? "bg-yellow-500/10 text-yellow-500" : "bg-neutral-800 text-neutral-500"
-                      )}>
-                        {reward.cost} <Ticket className="w-3.5 h-3.5" />
-                        <span className="text-xs opacity-80">de {rewardCategory?.label || 'Categoría'}</span>
-                      </span>
+                    <div className="flex flex-wrap items-center justify-center gap-1.5 mt-2">
+                      {reward.costs.map((cost, idx) => {
+                        const rewardCategory = categories.find(c => c.id === cost.categoryId);
+                        return (
+                          <span key={idx} className={cn(
+                            "text-sm font-medium px-2.5 py-1 rounded-md inline-flex items-center gap-1.5",
+                            canAfford ? "bg-yellow-500/10 text-yellow-500" : "bg-neutral-800 text-neutral-500"
+                          )}>
+                            {cost.amount} <Ticket className="w-3.5 h-3.5" />
+                            <span className="text-xs opacity-80">de {rewardCategory?.label || 'Categoría'}</span>
+                          </span>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -187,7 +206,7 @@ export function GamificationDashboard() {
                         className="w-full"
                         variant={canAfford ? 'primary' : 'ghost'}
                     >
-                        {canAfford ? 'Canjear' : `Faltan ${reward.cost - availableTickets} tickets`}
+                        {canAfford ? 'Canjear' : 'Tickets insuficientes'}
                     </Button>
                 </div>
               </div>
@@ -223,25 +242,38 @@ export function GamificationDashboard() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-300 mb-1">Costo (Tickets)</label>
-                      <input
-                        type="number"
-                        value={formData.cost}
-                        onChange={e => setFormData({ ...formData, cost: parseInt(e.target.value) || 0 })}
-                        className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-3 text-white focus:outline-none focus:border-red-500"
-                        min="1"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-300 mb-1">Categoría</label>
-                      <CustomSelect
-                          value={formData.categoryId}
-                          onChange={(val) => setFormData({ ...formData, categoryId: val || '' })}
-                          placeholder="Seleccionar..."
-                          options={categoryOptions}
-                      />
+                <div className="space-y-3">
+                    <label className="block text-sm font-medium text-neutral-300 mb-1">Costos (Tickets)</label>
+                    {formData.costs.map((cost, index) => (
+                      <div key={index} className="flex gap-2 items-end">
+                        <div className="flex-1">
+                          <CustomSelect
+                              value={cost.categoryId}
+                              onChange={(val) => handleCostChange(index, 'categoryId', val || '')}
+                              placeholder="Categoría..."
+                              options={categoryOptions}
+                          />
+                        </div>
+                        <div className="w-24">
+                          <input
+                            type="number"
+                            value={cost.amount}
+                            onChange={e => handleCostChange(index, 'amount', parseInt(e.target.value) || 0)}
+                            className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-red-500"
+                            min="1"
+                          />
+                        </div>
+                        {formData.costs.length > 1 && (
+                          <button type="button" className="p-2.5 text-neutral-500 hover:text-red-400 bg-neutral-950 border border-neutral-800 rounded-lg hover:border-red-400/50 transition-colors" onClick={() => handleRemoveCost(index)}>
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <div className="pt-2">
+                      <Button type="button" variant="ghost" className="w-full border border-dashed border-neutral-800 text-sm gap-2 text-neutral-400 hover:text-white hover:border-neutral-700" onClick={handleAddCost}>
+                        <Plus className="w-4 h-4" /> Agregar otro ticket
+                      </Button>
                     </div>
                 </div>
 
@@ -276,7 +308,7 @@ export function GamificationDashboard() {
                 </Button>
                 <Button
                   onClick={handleSaveReward}
-                  disabled={!formData.title.trim() || formData.cost <= 0 || !formData.categoryId}
+                  disabled={!formData.title.trim() || !formData.costs.every(c => c.categoryId && c.amount > 0)}
                   className="bg-yellow-600 hover:bg-yellow-500 text-white"
                 >
                   Guardar

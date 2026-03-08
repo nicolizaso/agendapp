@@ -24,14 +24,16 @@ export interface Task {
 export interface Reward {
   id: string;
   title: string;
-  costs: { categoryId: string; amount: number }[];
+  cost: number;
+  categoryId: string;
   icon?: string;
 }
 
 export interface RewardClaim {
   id: string;
   rewardId: string;
-  costs: { categoryId: string; amount: number }[];
+  categoryId: string;
+  cost: number;
   claimedAt: string;
 }
 
