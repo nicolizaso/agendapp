@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useHabits } from '../../../hooks/useHabits';
+import { useStore } from '../../../lib/store';
 import { Modal } from '../../../components/Modal';
 import { Button } from '../../../components/Button';
+import { CustomSelect } from '../../../components/ui/CustomSelect';
 import { cn } from '../../../lib/utils';
 import { Check } from 'lucide-react';
 
@@ -25,23 +27,27 @@ const COLORS = [
 
 export function CreateHabitModal({ isOpen, onClose }: CreateHabitModalProps) {
   const { createHabit } = useHabits();
+  const { categories } = useStore();
   const [title, setTitle] = useState('');
   const [emoji, setEmoji] = useState('');
   const [selectedColor, setSelectedColor] = useState(COLORS[0]);
+  const [categoryId, setCategoryId] = useState(categories.length > 0 ? categories[0].id : '');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title) return;
+    if (!title || !categoryId) return;
 
     await createHabit({
       title,
       emoji: emoji || '⚡',
       color: selectedColor,
+      categoryId,
     });
 
     setTitle('');
     setEmoji('');
     setSelectedColor(COLORS[0]);
+    if (categories.length > 0) setCategoryId(categories[0].id);
     onClose();
   };
 
@@ -73,6 +79,16 @@ export function CreateHabitModal({ isOpen, onClose }: CreateHabitModalProps) {
                     placeholder="📚"
                 />
             </div>
+        </div>
+
+        <div>
+            <label className="block text-sm font-medium text-neutral-200 mb-1">Categoría</label>
+            <CustomSelect
+                value={categoryId}
+                onChange={setCategoryId}
+                options={categories.map(c => ({ value: c.id, label: c.label, icon: c.icon }))}
+                placeholder="Seleccionar categoría..."
+            />
         </div>
 
         {/* Color Picker */}

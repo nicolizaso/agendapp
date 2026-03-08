@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { db } from './db';
-import type { Task, Reward, RewardClaim, UserStats, TaskStatus, Effort, Category, Location } from '../types';
+import type { Task, Reward, RewardClaim, UserStats, TaskStatus, Effort, Category, Location, HabitLog, HabitClaim } from '../types';
 import { calculateGoldReward, calculateXpReward, calculateLevel } from './economy';
 import { CATEGORIES as DEFAULT_CATEGORIES } from './constants';
 
@@ -8,6 +8,8 @@ interface AppState {
   tasks: Task[];
   rewards: Reward[];
   rewardClaims: RewardClaim[];
+  habitLogs: HabitLog[];
+  habitClaims: HabitClaim[];
   userStats: UserStats;
   categories: Category[];
   locations: Location[];
@@ -59,12 +61,17 @@ interface AppState {
   updateLocation: (id: string, updates: Partial<Location>) => Promise<void>;
   deleteLocation: (id: string) => Promise<void>;
   deleteTasks: (ids: number[]) => Promise<void>;
+
+  toggleHabitLog: (habitId: number, date: string) => Promise<void>;
+  addHabitClaim: (claim: HabitClaim) => Promise<void>;
 }
 
 export const useStore = create<AppState>((set, get) => ({
   tasks: [],
   rewards: [],
   rewardClaims: [],
+  habitLogs: [],
+  habitClaims: [],
   userStats: { currentGold: 0, currentXp: 0, level: 1 },
   categories: [],
   locations: [],
@@ -79,6 +86,8 @@ export const useStore = create<AppState>((set, get) => ({
     const tasks = await db.tasks.toArray();
     let rewards = await db.rewards.toArray();
     let rewardClaims = await db.rewardClaims.toArray();
+    const habitLogs = await db.habitLogs.toArray();
+    const habitClaims = await db.habitClaims.toArray();
     const userStatsArray = await db.userStats.toArray();
     const userStats = userStatsArray[0];
     let categories = await db.categories.toArray();
@@ -122,7 +131,7 @@ export const useStore = create<AppState>((set, get) => ({
     rewards = await db.rewards.toArray();
     rewardClaims = await db.rewardClaims.toArray();
 
-    set({ tasks, rewards, rewardClaims, userStats, categories, locations, isLoading: false });
+    set({ tasks, rewards, rewardClaims, habitLogs, habitClaims, userStats, categories, locations, isLoading: false });
   },
 
   addTask: async (taskData) => {
@@ -350,5 +359,25 @@ export const useStore = create<AppState>((set, get) => ({
   deleteLocation: async (id) => {
     await db.locations.delete(id);
     set((state) => ({ locations: state.locations.filter((l) => l.id !== id) }));
+  },
+
+  toggleHabitLog: async (habitId: number, date: string) => {
+    const logId = `${habitId}_${date}`;
+    const state = get();
+    const existingLog = state.habitLogs.find(log => log.id === logId);
+
+    if (existingLog) {
+      set(state => ({ habitLogs: state.habitLogs.filter(log => log.id !== logId) }));
+      await db.habitLogs.delete(logId);
+    } else {
+      const newLog = { id: logId, habitId, date };
+      set(state => ({ habitLogs: [...state.habitLogs, newLog] }));
+      await db.habitLogs.add(newLog);
+    }
+  },
+
+  addHabitClaim: async (claim: HabitClaim) => {
+    await db.habitClaims.add(claim);
+    set(state => ({ habitClaims: [...state.habitClaims, claim] }));
   }
 }));

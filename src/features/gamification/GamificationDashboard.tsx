@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import type { Reward } from '../../types';
 
 export function GamificationDashboard() {
-  const { tasks, rewardClaims, categories, rewards, addReward, updateReward, deleteReward, claimReward } = useStore();
+  const { tasks, rewardClaims, categories, rewards, addReward, updateReward, deleteReward, claimReward, habitClaims } = useStore();
 
   const [isCreating, setIsCreating] = useState(false);
   const [editingReward, setEditingReward] = useState<Reward | null>(null);
@@ -19,7 +19,7 @@ export function GamificationDashboard() {
   const defaultCategory = categories.length > 0 ? categories[0].id : '';
   const [formData, setFormData] = useState({ title: '', costs: [{ categoryId: defaultCategory, amount: 1 }], icon: AVAILABLE_ICONS[0] });
 
-  const wallet = useTicketWallet(tasks, rewardClaims, categories);
+  const wallet = useTicketWallet(tasks, rewardClaims, habitClaims, categories);
   const sortedRewards = [...rewards].sort((a, b) => (a.costs[0]?.amount || 0) - (b.costs[0]?.amount || 0));
 
   const handleSaveReward = () => {

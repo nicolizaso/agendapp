@@ -13,12 +13,15 @@ import { TodaySection } from './features/dashboard/TodaySection';
 import { AgendaModal } from './features/dashboard/AgendaModal';
 import { CalendarSection } from './features/dashboard/CalendarSection';
 import { SettingsModal } from './features/settings/components/SettingsModal';
+import { DailyHabitsWidget } from './features/habits/components/DailyHabitsWidget';
 import { HabitTracker } from './features/habits/HabitTracker';
 import { AnalyticsSection } from './features/analytics/AnalyticsSection';
 import { GymPage } from './features/gym/GymPage';
 import { RoutinesManager } from './features/gym/RoutinesManager';
 import { GamificationDashboard } from './features/gamification/GamificationDashboard';
-import { LayoutDashboard, ListTodo, Loader2, Settings, BarChart3, Dumbbell, Menu, ClipboardList } from 'lucide-react';
+import { WeeklyHabitSummaryModal } from './features/habits/components/WeeklyHabitSummaryModal';
+import { useWeeklyClaimEngine } from './hooks/useWeeklyClaimEngine';
+import { LayoutDashboard, ListTodo, Loader2, Settings, BarChart3, Dumbbell, Menu, ClipboardList, Bell } from 'lucide-react';
 import { BottomNav } from './components/BottomNav';
 import { MobileMenu } from './components/MobileMenu';
 
@@ -28,8 +31,10 @@ function App() {
   const { init, isLoading, tasks } = useStore();
   const { openCreateModal, openSettingsModal } = useUIStore();
   const { requestPermission, sendNotification } = useNotifications();
+  const { hasPendingClaim, previousWeekStartDate, claimId } = useWeeklyClaimEngine();
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isWeeklyModalOpen, setIsWeeklyModalOpen] = useState(false);
 
   useEffect(() => {
     init();
@@ -81,10 +86,20 @@ function App() {
                 alt="Logo Pipa's Journal"
                 className="w-8 h-8 object-contain"
             />
-            <h1 className="text-3xl font-heading font-bold text-neutral-100">
+            <h1 className="text-3xl font-heading font-bold text-neutral-100 hidden sm:block">
                 Pipa's Journal
             </h1>
         </div>
+
+        {hasPendingClaim && (
+          <button
+            onClick={() => setIsWeeklyModalOpen(true)}
+            className="relative p-2 text-neutral-400 hover:text-yellow-500 transition-colors animate-bounce ml-auto mr-4 md:mr-0"
+          >
+            <Bell className="w-6 h-6" />
+            <span className="absolute top-1 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
+          </button>
+        )}
 
         {/* Desktop Nav */}
         <nav className="hidden md:flex items-center gap-2 bg-neutral-900 p-1 rounded-lg border border-neutral-800">
@@ -121,6 +136,14 @@ function App() {
                 <ClipboardList className="w-4 h-4" /> Rutinas
             </Button>
             <Button
+                variant={activeTab === 'habits' ? 'primary' : 'ghost'}
+                onClick={() => setActiveTab('habits')}
+                size="sm"
+                className="gap-2"
+            >
+                <ClipboardList className="w-4 h-4" /> Hábitos
+            </Button>
+            <Button
                 variant={activeTab === 'analytics' ? 'primary' : 'ghost'}
                 onClick={() => setActiveTab('analytics')}
                 size="sm"
@@ -153,7 +176,7 @@ function App() {
       <div className="pb-20 md:pb-0">
         {activeTab === 'dashboard' && (
             <div className="animate-in fade-in duration-500 grid grid-cols-1 gap-6">
-                <HabitTracker />
+                <DailyHabitsWidget />
                 <TodaySection />
                 <CalendarSection />
             </div>
@@ -195,6 +218,12 @@ function App() {
          </div>
       )}
 
+      {activeTab === 'habits' && (
+         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <HabitTracker />
+         </div>
+      )}
+
       </div> {/* End content wrapper */}
 
       <FAB onClick={() => openCreateModal()} />
@@ -202,6 +231,15 @@ function App() {
       <SettingsModal />
       <ConfirmDialog />
       <AgendaModal />
+
+      {isWeeklyModalOpen && (
+        <WeeklyHabitSummaryModal
+          isOpen={isWeeklyModalOpen}
+          onClose={() => setIsWeeklyModalOpen(false)}
+          weekStartDate={previousWeekStartDate}
+          claimId={claimId}
+        />
+      )}
 
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
       <MobileMenu
