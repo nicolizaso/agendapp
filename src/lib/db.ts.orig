@@ -67,14 +67,9 @@ export class VectorLifeDB extends Dexie {
     });
 
     this.version(11).stores({
-      rewards: 'id, categoryId, cost',
+      rewards: 'id, cost, categoryId',
       rewardClaims: 'id, categoryId',
       gamificationSettings: null // Drop old table
-    });
-
-    this.version(12).stores({
-      rewards: 'id', // Reestructurado para costs array
-      rewardClaims: 'id' // Reestructurado para costs array
     });
   }
 }
