@@ -35,10 +35,19 @@ function App() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isWeeklyModalOpen, setIsWeeklyModalOpen] = useState(false);
+  const [isStuck, setIsStuck] = useState(false);
 
   useEffect(() => {
     init();
   }, [init]);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    if (isLoading) {
+        timer = setTimeout(() => setIsStuck(true), 4000); // 4 segundos de tolerancia
+    }
+    return () => clearTimeout(timer);
+  }, [isLoading]);
 
   useEffect(() => {
     requestPermission();
@@ -71,8 +80,16 @@ function App() {
 
   if (isLoading) {
     return (
-        <div className="min-h-screen flex items-center justify-center bg-neutral-950 text-red-500">
+        <div className="min-h-screen flex flex-col items-center justify-center bg-neutral-950 text-red-500 gap-4">
             <Loader2 className="w-10 h-10 animate-spin" />
+            {isStuck && (
+                <div className="flex flex-col items-center animate-in fade-in duration-500">
+                    <p className="text-neutral-400 text-sm mb-3">Parece que hay un problema de conexión</p>
+                    <Button variant="outline" onClick={() => window.location.reload()}>
+                        Forzar Recarga
+                    </Button>
+                </div>
+            )}
         </div>
     )
   }

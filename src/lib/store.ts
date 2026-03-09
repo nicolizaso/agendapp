@@ -78,60 +78,66 @@ export const useStore = create<AppState>((set, get) => ({
   isLoading: true,
 
   init: async () => {
-    const statsCount = await db.userStats.count();
-    if (statsCount === 0) {
-      await db.userStats.add({ currentGold: 0, currentXp: 0, level: 1 });
-    }
-
-    const tasks = await db.tasks.toArray();
-    let rewards = await db.rewards.toArray();
-    let rewardClaims = await db.rewardClaims.toArray();
-    const habitLogs = await db.habitLogs.toArray();
-    const habitClaims = await db.habitClaims.toArray();
-    const userStatsArray = await db.userStats.toArray();
-    const userStats = userStatsArray[0];
-    let categories = await db.categories.toArray();
-    const locations = await db.locations.toArray();
-
-    if (categories.length === 0) {
-      const defaultCategories: Category[] = DEFAULT_CATEGORIES.map(cat => ({
-        id: cat.id,
-        label: cat.label,
-        icon: 'Circle', // Fallback, will be populated properly below
-        color: cat.color,
-        bg: cat.bg,
-        border: cat.border,
-        ring: cat.ring
-      }));
-
-      // A hardcoded map based on what we know is in constants
-      const DEFAULT_ICON_NAMES: Record<string, string> = {
-        'casa': 'Home',
-        'gym': 'Dumbbell',
-        'cultivo': 'Sprout',
-        'trabajo': 'Briefcase',
-        'facultad': 'GraduationCap',
-        'salud': 'HeartPulse',
-        'amigos': 'Users',
-        'familia': 'Heart',
-        'cumpleanos': 'Cake',
-        'otros': 'MoreHorizontal'
-      };
-
-      for (const cat of defaultCategories) {
-          cat.icon = DEFAULT_ICON_NAMES[cat.id] || 'Circle';
+    try {
+      const statsCount = await db.userStats.count();
+      if (statsCount === 0) {
+        await db.userStats.add({ currentGold: 0, currentXp: 0, level: 1 });
       }
 
-      await db.categories.bulkAdd(defaultCategories);
-      categories = await db.categories.toArray();
+      const tasks = await db.tasks.toArray();
+      let rewards = await db.rewards.toArray();
+      let rewardClaims = await db.rewardClaims.toArray();
+      const habitLogs = await db.habitLogs.toArray();
+      const habitClaims = await db.habitClaims.toArray();
+      const userStatsArray = await db.userStats.toArray();
+      const userStats = userStatsArray[0];
+      let categories = await db.categories.toArray();
+      const locations = await db.locations.toArray();
+
+      if (categories.length === 0) {
+        const defaultCategories: Category[] = DEFAULT_CATEGORIES.map(cat => ({
+          id: cat.id,
+          label: cat.label,
+          icon: 'Circle', // Fallback, will be populated properly below
+          color: cat.color,
+          bg: cat.bg,
+          border: cat.border,
+          ring: cat.ring
+        }));
+
+        // A hardcoded map based on what we know is in constants
+        const DEFAULT_ICON_NAMES: Record<string, string> = {
+          'casa': 'Home',
+          'gym': 'Dumbbell',
+          'cultivo': 'Sprout',
+          'trabajo': 'Briefcase',
+          'facultad': 'GraduationCap',
+          'salud': 'HeartPulse',
+          'amigos': 'Users',
+          'familia': 'Heart',
+          'cumpleanos': 'Cake',
+          'otros': 'MoreHorizontal'
+        };
+
+        for (const cat of defaultCategories) {
+            cat.icon = DEFAULT_ICON_NAMES[cat.id] || 'Circle';
+        }
+
+        await db.categories.bulkAdd(defaultCategories);
+        categories = await db.categories.toArray();
+      }
+
+      await db.rewards.clear();
+      await db.rewardClaims.clear();
+      rewards = await db.rewards.toArray();
+      rewardClaims = await db.rewardClaims.toArray();
+
+      set({ tasks, rewards, rewardClaims, habitLogs, habitClaims, userStats, categories, locations });
+    } catch (error) {
+      console.error("Error crítico en init de store:", error);
+    } finally {
+      set({ isLoading: false });
     }
-
-    await db.rewards.clear();
-    await db.rewardClaims.clear();
-    rewards = await db.rewards.toArray();
-    rewardClaims = await db.rewardClaims.toArray();
-
-    set({ tasks, rewards, rewardClaims, habitLogs, habitClaims, userStats, categories, locations, isLoading: false });
   },
 
   addTask: async (taskData) => {

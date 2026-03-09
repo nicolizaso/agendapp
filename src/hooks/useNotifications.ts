@@ -35,8 +35,12 @@ export function useNotifications() {
 
     // Only ask if default (not denied or granted yet)
     if (Notification.permission === 'default') {
-      const result = await Notification.requestPermission();
-      setPermission(result);
+      try {
+        const result = await Notification.requestPermission();
+        setPermission(result);
+      } catch (error) {
+        console.warn('Notification permission request failed or was blocked silently:', error);
+      }
     }
   }, []);
 
