@@ -185,7 +185,11 @@ export function CreateTaskModal() {
                          label: "Solo esta tarea",
                          onClick: async () => {
                              if (taskToEdit.id) {
-                                await updateTask(taskToEdit.id, taskData);
+                                const fullTaskData = { ...taskToEdit, ...taskData, id: taskToEdit.id };
+                                await db.tasks.put(fullTaskData);
+                                useStore.getState().set((state) => ({
+                                    tasks: state.tasks.map(t => t.id === taskToEdit.id ? fullTaskData : t)
+                                }));
                                 closeCreateModal();
                              }
                          },
@@ -205,59 +209,54 @@ export function CreateTaskModal() {
                          label: "Todas de la serie",
                          onClick: async () => {
                              if (recurrenceKey && taskToEdit.scheduledDate) {
-                                 // "Limpieza y Recreación" for PENDING tasks
+                                 // Buscamos todas las tareas que pertenezcan al mismo grupo recurrente
                                  const allTasksInSeries = await db.tasks
                                      .filter(t => t.recurringGroupId === recurrenceKey || t.recurrenceId === recurrenceKey)
                                      .toArray();
 
+                                 // Filtramos solo las pendientes (futuras)
                                  const pendingTasks = allTasksInSeries.filter(t => t.status === 'PENDING');
-                                 const pendingIds = pendingTasks.map(t => t.id).filter((id): id is string => id !== undefined);
 
-                                 if (pendingIds.length > 0) {
-                                     await db.tasks.bulkDelete(pendingIds);
+                                 // Modificamos las propiedades manteniendo el ID y el día intactos
+                                 const tasksToUpdate = pendingTasks.map(t => {
+                                     // Preservamos el día original de la tarea de la serie
+                                     const originalDate = t.scheduledDate ? new Date(t.scheduledDate) : new Date();
+                                     // Extraemos la nueva hora si el usuario cambió el horario
+                                     const newDateFromForm = taskData.scheduledDate ? new Date(taskData.scheduledDate) : new Date();
+
+                                     originalDate.setHours(
+                                         newDateFromForm.getHours(),
+                                         newDateFromForm.getMinutes(),
+                                         newDateFromForm.getSeconds(),
+                                         newDateFromForm.getMilliseconds()
+                                     );
+
+                                     return {
+                                         ...t,
+                                         title: taskData.title,
+                                         category: taskData.category,
+                                         tickets: taskData.tickets,
+                                         location: taskData.location,
+                                         notes: taskData.notes,
+                                         isAllDay: taskData.isAllDay,
+                                         endTime: taskData.endTime,
+                                         scheduledDate: originalDate,
+                                     };
+                                 });
+
+                                 // Sobreescribimos en la base de datos de forma segura
+                                 if (tasksToUpdate.length > 0) {
+                                     await db.tasks.bulkPut(tasksToUpdate);
+
+                                     // Update the global store to reflect the changes immediately
+                                     useStore.setState((state) => ({
+                                         tasks: state.tasks.map((stateTask) => {
+                                             const updatedTask = tasksToUpdate.find(u => u.id === stateTask.id);
+                                             return updatedTask ? { ...stateTask, ...updatedTask } : stateTask;
+                                         })
+                                     }));
                                  }
 
-                                 // Re-generate pending occurrences using new configuration
-                                 if (isRecurring && scheduledDate && recurringEndDate) {
-                                     let tasksToCreate: Omit<Task, 'status' | 'goldReward' | 'createdAt'>[] = [];
-                                     let nextDate = scheduledDate;
-                                     const [rYear, rMonth, rDay] = recurringEndDate.split('-').map(Number);
-                                     const parsedRecurringEndDate = new Date(rYear, rMonth - 1, rDay);
-                                     parsedRecurringEndDate.setHours(23, 59, 59, 999);
-
-                                     let iterations = 0;
-                                     const MAX_ITERATIONS = 365;
-
-                                     while (
-                                         (isBefore(nextDate, parsedRecurringEndDate) || isSameDay(nextDate, parsedRecurringEndDate)) &&
-                                         iterations < MAX_ITERATIONS
-                                     ) {
-                                         tasksToCreate.push({
-                                             ...taskData,
-                                             id: crypto.randomUUID(),
-                                             scheduledDate: nextDate,
-                                             recurrenceId: taskToEdit.recurrenceId || recurrenceKey,
-                                             recurringGroupId: taskToEdit.recurringGroupId || recurrenceKey,
-                                         });
-
-                                         if (recurrenceUnit === 'day') nextDate = addDays(nextDate, recurrenceFrequency);
-                                         if (recurrenceUnit === 'week') nextDate = addWeeks(nextDate, recurrenceFrequency);
-                                         if (recurrenceUnit === 'month') nextDate = addMonths(nextDate, recurrenceFrequency);
-                                         if (recurrenceUnit === 'year') nextDate = addYears(nextDate, recurrenceFrequency);
-
-                                         iterations++;
-                                     }
-
-                                     if (tasksToCreate.length > 0) {
-                                         await addTasks(tasksToCreate as any);
-                                     }
-                                 } else {
-                                     // Fallback if recurrence info is somehow disabled, recreate single tasks for the deleted ones
-                                     // using the updated taskData to maintain them.
-                                     // The instruction specifically asks to use the while loop, which we did above.
-                                     // We just need to ensure `isRecurring` is checked.
-                                     await updateRecurringTasks(recurrenceKey, taskData, 'all', new Date(taskToEdit.scheduledDate));
-                                 }
                                  closeCreateModal();
                              }
                          },
