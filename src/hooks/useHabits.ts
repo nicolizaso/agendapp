@@ -20,11 +20,17 @@ export const useHabits = create<HabitsState>((set, get) => ({
   isLoading: true,
 
   fetchHabits: async () => {
-    const habits = await db.habits.toArray();
-    const today = format(new Date(), 'yyyy-MM-dd');
-    const logs = await db.habitLogs.where('date').equals(today).toArray();
-    const todayLogs = new Set(logs.map(log => log.habitId));
-    set({ habits, todayLogs, isLoading: false });
+    try {
+      const habits = await db.habits.toArray();
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const logs = await db.habitLogs.where('date').equals(today).toArray();
+      const todayLogs = new Set(logs.map(log => log.habitId));
+      set({ habits, todayLogs });
+    } catch (error) {
+      console.error("Error fetching habits:", error);
+    } finally {
+      set({ isLoading: false });
+    }
   },
 
   createHabit: async (habitData) => {
