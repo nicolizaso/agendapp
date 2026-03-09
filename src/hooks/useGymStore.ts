@@ -77,6 +77,13 @@ export const useGymStore = create<GymState>((set, get) => ({
   init: async () => {
     set({ isLoading: true });
     try {
+      try {
+          await db.open();
+      } catch (e) {
+          console.warn("Esperando auto-sanación de DB en useGymStore...");
+          return; // Stop if the DB failed, db.ts reload will handle it.
+      }
+
       await seedDefaultExercises();
       const exercises = await db.exercises.toArray();
       const routines = await db.routines.toArray();

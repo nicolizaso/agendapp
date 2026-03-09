@@ -21,6 +21,13 @@ export const useHabits = create<HabitsState>((set, get) => ({
 
   fetchHabits: async () => {
     try {
+      try {
+          await db.open();
+      } catch (e) {
+          console.warn("Esperando auto-sanación de DB en useHabits...");
+          return; // Stop if the DB failed, db.ts reload will handle it.
+      }
+
       const habits = await db.habits.toArray();
       const today = format(new Date(), 'yyyy-MM-dd');
       const logs = await db.habitLogs.where('date').equals(today).toArray();
