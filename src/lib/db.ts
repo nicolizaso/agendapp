@@ -20,22 +20,41 @@ export class VectorLifeDB extends Dexie {
 
   constructor() {
     super('VectorLifeDB');
+
+    // Versión 1: Tareas y Categorías estáticas
     this.version(1).stores({
-      tasks: '++id, status',
-      rewards: '++id',
-      userStats: '++id'
+      tasks: 'id, category, scheduledDate, status, recurringGroupId',
+      categories: 'id'
     });
 
+    // Versión 2: Lugares y Gamificación (vieja)
     this.version(2).stores({
-      tasks: '++id, scheduledDate, status, recurrenceId, [status+scheduledDate]'
+      tasks: 'id, category, scheduledDate, status, recurringGroupId',
+      categories: 'id',
+      locations: 'id, name',
+      rewards: 'id',
+      gamificationSettings: 'id'
     });
 
+    // Versión 3: Sistema de Tickets (Nuevo)
     this.version(3).stores({
-      habits: '++id, title, emoji, color',
-      habitLogs: '++id, habitId, date, [habitId+date]'
+      tasks: 'id, category, scheduledDate, status, recurringGroupId',
+      categories: 'id',
+      locations: 'id, name',
+      rewards: 'id',
+      rewardClaims: 'id, categoryId'
     });
 
+    // Versión 4: Hábitos (Actual)
     this.version(4).stores({
+      tasks: 'id, category, scheduledDate, status, recurringGroupId',
+      categories: 'id',
+      locations: 'id, name',
+      rewards: 'id',
+      rewardClaims: 'id, categoryId',
+      habits: 'id, categoryId',
+      habitLogs: 'id, habitId, date',
+      habitClaims: 'id',
       dailyNotes: 'date, content'
     });
 
@@ -86,6 +105,11 @@ export class VectorLifeDB extends Dexie {
 }
 
 export const db = new VectorLifeDB();
+
+export const resetDatabase = async () => {
+    await db.delete();
+    window.location.reload();
+};
 
 export const seedDefaultExercises = async () => {
   const count = await db.exercises.count();
