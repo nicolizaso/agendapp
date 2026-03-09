@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { isSameMinute } from 'date-fns';
 import { useStore } from './lib/store';
 import { resetDatabase } from './lib/db';
+import { rescueEmergencyBackup } from './features/backup/utils/backup';
 import { useUIStore } from './hooks/useUIStore';
 import { useNotifications, getNotificationMessage } from './hooks/useNotifications';
 import { Layout } from './components/Layout';
@@ -89,17 +90,30 @@ function App() {
                     <Button variant="outline" onClick={() => window.location.reload()}>
                         Forzar Recarga
                     </Button>
-                    <Button
-                        variant="ghost"
-                        className="text-red-500 text-xs mt-4 hover:bg-red-500/10 hover:text-red-400"
-                        onClick={() => {
-                            if (window.confirm("¿Estás seguro de que quieres borrar todos tus datos locales? Esta acción no se puede deshacer.")) {
-                                resetDatabase();
-                            }
-                        }}
-                    >
-                        Resetear App (Borrar todos mis datos)
-                    </Button>
+                    <div className="flex flex-col gap-2 mt-4 items-center">
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                rescueEmergencyBackup()
+                                    .then(() => alert('¡Datos rescatados con éxito! El archivo JSON se ha descargado. Ahora puedes resetear la app sin miedo.'))
+                                    .catch(e => alert('Error al intentar rescatar: ' + e));
+                            }}
+                            className="border-green-500/50 text-green-400 hover:bg-green-500/10 w-full"
+                        >
+                            Rescatar Mis Datos (Backup)
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            className="text-red-500 text-xs hover:bg-red-500/10 hover:text-red-400"
+                            onClick={() => {
+                                if (window.confirm("¿Estás seguro de que quieres borrar todos tus datos locales? Esta acción no se puede deshacer.")) {
+                                    resetDatabase();
+                                }
+                            }}
+                        >
+                            Resetear App (Borrar todos mis datos)
+                        </Button>
+                    </div>
                 </div>
             )}
         </div>

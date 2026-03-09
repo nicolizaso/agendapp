@@ -1,33 +1,33 @@
 import { db } from '../../../lib/db';
-import { format } from 'date-fns';
 import { toast } from 'sonner';
 
 export const exportData = async () => {
   try {
-    const tasks = await db.tasks.toArray();
-    const backupData = {
-      version: 1,
-      date: new Date().toISOString(),
-      tasks,
+    const backupData: Record<string, any> = {
+      _meta: { timestamp: new Date().toISOString(), version: db.verno }
     };
 
-    const blob = new Blob([JSON.stringify(backupData, null, 2)], {
-      type: 'application/json',
-    });
+    // Recorrer todas las tablas dinámicamente y extraer datos
+    for (const table of db.tables) {
+      backupData[table.name] = await table.toArray();
+    }
 
+    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `pipa-backup-${format(new Date(), 'yyyy-MM-dd')}.json`;
+    a.download = `Backup_AgendApp_${new Date().getTime()}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
     toast.success('Copia de seguridad descargada correctamente');
+    return true;
   } catch (error) {
-    console.error('Error exporting data:', error);
+    console.error("Error al exportar universal:", error);
     toast.error('Error al exportar los datos');
+    throw error;
   }
 };
 
@@ -38,16 +38,16 @@ export const importData = async (file: File) => {
     reader.onload = async (e) => {
       try {
         const content = e.target?.result as string;
-        const data = JSON.parse(content);
+        const parsedData = JSON.parse(content);
 
-        // Basic validation
-        if (!data.tasks || !Array.isArray(data.tasks)) {
-          throw new Error('Formato de archivo inválido');
-        }
-
-        await db.transaction('rw', db.tasks, async () => {
-          await db.tasks.clear();
-          await db.tasks.bulkAdd(data.tasks);
+        // Iniciar transacción de escritura general
+        await db.transaction('rw', db.tables, async () => {
+          for (const table of db.tables) {
+            if (parsedData[table.name] && Array.isArray(parsedData[table.name])) {
+              await table.clear(); // Limpiar tabla actual
+              await table.bulkAdd(parsedData[table.name]); // Inyectar backup
+            }
+          }
         });
 
         toast.success('Datos restaurados con éxito');
@@ -57,8 +57,8 @@ export const importData = async (file: File) => {
           window.location.reload();
         }, 1000);
       } catch (error) {
-        console.error('Error processing backup file:', error);
-        toast.error('El archivo de respaldo es inválido');
+        console.error("Error al importar universal:", error);
+        toast.error('El archivo de respaldo es inválido o hubo un error');
       }
     };
 
@@ -67,4 +67,49 @@ export const importData = async (file: File) => {
     console.error('Error reading file:', error);
     toast.error('Error al leer el archivo');
   }
+};
+
+export const rescueEmergencyBackup = async () => {
+  return new Promise((resolve, reject) => {
+    // Abrimos BD nativa sin especificar versión para evitar conflictos
+    const request = indexedDB.open('VectorLifeDB');
+
+    request.onsuccess = async (event) => {
+      const idb = (event.target as IDBOpenDBRequest).result;
+      const objectStoreNames = Array.from(idb.objectStoreNames);
+      const backupData: Record<string, any> = {
+        _meta: { isEmergencyRescue: true, timestamp: new Date().toISOString() }
+      };
+
+      try {
+        for (const storeName of objectStoreNames) {
+          backupData[storeName] = await new Promise((res, rej) => {
+            const transaction = idb.transaction(storeName, 'readonly');
+            const store = transaction.objectStore(storeName);
+            const getAll = store.getAll();
+            getAll.onsuccess = () => res(getAll.result);
+            getAll.onerror = () => rej(getAll.error);
+          });
+        }
+
+        const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `RESCATE_EMERGENCIA_AgendApp_${new Date().getTime()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        resolve(true);
+      } catch (error) {
+        reject(error);
+      } finally {
+        idb.close();
+      }
+    };
+
+    request.onerror = (event) => reject((event.target as IDBOpenDBRequest).error);
+  });
 };
