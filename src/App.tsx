@@ -25,7 +25,7 @@ import { LayoutDashboard, ListTodo, Loader2, Settings, BarChart3, Dumbbell, Menu
 import { BottomNav } from './components/BottomNav';
 import { MobileMenu } from './components/MobileMenu';
 
-type Tab = 'dashboard' | 'tasks' | 'analytics' | 'gym' | 'shop' | 'routines' | 'gamification';
+type Tab = 'dashboard' | 'tasks' | 'analytics' | 'gym' | 'shop' | 'routines' | 'gamification' | 'habits';
 
 function App() {
   const { init, isLoading, tasks } = useStore();

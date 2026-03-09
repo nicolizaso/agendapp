@@ -86,7 +86,7 @@ export function CreateHabitModal({ isOpen, onClose }: CreateHabitModalProps) {
             <CustomSelect
                 value={categoryId}
                 onChange={setCategoryId}
-                options={categories.map(c => ({ value: c.id, label: c.label, icon: c.icon }))}
+                options={categories.map(c => ({ value: c.id, label: c.label }))}
                 placeholder="Seleccionar categoría..."
             />
         </div>
