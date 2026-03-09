@@ -134,8 +134,6 @@ export const useStore = create<AppState>((set, get) => ({
         categories = await db.categories.toArray();
       }
 
-      await db.rewards.clear();
-      await db.rewardClaims.clear();
       rewards = await db.rewards.toArray();
       rewardClaims = await db.rewardClaims.toArray();
 
