@@ -10,8 +10,8 @@ import { CreateReward } from './CreateReward';
 import type { Reward } from '../../types';
 
 export function RewardList() {
-    const { rewards, tasks, rewardClaims, categories, claimReward, deleteReward } = useStore();
-    const wallet = useTicketWallet(tasks, rewardClaims, categories);
+    const { rewards, tasks, rewardClaims, categories, claimReward, deleteReward, habitClaims } = useStore();
+    const wallet = useTicketWallet(tasks, rewardClaims, habitClaims, categories);
     const [editingReward, setEditingReward] = useState<Reward | null>(null);
 
     const handleDelete = (id: string) => {

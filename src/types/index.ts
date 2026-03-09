@@ -47,12 +47,20 @@ export interface Habit {
   title: string;
   emoji: string;
   color: string;
+  categoryId: string;
 }
 
 export interface HabitLog {
-  id?: number;
+  id: string; // ${habitId}_${date}
   habitId: number;
   date: string; // ISO Date YYYY-MM-DD
+}
+
+export interface HabitClaim {
+  id: string; // week_YYYY-MM-DD (Monday)
+  weekStartDate: string;
+  claimedAt: string;
+  earnedTickets: { categoryId: string; amount: number }[];
 }
 
 export interface DailyNote {

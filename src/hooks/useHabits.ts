@@ -62,15 +62,15 @@ export const useHabits = create<HabitsState>((set, get) => ({
         if (isCompleted) {
             // Find the log and delete it
             const logs = await db.habitLogs
-                .where('[habitId+date]')
-                .equals([habitId, today])
+                .where({ habitId, date: today })
                 .toArray();
 
             if (logs.length > 0 && logs[0].id) {
                 await db.habitLogs.delete(logs[0].id);
             }
         } else {
-            await db.habitLogs.add({ habitId, date: today });
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await db.habitLogs.add({ id: `${habitId}_${today}`, habitId, date: today } as any);
         }
     } catch (error) {
         // Revert on error
