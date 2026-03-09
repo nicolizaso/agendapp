@@ -187,8 +187,8 @@ export function CreateTaskModal() {
                              if (taskToEdit.id) {
                                 const fullTaskData = { ...taskToEdit, ...taskData, id: taskToEdit.id };
                                 await db.tasks.put(fullTaskData);
-                                useStore.getState().set((state) => ({
-                                    tasks: state.tasks.map(t => t.id === taskToEdit.id ? fullTaskData : t)
+                                useStore.setState((state: any) => ({
+                                    tasks: state.tasks.map((t: Task) => t.id === taskToEdit.id ? fullTaskData : t)
                                 }));
                                 closeCreateModal();
                              }
@@ -249,8 +249,8 @@ export function CreateTaskModal() {
                                      await db.tasks.bulkPut(tasksToUpdate);
 
                                      // Update the global store to reflect the changes immediately
-                                     useStore.setState((state) => ({
-                                         tasks: state.tasks.map((stateTask) => {
+                                     useStore.setState((state: any) => ({
+                                         tasks: state.tasks.map((stateTask: Task) => {
                                              const updatedTask = tasksToUpdate.find(u => u.id === stateTask.id);
                                              return updatedTask ? { ...stateTask, ...updatedTask } : stateTask;
                                          })
