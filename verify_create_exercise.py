@@ -22,7 +22,7 @@ def verify_create_exercise():
             expect(page.get_by_text("Gym Tracker")).to_be_visible()
 
             # 4. Open Create Routine Modal
-            page.locator(".bg-neutral-950\/50 button").click()
+            page.locator("button.shrink-0").click()
 
             # 5. In CreateRoutineModal ("Nueva Rutina")
             expect(page.get_by_text("Nueva Rutina")).to_be_visible()
