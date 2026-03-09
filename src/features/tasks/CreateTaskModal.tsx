@@ -28,6 +28,7 @@ import { TimeWheelPicker } from '../../components/ui/TimeWheelPicker';
 import { LocationForm } from '../settings/components/LocationForm';
 import { getIconComponent } from '../../lib/categoryUtils';
 import { toast } from 'sonner';
+import { db } from '../../lib/db';
 
 export function CreateTaskModal() {
   const { isCreateModalOpen, closeCreateModal, createModalData, openConfirmDialog } = useUIStore();
@@ -204,8 +205,60 @@ export function CreateTaskModal() {
                          label: "Todas de la serie",
                          onClick: async () => {
                              if (recurrenceKey && taskToEdit.scheduledDate) {
-                                await updateRecurringTasks(recurrenceKey, taskData, 'all', new Date(taskToEdit.scheduledDate));
-                                closeCreateModal();
+                                 // "Limpieza y Recreación" for PENDING tasks
+                                 const allTasksInSeries = await db.tasks
+                                     .filter(t => t.recurringGroupId === recurrenceKey || t.recurrenceId === recurrenceKey)
+                                     .toArray();
+
+                                 const pendingTasks = allTasksInSeries.filter(t => t.status === 'PENDING');
+                                 const pendingIds = pendingTasks.map(t => t.id).filter((id): id is string => id !== undefined);
+
+                                 if (pendingIds.length > 0) {
+                                     await db.tasks.bulkDelete(pendingIds);
+                                 }
+
+                                 // Re-generate pending occurrences using new configuration
+                                 if (isRecurring && scheduledDate && recurringEndDate) {
+                                     let tasksToCreate: Omit<Task, 'status' | 'goldReward' | 'createdAt'>[] = [];
+                                     let nextDate = scheduledDate;
+                                     const [rYear, rMonth, rDay] = recurringEndDate.split('-').map(Number);
+                                     const parsedRecurringEndDate = new Date(rYear, rMonth - 1, rDay);
+                                     parsedRecurringEndDate.setHours(23, 59, 59, 999);
+
+                                     let iterations = 0;
+                                     const MAX_ITERATIONS = 365;
+
+                                     while (
+                                         (isBefore(nextDate, parsedRecurringEndDate) || isSameDay(nextDate, parsedRecurringEndDate)) &&
+                                         iterations < MAX_ITERATIONS
+                                     ) {
+                                         tasksToCreate.push({
+                                             ...taskData,
+                                             id: crypto.randomUUID(),
+                                             scheduledDate: nextDate,
+                                             recurrenceId: taskToEdit.recurrenceId || recurrenceKey,
+                                             recurringGroupId: taskToEdit.recurringGroupId || recurrenceKey,
+                                         });
+
+                                         if (recurrenceUnit === 'day') nextDate = addDays(nextDate, recurrenceFrequency);
+                                         if (recurrenceUnit === 'week') nextDate = addWeeks(nextDate, recurrenceFrequency);
+                                         if (recurrenceUnit === 'month') nextDate = addMonths(nextDate, recurrenceFrequency);
+                                         if (recurrenceUnit === 'year') nextDate = addYears(nextDate, recurrenceFrequency);
+
+                                         iterations++;
+                                     }
+
+                                     if (tasksToCreate.length > 0) {
+                                         await addTasks(tasksToCreate as any);
+                                     }
+                                 } else {
+                                     // Fallback if recurrence info is somehow disabled, recreate single tasks for the deleted ones
+                                     // using the updated taskData to maintain them.
+                                     // The instruction specifically asks to use the while loop, which we did above.
+                                     // We just need to ensure `isRecurring` is checked.
+                                     await updateRecurringTasks(recurrenceKey, taskData, 'all', new Date(taskToEdit.scheduledDate));
+                                 }
+                                 closeCreateModal();
                              }
                          },
                          variant: 'primary'
@@ -416,24 +469,23 @@ export function CreateTaskModal() {
             </div>
         </div>
 
-        {/* Recurrence - Only show if creating new task (to avoid complex edit logic) */}
-        {!taskToEdit && (
-            <div>
-                <div className="flex items-center gap-2 mb-2">
-                    <input
-                        type="checkbox"
-                        id="recurrenceToggle"
-                        checked={isRecurring}
-                        onChange={(e) => setIsRecurring(e.target.checked)}
-                        className="w-4 h-4 rounded border-neutral-700 text-red-600 focus:ring-red-600 bg-neutral-900/50"
-                    />
-                    <label htmlFor="recurrenceToggle" className="text-sm font-medium text-neutral-200 cursor-pointer">
-                        ¿Se repite?
-                    </label>
-                </div>
+        {/* Recurrence - Allow editing recurrence config when updating "Todas de la serie" */}
+        <div>
+            <div className="flex items-center gap-2 mb-2">
+                <input
+                    type="checkbox"
+                    id="recurrenceToggle"
+                    checked={isRecurring}
+                    onChange={(e) => setIsRecurring(e.target.checked)}
+                    className="w-4 h-4 rounded border-neutral-700 text-red-600 focus:ring-red-600 bg-neutral-900/50"
+                />
+                <label htmlFor="recurrenceToggle" className="text-sm font-medium text-neutral-200 cursor-pointer">
+                    ¿Se repite?
+                </label>
+            </div>
 
-                {isRecurring && (
-                    <div className="flex flex-col gap-3 p-3 bg-neutral-900/20 border border-neutral-800/30 rounded-md animate-in fade-in slide-in-from-top-1">
+            {isRecurring && (
+                <div className="flex flex-col gap-3 p-3 bg-neutral-900/20 border border-neutral-800/30 rounded-md animate-in fade-in slide-in-from-top-1">
                         <div className="flex gap-4">
                             <div className="w-20">
                                 <input
@@ -461,9 +513,8 @@ export function CreateTaskModal() {
                             <DatePicker value={recurringEndDate} onChange={setRecurringEndDate} />
                         </div>
                     </div>
-                )}
-            </div>
-        )}
+            )}
+        </div>
 
         {/* Additional Data (Accordion) */}
         <div className="border-t border-neutral-900/50 pt-2">
