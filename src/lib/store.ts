@@ -194,7 +194,10 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   updateTask: async (id, updates) => {
-    await db.tasks.update(id, updates);
+    const existingTask = await db.tasks.get(id);
+    if (existingTask) {
+        await db.tasks.put({ ...existingTask, ...updates });
+    }
     set((state) => ({
       tasks: state.tasks.map((t) => (t.id === id ? { ...t, ...updates } : t)),
     }));
@@ -235,7 +238,7 @@ export const useStore = create<AppState>((set, get) => ({
         }
 
         if (task.id) {
-          await db.tasks.update(task.id, newValues);
+          await db.tasks.put({ ...task, ...newValues });
         }
       }
     });
