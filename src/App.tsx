@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { isSameMinute } from 'date-fns';
 import { useStore } from './lib/store';
+import { resetDatabase } from './lib/db';
 import { useUIStore } from './hooks/useUIStore';
 import { useNotifications, getNotificationMessage } from './hooks/useNotifications';
 import { Layout } from './components/Layout';
@@ -87,6 +88,17 @@ function App() {
                     <p className="text-neutral-400 text-sm mb-3">Parece que hay un problema de conexión</p>
                     <Button variant="outline" onClick={() => window.location.reload()}>
                         Forzar Recarga
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        className="text-red-500 text-xs mt-4 hover:bg-red-500/10 hover:text-red-400"
+                        onClick={() => {
+                            if (window.confirm("¿Estás seguro de que quieres borrar todos tus datos locales? Esta acción no se puede deshacer.")) {
+                                resetDatabase();
+                            }
+                        }}
+                    >
+                        Resetear App (Borrar todos mis datos)
                     </Button>
                 </div>
             )}

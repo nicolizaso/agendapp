@@ -4,7 +4,7 @@ import { useStore } from '../../../lib/store';
 import { Modal } from '../../../components/Modal';
 import { Button } from '../../../components/Button';
 import { exportData, importData } from '../../backup/utils/backup';
-import { Cloud, Upload, AlertTriangle, Settings, Grid, Plus, Pencil, Trash2, MapPin } from 'lucide-react';
+import { Cloud, Upload, AlertTriangle, Settings, Grid, Plus, Pencil, Trash2, MapPin, Download } from 'lucide-react';
 import { IconResolver } from '../../../lib/categoryUtils';
 import { CategoryForm } from './CategoryForm';
 import { LocationForm } from './LocationForm';
@@ -226,47 +226,69 @@ export function SettingsModal() {
         )}
 
         {activeTab === 'general' && (
-          <div className="space-y-4 mt-6">
-            <h3 className="text-sm font-medium text-neutral-400 uppercase tracking-wider flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-red-600" />
-                Zona de Peligro / Datos
-            </h3>
-
-            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 space-y-4">
-                <p className="text-sm text-neutral-300">
-                    Administra tus datos locales. Puedes exportar una copia de seguridad o restaurarla en cualquier momento.
-                </p>
-
-                <div className="flex flex-col gap-3">
+          <div className="space-y-6 mt-6">
+            <div className="space-y-4">
+                <h3 className="text-sm font-medium text-neutral-400 uppercase tracking-wider flex items-center gap-2">
+                    <Download className="w-4 h-4 text-blue-400" />
+                    Copia de Seguridad
+                </h3>
+                <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-4 space-y-4">
+                    <p className="text-sm text-neutral-300">
+                        Guarda tus datos localmente de forma regular para evitar pérdidas.
+                    </p>
                     <Button
-                        variant="ghost"
+                        variant="outline"
                         onClick={exportData}
-                        className="w-full justify-start gap-3 border border-neutral-700 hover:bg-neutral-800"
+                        className="w-full gap-3 border-blue-500/50 text-blue-400 hover:bg-blue-500/10"
                     >
-                        <Cloud className="w-4 h-4" />
-                        Exportar Copia de Seguridad
+                        <Download className="w-4 h-4" />
+                        Descargar Copia de Seguridad
                     </Button>
-
-                    <Button
-                        variant="ghost"
-                        onClick={handleImportClick}
-                        className="w-full justify-start gap-3 border border-neutral-700 hover:bg-neutral-800"
-                    >
-                        <Upload className="w-4 h-4" />
-                        Restaurar Copia de Seguridad
-                    </Button>
-                    <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleFileChange}
-                        accept=".json"
-                        className="hidden"
-                    />
                 </div>
+            </div>
 
-                <p className="text-xs text-neutral-500 italic">
-                    * Al restaurar, se reemplazarán las tareas actuales.
-                </p>
+            <div className="space-y-4">
+                <h3 className="text-sm font-medium text-neutral-400 uppercase tracking-wider flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-red-600" />
+                    Zona de Peligro / Datos
+                </h3>
+
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 space-y-4">
+                    <p className="text-sm text-neutral-300">
+                        Administra tus datos locales. Puedes exportar una copia de seguridad o restaurarla en cualquier momento.
+                    </p>
+
+                    <div className="flex flex-col gap-3">
+                        <Button
+                            variant="ghost"
+                            onClick={exportData}
+                            className="w-full justify-start gap-3 border border-neutral-700 hover:bg-neutral-800"
+                        >
+                            <Cloud className="w-4 h-4" />
+                            Exportar Copia de Seguridad
+                        </Button>
+
+                        <Button
+                            variant="ghost"
+                            onClick={handleImportClick}
+                            className="w-full justify-start gap-3 border border-neutral-700 hover:bg-neutral-800"
+                        >
+                            <Upload className="w-4 h-4" />
+                            Restaurar Copia de Seguridad
+                        </Button>
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleFileChange}
+                            accept=".json"
+                            className="hidden"
+                        />
+                    </div>
+
+                    <p className="text-xs text-neutral-500 italic">
+                        * Al restaurar, se reemplazarán las tareas actuales.
+                    </p>
+                </div>
             </div>
           </div>
         )}
