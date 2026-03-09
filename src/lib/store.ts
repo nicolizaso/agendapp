@@ -45,11 +45,11 @@ interface AppState {
     recurringGroupId?: string;
     tickets?: number;
   }[]) => Promise<void>;
-  updateTask: (id: number, updates: Partial<Task>) => Promise<void>;
+  updateTask: (id: string, updates: Partial<Task>) => Promise<void>;
   updateRecurringTasks: (recurrenceId: string, updates: Partial<Task>, mode: 'this' | 'future' | 'single' | 'following' | 'all', referenceDate: Date) => Promise<void>;
-  deleteTask: (id: number) => Promise<void>;
+  deleteTask: (id: string) => Promise<void>;
   deleteRecurringTasks: (recurrenceId: string, mode: 'this' | 'future' | 'single' | 'following' | 'all', referenceDate: Date) => Promise<void>;
-  completeTask: (taskId: number) => Promise<void>;
+  completeTask: (taskId: string) => Promise<void>;
   addReward: (reward: Reward) => Promise<void>;
   updateReward: (id: string, updates: Partial<Reward>) => Promise<void>;
   deleteReward: (id: string) => Promise<void>;
@@ -60,7 +60,7 @@ interface AppState {
   addLocation: (location: Location) => Promise<void>;
   updateLocation: (id: string, updates: Partial<Location>) => Promise<void>;
   deleteLocation: (id: string) => Promise<void>;
-  deleteTasks: (ids: number[]) => Promise<void>;
+  deleteTasks: (ids: string[]) => Promise<void>;
 
   toggleHabitLog: (habitId: number, date: string) => Promise<void>;
   addHabitClaim: (claim: HabitClaim) => Promise<void>;
@@ -152,8 +152,9 @@ export const useStore = create<AppState>((set, get) => ({
     const effort = taskData.effort ?? 'LOW';
     const goldReward = calculateGoldReward(duration, effort);
 
-    const newTask: Task = {
+    const taskToSave: Task = {
       ...taskData,
+      id: (taskData as any).id || crypto.randomUUID(),
       durationMinutes: duration,
       effort: effort,
       scheduledDate: taskData.scheduledDate === undefined ? new Date() : taskData.scheduledDate,
@@ -162,8 +163,9 @@ export const useStore = create<AppState>((set, get) => ({
       createdAt: new Date(),
     };
 
-    const id = await db.tasks.add(newTask);
-    set((state) => ({ tasks: [...state.tasks, { ...newTask, id } as Task] }));
+    await db.tasks.add(taskToSave);
+    const updatedTasks = await db.tasks.toArray();
+    set({ tasks: updatedTasks });
   },
 
   addTasks: async (tasksData) => {
@@ -174,6 +176,7 @@ export const useStore = create<AppState>((set, get) => ({
 
       return {
         ...taskData,
+        id: (taskData as any).id || crypto.randomUUID(),
         durationMinutes: duration,
         effort: effort,
         scheduledDate: taskData.scheduledDate === undefined ? new Date() : taskData.scheduledDate,
@@ -254,7 +257,7 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   deleteRecurringTasks: async (recurrenceId, mode, referenceDate) => {
-    let tasksToDeleteIds: number[] = [];
+    let tasksToDeleteIds: string[] = [];
 
     const allRelatedTasks = await db.tasks
       .filter((t) => t.recurringGroupId === recurrenceId || t.recurrenceId === recurrenceId)
@@ -263,16 +266,16 @@ export const useStore = create<AppState>((set, get) => ({
     if (mode === 'future' || mode === 'following') {
       tasksToDeleteIds = allRelatedTasks
         .filter((t) => !!t.scheduledDate && new Date(t.scheduledDate) >= referenceDate)
-        .map(t => t.id as number)
+        .map(t => t.id as string)
         .filter(id => id !== undefined);
     } else if (mode === 'all') {
       tasksToDeleteIds = allRelatedTasks
-        .map(t => t.id as number)
+        .map(t => t.id as string)
         .filter(id => id !== undefined);
     } else if (mode === 'single' || mode === 'this') {
       tasksToDeleteIds = allRelatedTasks
         .filter((t) => t.scheduledDate && new Date(t.scheduledDate).getTime() === referenceDate.getTime())
-        .map(t => t.id as number)
+        .map(t => t.id as string)
         .filter(id => id !== undefined);
     }
 

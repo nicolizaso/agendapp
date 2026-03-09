@@ -14,7 +14,7 @@ export function AgendaModal() {
 
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-    const [selectedTaskIds, setSelectedTaskIds] = useState<number[]>([]);
+    const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
     const [activeTab, setActiveTab] = useState<'pending' | 'archived'>('pending');
 
     const filteredTasks = useMemo(() => {

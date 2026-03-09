@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useStore } from '../../lib/store';
 import { useUIStore } from '../../hooks/useUIStore';
+import type { Task } from '../../types';
 import { Modal } from '../../components/Modal';
 import { Button } from '../../components/Button';
 import {
@@ -145,6 +146,7 @@ export function CreateTaskModal() {
     }
 
     const taskData = {
+        id: crypto.randomUUID(),
         title,
         scheduledDate,
         category: category || undefined,
@@ -226,7 +228,7 @@ export function CreateTaskModal() {
         if (isRecurring && scheduledDate && recurringEndDate) {
           const recurrenceId = crypto.randomUUID(); // Generate Recurrence ID
           const recurringGroupId = crypto.randomUUID(); // Generate Recurring Group ID
-          const tasksToCreate = [];
+          let tasksToCreate: Task[] = [];
           let nextDate = scheduledDate;
           const [rYear, rMonth, rDay] = recurringEndDate.split('-').map(Number);
           const parsedRecurringEndDate = new Date(rYear, rMonth - 1, rDay);
@@ -240,16 +242,11 @@ export function CreateTaskModal() {
             iterations < MAX_ITERATIONS
           ) {
             tasksToCreate.push({
-                title,
+                ...taskData,
+                id: crypto.randomUUID(),
                 scheduledDate: nextDate,
-                category: category || undefined,
-                location,
-                notes,
-                isAllDay: !isTimeEnabled,
-                endTime: isTimeEnabled && endTime ? endTime : undefined,
                 recurrenceId,
                 recurringGroupId,
-                tickets
             });
 
             if (recurrenceUnit === 'day') nextDate = addDays(nextDate, recurrenceFrequency);
