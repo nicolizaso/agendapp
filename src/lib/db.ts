@@ -113,6 +113,24 @@ export class VectorLifeDB extends Dexie {
       habitLogs: 'id, habitId, date',
       habitClaims: 'id'
     });
+
+    this.version(14).stores({
+      tasks: 'id, category, scheduledDate, status, recurringGroupId',
+      categories: 'id, label, icon, color, bg, border, ring',
+      locations: 'id, name',
+      rewards: 'id',
+      rewardClaims: 'id',
+      habits: 'id, categoryId',
+      dailyNotes: 'date, content',
+      exercises: '++id, name, muscleGroup',
+      workouts: '++id, date, name, durationSeconds',
+      sets: '++id, workoutId, exerciseId, [exerciseId+date]',
+      routines: '++id, name, created_at',
+      routineExercises: '++id, routineId, exerciseId, order',
+      habitLogs: 'id, habitId, date',
+      habitClaims: 'id',
+      userStats: '++id' // <- ¡Tabla restaurada!
+    });
   }
 }
 
