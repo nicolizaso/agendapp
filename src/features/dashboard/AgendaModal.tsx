@@ -51,7 +51,7 @@ export function AgendaModal() {
         );
     };
 
-    const toggleTaskSelection = (taskId: number) => {
+    const toggleTaskSelection = (taskId: string) => {
         setSelectedTaskIds(prev =>
             prev.includes(taskId) ? prev.filter(id => id !== taskId) : [...prev, taskId]
         );
@@ -160,7 +160,7 @@ export function AgendaModal() {
                         <div className="divide-y divide-neutral-800/50">
                             {filteredTasks.map(task => {
                                 const catDef = categories.find(c => c.id === (task.category || 'otros'));
-                                const isSelected = task.id !== undefined && selectedTaskIds.includes(task.id);
+                                const isSelected = task.id !== undefined && selectedTaskIds.includes(String(task.id));
 
                                 return (
                                     <label
@@ -173,7 +173,7 @@ export function AgendaModal() {
                                         <input
                                             type="checkbox"
                                             checked={isSelected}
-                                            onChange={() => task.id !== undefined && toggleTaskSelection(task.id)}
+                                            onChange={() => task.id !== undefined && toggleTaskSelection(String(task.id))}
                                             className="w-4 h-4 rounded border-neutral-700 bg-neutral-900 text-red-600 focus:ring-red-600 focus:ring-offset-neutral-900 accent-red-600 shrink-0 cursor-pointer"
                                         />
 

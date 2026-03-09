@@ -228,7 +228,7 @@ export function CreateTaskModal() {
         if (isRecurring && scheduledDate && recurringEndDate) {
           const recurrenceId = crypto.randomUUID(); // Generate Recurrence ID
           const recurringGroupId = crypto.randomUUID(); // Generate Recurring Group ID
-          let tasksToCreate: Task[] = [];
+          let tasksToCreate: Omit<Task, 'status' | 'goldReward' | 'createdAt'>[] = [];
           let nextDate = scheduledDate;
           const [rYear, rMonth, rDay] = recurringEndDate.split('-').map(Number);
           const parsedRecurringEndDate = new Date(rYear, rMonth - 1, rDay);
@@ -258,7 +258,7 @@ export function CreateTaskModal() {
           }
 
           if (tasksToCreate.length > 0) {
-              await addTasks(tasksToCreate);
+              await addTasks(tasksToCreate as any);
           }
         } else {
           await addTask(taskData);
