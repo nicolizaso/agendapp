@@ -3,7 +3,7 @@ export type Effort = 'LOW' | 'MEDIUM' | 'HIGH';
 export type TaskStatus = 'PENDING' | 'COMPLETED';
 
 export interface Task {
-  id?: number;
+  id?: string;
   title: string;
   durationMinutes?: number;
   effort?: Effort;
