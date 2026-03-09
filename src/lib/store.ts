@@ -79,6 +79,13 @@ export const useStore = create<AppState>((set, get) => ({
 
   init: async () => {
     try {
+      try {
+          await db.open();
+      } catch (e) {
+          console.warn("Esperando auto-sanación de DB...");
+          return; // Detiene la carga del store si la DB falló, el reload de db.ts actuará.
+      }
+
       const statsCount = await db.userStats.count();
       if (statsCount === 0) {
         await db.userStats.add({ currentGold: 0, currentXp: 0, level: 1 });
