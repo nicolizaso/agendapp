@@ -56,16 +56,12 @@ export const resetDatabase = async () => {
     window.location.reload();
 };
 
-// Mecanismo de AUTO-SANACIÓN (Self-Healing)
-// Si la base de datos local está corrupta o tiene un conflicto de Clave Primaria, la borra y reinicia.
-db.open().catch(async (err) => {
+// Mecanismo de monitoreo de Base de Datos
+db.open().catch((err) => {
     console.error("🔥 Error crítico al abrir la Base de Datos:", err);
-    const isUpgradeError = err.name === 'UpgradeError' || err.name === 'DatabaseClosedError';
-    const hasPrimaryKeyConflict = err.message?.toLowerCase().includes('primary key');
-
-    if (isUpgradeError || hasPrimaryKeyConflict) {
-        await resetDatabase();
-    }
+    // IMPORTANTE: Ya no ejecutamos 'resetDatabase()' automáticamente por seguridad.
+    // Si la base se corrompe en el futuro, la app quedará en la pantalla de carga
+    // y el usuario deberá usar el botón explícito de "Resetear App" o "Descargar Backup".
 });
 
 // Seed de datos por defecto (Seguro)
