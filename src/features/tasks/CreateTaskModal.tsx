@@ -67,10 +67,16 @@ export function CreateTaskModal() {
 
   // Additional Data
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const [location, setLocation] = useState('');
+  const [locationQuery, setLocationQuery] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [notes, setNotes] = useState('');
   const [tickets, setTickets] = useState<number>(1);
+
+    const filteredLocations = locations.filter(loc =>
+        loc.name.toLowerCase().includes(locationQuery.toLowerCase()) ||
+        (loc.address && loc.address.toLowerCase().includes(locationQuery.toLowerCase()))
+    );
 
   // Effect to sync state when modal opens or data changes
   useEffect(() => {
@@ -78,7 +84,7 @@ export function CreateTaskModal() {
       if (taskToEdit) {
         setTitle(taskToEdit.title);
         setCategory(taskToEdit.category || null);
-        setLocation(taskToEdit.location || '');
+        setLocationQuery(taskToEdit.location || '');
         setNotes(taskToEdit.notes || '');
 
         setTickets(taskToEdit.tickets ?? 1);
@@ -109,7 +115,7 @@ export function CreateTaskModal() {
         // New Task
         setTitle('');
         setCategory(null);
-        setLocation('');
+        setLocationQuery('');
         setNotes('');
         setIsRecurring(false);
         setRecurrenceFrequency(1);
@@ -151,7 +157,7 @@ export function CreateTaskModal() {
         title,
         scheduledDate,
         category: category || undefined,
-        location,
+        location: locationQuery.trim(),
         notes,
         isAllDay: !isTimeEnabled,
         endTime: isTimeEnabled && endTime ? endTime : undefined,
@@ -528,27 +534,51 @@ export function CreateTaskModal() {
 
             {isDetailsOpen && (
                 <div className="mt-2 space-y-4 p-2 animate-in fade-in slide-in-from-top-2">
-                    <div>
+                    <div className="relative">
                         <label className="block text-xs font-medium text-neutral-400 mb-1">Ubicación</label>
-                        <CustomSelect
-                            value={location || ''}
-                            onChange={(val) => {
-                                if (val === 'NEW_LOCATION') {
-                                    setIsLocationModalOpen(true);
-                                } else {
-                                    setLocation(val);
-                                }
+                        <input
+                            type="text"
+                            value={locationQuery}
+                            onChange={(e) => {
+                                setLocationQuery(e.target.value);
+                                setShowSuggestions(true);
                             }}
-                            options={[
-                                { value: '', label: 'Sin ubicación específica' },
-                                ...locations.map(loc => ({
-                                    value: loc.id,
-                                    label: `${loc.name} ${loc.address ? `(${loc.address})` : ''}`
-                                })),
-                                { value: 'NEW_LOCATION', label: '+ Crear nuevo lugar...' }
-                            ]}
-                            placeholder="Seleccionar ubicación..."
+                            onFocus={() => setShowSuggestions(true)}
+                            onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                            placeholder="Ej: Oficina, Casa..."
+                            className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 text-sm text-neutral-200 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-red-600 transition-all"
                         />
+                        {showSuggestions && locationQuery.trim() !== '' && (
+                            <div className="absolute top-full mt-1 w-full bg-neutral-900 border border-neutral-800 rounded-xl shadow-2xl z-[100] overflow-hidden max-h-60 overflow-y-auto">
+                                {filteredLocations.map(loc => (
+                                    <button
+                                        key={loc.id}
+                                        type="button"
+                                        onClick={() => {
+                                            setLocationQuery(loc.address || loc.name);
+                                            setShowSuggestions(false);
+                                        }}
+                                        className="w-full text-left px-4 py-3 hover:bg-neutral-800/50 transition-colors border-b border-neutral-800/50 flex flex-col last:border-0"
+                                    >
+                                        <span className="text-sm text-neutral-200">{loc.name}</span>
+                                        {loc.address && (
+                                            <span className="text-xs text-neutral-500 mt-0.5">{loc.address}</span>
+                                        )}
+                                    </button>
+                                ))}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setIsLocationModalOpen(true);
+                                        setShowSuggestions(false);
+                                    }}
+                                    className="w-full text-left px-4 py-3 hover:bg-neutral-800/50 transition-colors flex items-center gap-2 text-red-500 text-sm border-t border-neutral-800"
+                                >
+                                    <span>+</span>
+                                    <span>Crear "{locationQuery}" como lugar frecuente</span>
+                                </button>
+                            </div>
+                        )}
                     </div>
                     <div>
                         <label className="block text-xs font-medium text-neutral-400 mb-1">Notas</label>
@@ -588,9 +618,9 @@ export function CreateTaskModal() {
     {isLocationModalOpen && (
       <Modal isOpen={true} onClose={() => setIsLocationModalOpen(false)} title="Nuevo Lugar Frecuente">
         <LocationForm
-          onSuccess={(newLocationId) => {
+          initialAddress={locationQuery}
+          onSuccess={() => {
             setIsLocationModalOpen(false);
-            setLocation(newLocationId);
           }}
           onCancel={() => setIsLocationModalOpen(false)}
         />

@@ -5,16 +5,17 @@ import type { Location } from '../../../types';
 
 interface LocationFormProps {
   initialData?: Location;
+  initialAddress?: string;
   onCancel?: () => void;
   onComplete?: () => void;
   onSuccess?: (id: string) => void;
 }
 
-export function LocationForm({ initialData, onCancel, onComplete, onSuccess }: LocationFormProps) {
+export function LocationForm({ initialData, initialAddress, onCancel, onComplete, onSuccess }: LocationFormProps) {
   const { addLocation, updateLocation } = useStore();
   const [formData, setFormData] = useState<Omit<Location, 'id'>>({
     name: initialData?.name || '',
-    address: initialData?.address || '',
+    address: initialData?.address || initialAddress || '',
     floor: initialData?.floor || '',
     apt: initialData?.apt || '',
     notes: initialData?.notes || ''
