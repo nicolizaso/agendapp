@@ -5,13 +5,13 @@ import { format } from 'date-fns';
 
 interface HabitsState {
   habits: Habit[];
-  todayLogs: Set<number>;
+  todayLogs: Set<string>;
   isLoading: boolean;
 
   fetchHabits: () => Promise<void>;
-  createHabit: (habit: Omit<Habit, 'id'>) => Promise<void>;
-  deleteHabit: (id: number) => Promise<void>;
-  toggleHabit: (habitId: number) => Promise<void>;
+  addHabit: (habit: Omit<Habit, 'id'>) => Promise<void>;
+  deleteHabit: (id: string) => Promise<void>;
+  toggleHabit: (habitId: string) => Promise<void>;
 }
 
 export const useHabits = create<HabitsState>((set, get) => ({
@@ -40,10 +40,20 @@ export const useHabits = create<HabitsState>((set, get) => ({
     }
   },
 
-  createHabit: async (habitData) => {
-    const id = await db.habits.add(habitData);
-    const newHabit = { ...habitData, id };
-    set(state => ({ habits: [...state.habits, newHabit] }));
+  addHabit: async (habit) => {
+    try {
+      const newHabit = {
+        ...habit,
+        id: crypto.randomUUID(), // <-- CRÍTICO: Generación de ID explícita requerida por Dexie
+        createdAt: new Date().toISOString(),
+      };
+      await db.habits.add(newHabit as Habit);
+      const habits = await db.habits.toArray();
+      set({ habits });
+    } catch (error) {
+      console.error('Error adding habit:', error);
+      throw error;
+    }
   },
 
   deleteHabit: async (id) => {
