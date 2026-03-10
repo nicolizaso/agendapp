@@ -348,7 +348,7 @@ export function CreateTaskModal() {
         {/* Date & Time */}
         <div className="flex flex-col space-y-2">
             <label className="block text-sm font-medium text-neutral-200">Fecha y Hora</label>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-5 sm:grid sm:grid-cols-2 sm:gap-4">
                 {/* Date Input */}
                 <div className="relative">
                     <DatePicker value={date} onChange={setDate} />
@@ -372,7 +372,7 @@ export function CreateTaskModal() {
                         </label>
                     </div>
 
-                    <div className="flex-1 flex items-center gap-2">
+                    <div className="flex flex-row gap-3 w-full">
                         <div className="flex-1 relative">
                             <button
                                 type="button"
@@ -394,13 +394,13 @@ export function CreateTaskModal() {
                                 </span>
                             </button>
                             {isTimePickerOpen && isTimeEnabled && (
-                                <div className="absolute top-full left-0 mt-2 z-50 p-4 bg-neutral-900 border border-neutral-800 rounded-xl shadow-2xl w-[280px] animate-in fade-in zoom-in-95 duration-100">
+                                <div className="absolute top-full mt-2 p-4 bg-neutral-900 border border-neutral-800 rounded-xl shadow-2xl w-[280px] max-w-[90vw] z-[100] sm:w-auto left-1/2 -translate-x-1/2 sm:left-0 sm:-translate-x-0 animate-in fade-in zoom-in-95 duration-100">
                                     <TimeWheelPicker value={time || "12:00"} onChange={setTime} />
                                 </div>
                             )}
                         </div>
 
-                        <span className="text-neutral-500 font-bold">-</span>
+                        <span className="text-neutral-500 font-bold flex items-center justify-center">-</span>
 
                         <div className="flex-1 relative">
                             <button
@@ -423,7 +423,7 @@ export function CreateTaskModal() {
                                 </span>
                             </button>
                             {isEndTimePickerOpen && isTimeEnabled && (
-                                <div className="absolute top-full right-0 mt-2 z-50 p-4 bg-neutral-900 border border-neutral-800 rounded-xl shadow-2xl w-[280px] animate-in fade-in zoom-in-95 duration-100">
+                                <div className="absolute top-full mt-2 p-4 bg-neutral-900 border border-neutral-800 rounded-xl shadow-2xl w-[280px] max-w-[90vw] z-[100] sm:w-auto left-1/2 -translate-x-1/2 sm:left-auto sm:right-0 sm:translate-x-0 animate-in fade-in zoom-in-95 duration-100">
                                     <TimeWheelPicker value={endTime || "12:00"} onChange={setEndTime} />
                                 </div>
                             )}
@@ -434,8 +434,8 @@ export function CreateTaskModal() {
         </div>
 
         {/* Categories & Tickets */}
-        <div className="grid grid-cols-3 gap-4">
-            <div className="col-span-2">
+        <div className="flex flex-col gap-5 sm:grid sm:grid-cols-3 sm:gap-4">
+            <div className="sm:col-span-2">
                 <label className="block text-sm font-medium text-neutral-200 mb-2">Categorías</label>
                 <CustomSelect
                     value={category}
@@ -444,7 +444,7 @@ export function CreateTaskModal() {
                     options={categoryOptions}
                 />
             </div>
-            <div className="col-span-1">
+            <div className="sm:col-span-1">
                 <label className="block text-sm font-medium text-neutral-200 mb-2 flex items-center gap-1">
                   <Ticket className="w-4 h-4 text-yellow-500" /> Tickets
                 </label>
@@ -564,21 +564,23 @@ export function CreateTaskModal() {
             )}
         </div>
 
-        <div className="pt-2 flex items-center justify-between">
+        <div className="pt-2 flex items-center justify-between w-full">
             {taskToEdit ? (
+                <>
                 <Button
                     type="button"
                     variant="ghost"
                     onClick={() => handleDelete(taskToEdit, closeCreateModal)}
-                    className="text-red-500 hover:bg-red-500/10 hover:text-red-400 gap-2"
+                    className="text-red-500 hover:bg-red-500/10 hover:text-red-400 gap-2 w-auto sm:w-auto"
                 >
                     <Trash2 className="w-4 h-4" />
                     <span className="hidden sm:inline">Eliminar</span>
                 </Button>
+                <Button type="submit" className="w-full sm:w-auto py-3 text-lg mt-4 sm:mt-0 sm:py-2 sm:text-base ml-2">{taskToEdit ? 'Guardar Cambios' : 'Crear Tarea'}</Button>
+                </>
             ) : (
-                <div />
+                <Button type="submit" className="w-full py-3 text-lg mt-4">{taskToEdit ? 'Guardar Cambios' : 'Crear Tarea'}</Button>
             )}
-            <Button type="submit">{taskToEdit ? 'Guardar Cambios' : 'Crear Tarea'}</Button>
         </div>
       </form>
     </Modal>
