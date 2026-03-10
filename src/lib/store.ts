@@ -62,7 +62,7 @@ interface AppState {
   deleteLocation: (id: string) => Promise<void>;
   deleteTasks: (ids: string[]) => Promise<void>;
 
-  toggleHabitLog: (habitId: number, date: string) => Promise<void>;
+  toggleHabitLog: (habitId: string, date: string) => Promise<void>;
   addHabitClaim: (claim: HabitClaim) => Promise<void>;
 }
 
@@ -378,7 +378,7 @@ export const useStore = create<AppState>((set, get) => ({
     set((state) => ({ locations: state.locations.filter((l) => l.id !== id) }));
   },
 
-  toggleHabitLog: async (habitId: number, date: string) => {
+  toggleHabitLog: async (habitId: string, date: string) => {
     const logId = `${habitId}_${date}`;
     const state = get();
     const existingLog = state.habitLogs.find(log => log.id === logId);

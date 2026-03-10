@@ -26,7 +26,7 @@ const COLORS = [
 ];
 
 export function CreateHabitModal({ isOpen, onClose }: CreateHabitModalProps) {
-  const { createHabit } = useHabits();
+  const { addHabit } = useHabits();
   const { categories } = useStore();
   const [title, setTitle] = useState('');
   const [emoji, setEmoji] = useState('');
@@ -37,7 +37,7 @@ export function CreateHabitModal({ isOpen, onClose }: CreateHabitModalProps) {
     e.preventDefault();
     if (!title || !categoryId) return;
 
-    await createHabit({
+    await addHabit({
       title,
       emoji: emoji || '⚡',
       color: selectedColor,

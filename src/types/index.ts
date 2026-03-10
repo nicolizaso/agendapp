@@ -43,7 +43,7 @@ export interface UserStats {
 }
 
 export interface Habit {
-  id?: number;
+  id?: string;
   title: string;
   emoji: string;
   color: string;
@@ -52,7 +52,7 @@ export interface Habit {
 
 export interface HabitLog {
   id: string; // ${habitId}_${date}
-  habitId: number;
+  habitId: string;
   date: string; // ISO Date YYYY-MM-DD
 }
 
