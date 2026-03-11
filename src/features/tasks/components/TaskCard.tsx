@@ -3,7 +3,7 @@ import { useStore } from '../../../lib/store';
 import { useUIStore } from '../../../hooks/useUIStore';
 import { useTaskDeletion } from '../../../hooks/useTaskDeletion';
 import { Button } from '../../../components/Button';
-import { CheckCircle, Clock, Trash2, Pencil } from 'lucide-react';
+import { CheckCircle, Clock, Trash2, Pencil, MapPin } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { format } from 'date-fns';
 
@@ -14,10 +14,13 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task, className, showDelete = true }: TaskCardProps) {
-  const { completeTask, categories } = useStore();
+  const { completeTask, categories, locations } = useStore();
   const { openCreateModal } = useUIStore();
   const { handleDelete } = useTaskDeletion();
   const category = categories.find(c => c.id === task.category);
+
+  const knownLocation = locations.find(l => l.id === task.location);
+  const displayLocation = knownLocation ? knownLocation.name : task.location;
 
   return (
     <div className={cn(
@@ -48,6 +51,12 @@ export function TaskCard({ task, className, showDelete = true }: TaskCardProps) 
               <Clock className="w-3 h-3" />
               {format(new Date(task.scheduledDate), 'HH:mm')}
               {task.endTime && ` - ${task.endTime}`}
+            </span>
+          )}
+          {displayLocation && (
+            <span className="text-neutral-400 flex items-center gap-1 shrink-0 ml-1 truncate">
+              <MapPin className="w-3 h-3" />
+              <span className="truncate max-w-[120px]">{displayLocation}</span>
             </span>
           )}
         </div>
