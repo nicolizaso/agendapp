@@ -153,7 +153,7 @@ export function CreateTaskModal() {
     }
 
     const taskData = {
-        id: crypto.randomUUID(),
+        id: taskToEdit ? taskToEdit.id : crypto.randomUUID(),
         title,
         scheduledDate,
         category: category || undefined,
@@ -193,9 +193,8 @@ export function CreateTaskModal() {
                              if (taskToEdit.id) {
                                 const fullTaskData = { ...taskToEdit, ...taskData, id: taskToEdit.id };
                                 await db.tasks.put(fullTaskData);
-                                useStore.setState((state: any) => ({
-                                    tasks: state.tasks.map((t: Task) => t.id === taskToEdit.id ? fullTaskData : t)
-                                }));
+                                const updatedTasks = await db.tasks.toArray();
+                                useStore.setState({ tasks: updatedTasks });
                                 closeCreateModal();
                              }
                          },
@@ -277,7 +276,10 @@ export function CreateTaskModal() {
              });
         } else {
              if (taskToEdit.id) {
-                await updateTask(taskToEdit.id, taskData);
+                const taskToUpdate = { ...taskToEdit, ...taskData, id: taskToEdit.id };
+                await db.tasks.put(taskToUpdate);
+                const updatedTasks = await db.tasks.toArray();
+                useStore.setState({ tasks: updatedTasks });
                 closeCreateModal();
              }
         }
