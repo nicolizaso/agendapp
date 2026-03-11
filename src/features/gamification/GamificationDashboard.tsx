@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { useStore } from '../../lib/store';
 import { useTicketWallet } from '../../lib/gamificationEngine';
 import { Button } from '../../components/Button';
-import { Trophy, Plus, Lock, Trash2, Edit2, Ticket, Wallet } from 'lucide-react';
+import { Trophy, Plus, Lock, Trash2, Edit2, Ticket, Wallet, RefreshCw } from 'lucide-react';
 import { IconResolver, AVAILABLE_ICONS } from '../../lib/categoryUtils';
 import { cn } from '../../lib/utils';
 import { CustomSelect } from '../../components/ui/CustomSelect';
 import { getIconComponent } from '../../lib/categoryUtils';
+import { TicketExchangeModal } from '../shop/components/TicketExchangeModal';
 import { toast } from 'sonner';
 import type { Reward } from '../../types';
 
@@ -15,6 +16,7 @@ export function GamificationDashboard() {
 
   const [isCreating, setIsCreating] = useState(false);
   const [editingReward, setEditingReward] = useState<Reward | null>(null);
+  const [isExchangeModalOpen, setIsExchangeModalOpen] = useState(false);
 
   const defaultCategory = categories.length > 0 ? categories[0].id : '';
   const [formData, setFormData] = useState({ title: '', costs: [{ categoryId: defaultCategory, amount: 1 }], icon: AVAILABLE_ICONS[0] });
@@ -104,13 +106,18 @@ export function GamificationDashboard() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-xl font-bold text-white">Mis Premios</h3>
-          <Button onClick={() => {
-            setFormData({ title: '', costs: [{ categoryId: defaultCategory, amount: 1 }], icon: AVAILABLE_ICONS[0] });
-            setIsCreating(true);
-            setEditingReward(null);
-          }} size="sm" className="gap-2">
-            <Plus className="w-4 h-4" /> Nuevo Premio
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="icon" onClick={() => setIsExchangeModalOpen(true)} className="rounded-full shrink-0">
+                <RefreshCw className="w-5 h-5 text-blue-400" />
+            </Button>
+            <Button onClick={() => {
+              setFormData({ title: '', costs: [{ categoryId: defaultCategory, amount: 1 }], icon: AVAILABLE_ICONS[0] });
+              setIsCreating(true);
+              setEditingReward(null);
+            }} size="sm" className="gap-2">
+              <Plus className="w-4 h-4" /> Nuevo Premio
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -319,6 +326,7 @@ export function GamificationDashboard() {
         </div>
       )}
 
+      <TicketExchangeModal isOpen={isExchangeModalOpen} onClose={() => setIsExchangeModalOpen(false)} />
     </div>
   );
 }
