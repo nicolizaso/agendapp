@@ -555,7 +555,7 @@ export function CreateTaskModal() {
                                         key={loc.id}
                                         type="button"
                                         onClick={() => {
-                                            setLocationQuery(loc.name || loc.address);
+                                            setLocationQuery(loc.address || loc.name);
                                             setShowSuggestions(false);
                                         }}
                                         className="w-full text-left px-4 py-3 hover:bg-neutral-800/50 transition-colors border-b border-neutral-800/50 flex flex-col last:border-0"
