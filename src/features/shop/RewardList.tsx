@@ -2,17 +2,19 @@ import { useStore } from '../../lib/store';
 import { Card, CardFooter, CardHeader, CardTitle } from '../../components/Card';
 import { Button } from '../../components/Button';
 import { useState } from 'react';
-import { Ticket, Pencil, Trash2 } from 'lucide-react';
+import { Ticket, Pencil, Trash2, RefreshCw } from 'lucide-react';
 import * as Icons from 'lucide-react';
 import { useTicketWallet } from '../../lib/gamificationEngine';
 import { cn } from '../../lib/utils';
 import { CreateReward } from './CreateReward';
+import { TicketExchangeModal } from './components/TicketExchangeModal';
 import type { Reward } from '../../types';
 
 export function RewardList() {
     const { rewards, tasks, rewardClaims, categories, claimReward, deleteReward, habitClaims } = useStore();
     const wallet = useTicketWallet(tasks, rewardClaims, habitClaims, categories);
     const [editingReward, setEditingReward] = useState<Reward | null>(null);
+    const [isExchangeModalOpen, setIsExchangeModalOpen] = useState(false);
 
     const handleDelete = (id: string) => {
         if (window.confirm('¿Seguro que quieres borrar este premio?')) {
@@ -24,13 +26,20 @@ export function RewardList() {
         return <CreateReward initialData={editingReward} onClose={() => setEditingReward(null)} />;
     }
 
-    if (rewards.length === 0) {
-        return <div className="text-center text-neutral-400 py-10">No hay recompensas disponibles. ¡Añade una!</div>
-    }
-
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {rewards.map((reward) => {
+        <div className="space-y-4">
+            <div className="flex justify-between items-center">
+                <h3 className="text-xl font-bold text-white">Recompensas</h3>
+                <Button variant="outline" size="icon" onClick={() => setIsExchangeModalOpen(true)} className="rounded-full shrink-0">
+                    <RefreshCw className="w-5 h-5 text-blue-400" />
+                </Button>
+            </div>
+
+            {rewards.length === 0 ? (
+                <div className="text-center text-neutral-400 py-10">No hay recompensas disponibles. ¡Añade una!</div>
+            ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {rewards.map((reward) => {
                 // Dynamic icon lookup (fallback to Gift)
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const iconName = reward.icon || 'Gift';
@@ -95,6 +104,10 @@ export function RewardList() {
                     </Card>
                 );
             })}
+                </div>
+            )}
+
+            <TicketExchangeModal isOpen={isExchangeModalOpen} onClose={() => setIsExchangeModalOpen(false)} />
         </div>
     );
 }
