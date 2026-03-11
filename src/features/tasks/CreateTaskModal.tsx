@@ -32,7 +32,7 @@ import { db } from '../../lib/db';
 
 export function CreateTaskModal() {
   const { isCreateModalOpen, closeCreateModal, createModalData, openConfirmDialog } = useUIStore();
-  const { addTask, addTasks, updateTask, updateRecurringTasks, categories, locations } = useStore();
+  const { addTask, addTasks, updateRecurringTasks, categories, locations } = useStore();
   const { initialDate, taskToEdit } = createModalData;
   const { handleDelete } = useTaskDeletion();
 
