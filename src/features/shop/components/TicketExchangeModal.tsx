@@ -6,7 +6,7 @@ import { Modal } from '../../../components/Modal';
 import { Button } from '../../../components/Button';
 import { CustomSelect } from '../../../components/ui/CustomSelect';
 import { getIconComponent } from '../../../lib/categoryUtils';
-import { Minus, Plus, Ticket } from 'lucide-react';
+import { Minus, Plus } from 'lucide-react';
 
 interface TicketExchangeModalProps {
   isOpen: boolean;
