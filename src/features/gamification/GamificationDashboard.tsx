@@ -74,22 +74,19 @@ export function GamificationDashboard() {
           <h2 className="text-2xl font-bold text-white">Mi Billetera</h2>
         </div>
 
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-3 items-center">
           {wallet.filter(b => b.earned > 0).map(balance => (
             <div
               key={balance.category.id}
               className={cn(
-                "flex items-center gap-3 p-3 rounded-xl border border-neutral-800/50 bg-neutral-950/50"
+                "flex items-center justify-center gap-2 px-4 py-2 rounded-full shadow-md font-bold text-lg text-white border border-white/20",
+                balance.category.bg,
+                balance.category.color
               )}
             >
-              <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", balance.category.bg, balance.category.color)}>
-                <IconResolver iconName={balance.category.icon} size={20} />
-              </div>
-              <div>
-                <div className="text-sm font-medium text-neutral-400">{balance.category.label}</div>
-                <div className="text-xl font-bold text-white flex items-center gap-1">
-                  {balance.available} <Ticket className="w-4 h-4 text-yellow-500" />
-                </div>
+              <IconResolver iconName={balance.category.icon} size={20} />
+              <div className="flex items-center gap-1">
+                {balance.available}
               </div>
             </div>
           ))}
