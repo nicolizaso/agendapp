@@ -114,15 +114,10 @@ export function TicketExchangeModal({ isOpen, onClose }: TicketExchangeModalProp
                 const IconComp = getIconComponent(b.category.icon);
                 return (
                   <div key={b.category.id} className="flex items-center justify-between bg-neutral-900 border border-neutral-800 p-3 rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${b.category.bg} ${b.category.color}`}>
-                        <IconComp size={16} />
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-neutral-200">{b.category.label}</div>
-                        <div className="text-xs text-neutral-500 flex items-center gap-1">
-                          Disponibles: {b.available} <Ticket className="w-3 h-3" />
-                        </div>
+                    <div className={`flex items-center justify-center gap-2 px-3 py-1.5 rounded-full shadow-md font-bold text-white border border-white/20 ${b.category.bg} ${b.category.color}`}>
+                      <IconComp size={16} />
+                      <div className="flex items-center gap-1 text-sm">
+                        {b.available}
                       </div>
                     </div>
 
