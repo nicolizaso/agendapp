@@ -14,6 +14,17 @@ export function TodaySection() {
     const { selectedDashboardDate, openCreateModal, setAgendaModalOpen } = useUIStore();
     const today = selectedDashboardDate;
 
+    const [isCollapsed, setIsCollapsed] = useState(() => {
+        const saved = localStorage.getItem('agenda_collapsed');
+        return saved ? JSON.parse(saved) : false;
+    });
+
+    const toggleCollapse = () => {
+        const newState = !isCollapsed;
+        setIsCollapsed(newState);
+        localStorage.setItem('agenda_collapsed', JSON.stringify(newState));
+    };
+
     const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
 
     const toggleCategory = (catId: string) => {
@@ -73,16 +84,22 @@ export function TodaySection() {
     };
 
     return (
-        <Card className="rounded-2xl bg-neutral-900/40 backdrop-blur border-neutral-800 animate-in slide-in-from-bottom-2 duration-500 h-full">
+        <Card className={`rounded-2xl bg-neutral-900/40 backdrop-blur border-neutral-800 animate-in slide-in-from-bottom-2 duration-500 ${isCollapsed ? '' : 'h-full'}`}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-2xl font-heading text-neutral-200">
-                    {isToday(selectedDashboardDate) ? "Agenda de Hoy" : "Agenda del " + format(selectedDashboardDate, "d 'de' MMMM", { locale: es })}
-                </CardTitle>
+                <div className="flex items-center gap-2 cursor-pointer" onClick={toggleCollapse}>
+                    <CardTitle className="text-2xl font-heading text-neutral-200">
+                        {isToday(selectedDashboardDate) ? "Agenda de Hoy" : "Agenda del " + format(selectedDashboardDate, "d 'de' MMMM", { locale: es })}
+                    </CardTitle>
+                    {isCollapsed ? <ChevronDown className="w-5 h-5 text-neutral-400" /> : <ChevronUp className="w-5 h-5 text-neutral-400" />}
+                </div>
                 <div className="flex items-center gap-1">
                     <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => setAgendaModalOpen(true)}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setAgendaModalOpen(true);
+                        }}
                         className="text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50"
                     >
                         <ClipboardList className="w-5 h-5" />
@@ -90,13 +107,17 @@ export function TodaySection() {
                     <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => openCreateModal({ initialDate: selectedDashboardDate })}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            openCreateModal({ initialDate: selectedDashboardDate });
+                        }}
                         className="text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50"
                     >
                         <Plus className="w-5 h-5" />
                     </Button>
                 </div>
             </CardHeader>
+            {!isCollapsed && (
             <CardContent className="space-y-4">
                 {todayTasks.length === 0 ? (
                     <div className="text-center py-8">
@@ -159,6 +180,7 @@ export function TodaySection() {
                     </div>
                 )}
             </CardContent>
+            )}
         </Card>
     );
 }
