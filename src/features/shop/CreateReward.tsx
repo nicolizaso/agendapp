@@ -16,6 +16,7 @@ export function CreateReward({ initialData, onClose }: { initialData?: Reward, o
   const updateReward = useStore((state) => state.updateReward);
   const categories = useStore((state) => state.categories);
   const [title, setTitle] = useState(initialData?.title || '');
+  const [description, setDescription] = useState(initialData?.description || '');
   const [icon, setIcon] = useState(initialData?.icon || 'Gift');
   const [costs, setCosts] = useState<{ categoryId: string; amount: number }[]>(initialData?.costs || [{ categoryId: categories[0]?.id || '', amount: 1 }]);
 
@@ -24,13 +25,16 @@ export function CreateReward({ initialData, onClose }: { initialData?: Reward, o
     const isValidCosts = costs.every(c => c.categoryId && c.amount > 0);
     if (!title || !isValidCosts) return;
 
+    const trimmedDescription = description.trim();
+
     if (initialData?.id) {
-      await updateReward(initialData.id, { title, costs, icon });
+      await updateReward(initialData.id, { title, description: trimmedDescription, costs, icon });
     } else {
-      await addReward({ id: crypto.randomUUID(), title, costs, icon });
+      await addReward({ id: crypto.randomUUID(), title, description: trimmedDescription, costs, icon });
     }
 
     setTitle('');
+    setDescription('');
     setCosts([{ categoryId: categories[0]?.id || '', amount: 1 }]);
     setIcon('Gift');
 
@@ -91,6 +95,16 @@ export function CreateReward({ initialData, onClose }: { initialData?: Reward, o
                   </div>
               </div>
             </div>
+          </div>
+
+          <div className="grid gap-2 flex-1 w-full">
+            <Label htmlFor="reward-description">Descripción (Opcional)</Label>
+            <Input
+                id="reward-description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Ej: Hamburguesa con papas y doble cheddar (Opcional)"
+            />
           </div>
 
           <div className="space-y-3">
