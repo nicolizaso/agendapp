@@ -484,7 +484,7 @@ export function CreateTaskModal() {
                   <Ticket className="w-4 h-4 text-yellow-500" /> Tickets
                 </label>
                 <div className="flex bg-neutral-900 border border-neutral-700 rounded-md p-1 overflow-hidden">
-                    {[1, 2, 3].map(val => (
+                    {[0, 1, 2, 3].map(val => (
                         <button
                             key={val}
                             type="button"

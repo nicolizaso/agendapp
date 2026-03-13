@@ -3,7 +3,7 @@ import { useStore } from '../../../lib/store';
 import { useUIStore } from '../../../hooks/useUIStore';
 import { useTaskDeletion } from '../../../hooks/useTaskDeletion';
 import { Button } from '../../../components/Button';
-import { CheckCircle, Clock, Trash2, Pencil, MapPin } from 'lucide-react';
+import { CheckCircle, Clock, Trash2, Pencil, MapPin, Ticket } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { format } from 'date-fns';
 
@@ -57,6 +57,12 @@ export function TaskCard({ task, className, showDelete = true }: TaskCardProps) 
             <span className="text-neutral-400 flex items-center gap-1 shrink-0 ml-1 truncate">
               <MapPin className="w-3 h-3" />
               <span className="truncate max-w-[120px]">{displayLocation}</span>
+            </span>
+          )}
+          {(task.tickets ?? 1) > 0 && (
+            <span className="text-yellow-500/80 flex items-center gap-1 shrink-0 ml-1">
+              <Ticket className="w-3 h-3" />
+              {task.tickets ?? 1}
             </span>
           )}
         </div>
