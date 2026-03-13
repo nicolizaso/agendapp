@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useStore } from '../../lib/store';
 import { useUIStore } from '../../hooks/useUIStore';
+import { useGymStore } from '../../hooks/useGymStore';
 import type { Task } from '../../types';
 import { Modal } from '../../components/Modal';
 import { Button } from '../../components/Button';
@@ -33,6 +34,7 @@ import { db } from '../../lib/db';
 export function CreateTaskModal() {
   const { isCreateModalOpen, closeCreateModal, createModalData, openConfirmDialog } = useUIStore();
   const { addTask, addTasks, updateRecurringTasks, categories, locations } = useStore();
+  const { routines, getRoutines } = useGymStore();
   const { initialDate, taskToEdit } = createModalData;
   const { handleDelete } = useTaskDeletion();
 
@@ -77,6 +79,12 @@ export function CreateTaskModal() {
         loc.name.toLowerCase().includes(locationQuery.toLowerCase()) ||
         (loc.address && loc.address.toLowerCase().includes(locationQuery.toLowerCase()))
     );
+
+  useEffect(() => {
+    if (isCreateModalOpen) {
+      getRoutines();
+    }
+  }, [isCreateModalOpen, getRoutines]);
 
   // Effect to sync state when modal opens or data changes
   useEffect(() => {
@@ -335,6 +343,9 @@ export function CreateTaskModal() {
     bgClass: cat.bg
   }));
 
+  const selectedCategoryObj = categories.find(c => c.id === category);
+  const isGymCategory = selectedCategoryObj && ['gym', 'gimnasio', 'entrenamiento'].includes(selectedCategoryObj.label.toLowerCase());
+
   return (
     <>
       <Modal isOpen={isCreateModalOpen} onClose={closeCreateModal} title={taskToEdit ? "Editar Tarea" : "Nueva Tarea"}>
@@ -342,15 +353,31 @@ export function CreateTaskModal() {
         {/* Title */}
         <div>
           <label className="block text-sm font-medium text-neutral-200 mb-1">Título</label>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full bg-neutral-900/50 border border-neutral-800 rounded-md p-3 text-neutral-200 focus:outline-none focus:ring-2 focus:ring-red-600 placeholder-neutral-700"
-            placeholder="Ej: Entrenar pierna"
-            required
-            autoFocus
-          />
+          {isGymCategory ? (
+            <select
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full bg-neutral-900/50 border border-neutral-800 rounded-md p-3 text-neutral-200 focus:outline-none focus:ring-2 focus:ring-red-600 placeholder-neutral-700"
+              required
+              autoFocus
+            >
+              <option value="" disabled>Seleccionar rutina...</option>
+              {routines.map((routine) => (
+                <option key={routine.id} value={routine.name}>{routine.name}</option>
+              ))}
+              <option value="Entrenamiento libre">Entrenamiento libre</option>
+            </select>
+          ) : (
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full bg-neutral-900/50 border border-neutral-800 rounded-md p-3 text-neutral-200 focus:outline-none focus:ring-2 focus:ring-red-600 placeholder-neutral-700"
+              placeholder="Ej: Entrenar pierna"
+              required
+              autoFocus
+            />
+          )}
         </div>
 
         {/* Date & Time */}
