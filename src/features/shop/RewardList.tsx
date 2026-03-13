@@ -54,7 +54,14 @@ export function RewardList() {
                     <Card key={reward.id} className="bg-neutral-900 border-neutral-800 flex flex-col justify-between transition-colors hover:border-neutral-700/50">
                         <CardHeader className="pb-2">
                              <div className="flex justify-between items-start">
-                                <CardTitle className="text-lg text-neutral-200">{reward.title}</CardTitle>
+                                <div>
+                                    <CardTitle className="text-lg text-neutral-200">{reward.title}</CardTitle>
+                                    {reward.description && (
+                                        <p className="text-sm text-gray-400 mt-1 line-clamp-2 leading-tight">
+                                            {reward.description}
+                                        </p>
+                                    )}
+                                </div>
                                 <div className="flex items-center gap-2">
                                     <button
                                         onClick={() => setEditingReward(reward)}

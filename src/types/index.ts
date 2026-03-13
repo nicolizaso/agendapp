@@ -24,6 +24,7 @@ export interface Task {
 export interface Reward {
   id: string;
   title: string;
+  description?: string;
   costs: { categoryId: string; amount: number }[];
   icon?: string;
 }
