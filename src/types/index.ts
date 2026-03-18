@@ -5,6 +5,7 @@ export type TaskStatus = 'PENDING' | 'COMPLETED';
 export interface Task {
   id?: string;
   title: string;
+  description?: string;
   durationMinutes?: number;
   effort?: Effort;
   status: TaskStatus;
