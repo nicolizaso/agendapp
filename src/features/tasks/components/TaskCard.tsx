@@ -66,12 +66,6 @@ export function TaskCard({ task, className, showDelete = true }: TaskCardProps) 
           </p>
         )}
         <div className="flex flex-wrap items-center gap-3 mt-2 text-xs font-body">
-          {displayLocation && (
-            <span className="text-neutral-400 flex items-center gap-1 shrink-0 ml-1 truncate">
-              <MapPin className="w-3 h-3" />
-              <span className="truncate max-w-[120px]">{displayLocation}</span>
-            </span>
-          )}
           {(task.tickets ?? 1) > 0 && (
             <span className="text-yellow-500/80 flex items-center gap-1 shrink-0 ml-1">
               <Ticket className="w-3 h-3" />
@@ -81,34 +75,44 @@ export function TaskCard({ task, className, showDelete = true }: TaskCardProps) 
         </div>
       </div>
 
-      <div className="flex justify-end items-center gap-2 mt-2 pt-3 border-t border-neutral-800/60 relative z-10">
-        {task.status === 'PENDING' && (
+      <div className="flex items-center justify-between mt-2 relative z-10">
+        <div className="flex items-center text-sm text-neutral-400 min-w-0 pr-3">
+          {displayLocation && (
+            <>
+              <MapPin className="w-4 h-4 mr-1 shrink-0" />
+              <span className="truncate">{displayLocation}</span>
+            </>
+          )}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {task.status === 'PENDING' && (
+            <Button
+              size="sm"
+              onClick={() => task.id && completeTask(task.id)}
+              className="bg-red-600 hover:bg-red-700 text-white gap-2 rounded-lg"
+            >
+              <CheckCircle className="w-4 h-4" />
+            </Button>
+          )}
           <Button
-            size="sm"
-            onClick={() => task.id && completeTask(task.id)}
-            className="bg-red-600 hover:bg-red-700 text-white gap-2 rounded-lg"
-          >
-            <CheckCircle className="w-4 h-4" />
-          </Button>
-        )}
-        <Button
-          size="icon"
-          variant="ghost"
-          onClick={() => openCreateModal({ taskToEdit: task })}
-          className="text-neutral-500 hover:text-neutral-200 transition-colors duration-200"
-        >
-          <Pencil className="w-4 h-4" />
-        </Button>
-        {showDelete && (
-           <Button
             size="icon"
             variant="ghost"
-            onClick={() => handleDelete(task)}
-            className="text-neutral-500 hover:text-red-500 transition-colors duration-200"
+            onClick={() => openCreateModal({ taskToEdit: task })}
+            className="text-neutral-500 hover:text-neutral-200 transition-colors duration-200"
           >
-            <Trash2 className="w-4 h-4" />
+            <Pencil className="w-4 h-4" />
           </Button>
-        )}
+          {showDelete && (
+             <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => handleDelete(task)}
+              className="text-neutral-500 hover:text-red-500 transition-colors duration-200"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
