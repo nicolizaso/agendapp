@@ -24,28 +24,33 @@ export function TaskCard({ task, className, showDelete = true }: TaskCardProps) 
 
   return (
     <div className={cn(
-      "bg-neutral-900 border border-neutral-800 rounded-xl p-4 flex items-center justify-between hover:bg-neutral-800/50 transition-colors group",
+      "relative bg-neutral-900 border border-neutral-800 rounded-xl p-4 flex items-center justify-between hover:bg-neutral-800/50 transition-colors group",
       task.status === 'COMPLETED' && "opacity-60",
       className
     )}>
-      <div className="flex-1 min-w-0 mr-4">
+      {category && (
+        <span className={cn(
+          "absolute top-3 right-3 text-xs px-2 py-1 rounded-full border bg-opacity-20 flex items-center gap-1 max-w-[100px] truncate",
+          category.color,
+          category.border,
+          category.bg
+        )}>
+          <span className="truncate">{category.label}</span>
+        </span>
+      )}
+      <div className="flex-1 min-w-0 pr-20 mr-4">
         <h3 className={cn(
-          "font-medium text-lg font-body break-words leading-tight",
+          "font-medium text-lg font-body break-words line-clamp-2 leading-tight",
           task.status === 'COMPLETED' ? "line-through text-neutral-400" : "text-neutral-200"
         )}>
           {task.title}
         </h3>
-        <div className="flex items-center gap-3 mt-2 text-xs font-body">
-          {category && (
-            <span className={cn(
-              "px-2 py-0.5 rounded-full border bg-opacity-20 flex items-center gap-1 shrink-0",
-              category.color,
-              category.border,
-              category.bg
-            )}>
-              {category.label}
-            </span>
-          )}
+        {task.description && (
+          <p className="text-sm text-neutral-400 mt-1 line-clamp-2 break-words w-full pr-4">
+            {task.description}
+          </p>
+        )}
+        <div className="flex flex-wrap items-center gap-3 mt-2 text-xs font-body">
           {!task.isAllDay && task.scheduledDate && (
             <span className="text-neutral-400 flex items-center gap-1 shrink-0">
               <Clock className="w-3 h-3" />
@@ -68,7 +73,7 @@ export function TaskCard({ task, className, showDelete = true }: TaskCardProps) 
         </div>
       </div>
 
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-2 shrink-0 mt-auto sm:mt-0 relative z-10">
         {task.status === 'PENDING' && (
           <Button
             size="sm"
