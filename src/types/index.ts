@@ -20,6 +20,8 @@ export interface Task {
   recurrenceId?: string;
   recurringGroupId?: string;
   tickets?: number;
+  floor?: string;
+  apartment?: string;
 }
 
 export interface Reward {
