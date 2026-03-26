@@ -19,8 +19,18 @@ export function TaskCard({ task, className, showDelete = true }: TaskCardProps) 
   const { handleDelete } = useTaskDeletion();
   const category = categories.find(c => c.id === task.category);
 
-  const knownLocation = locations.find(l => l.id === task.location);
-  const displayLocation = knownLocation ? knownLocation.name : task.location;
+  // Obtenemos el lugar guardado (si existe)
+  const knownLocation = locations.find(l => l.id === task.location || l.name === task.location);
+  const baseLocation = knownLocation ? knownLocation.name : task.location;
+
+  // Extraemos piso y depto (priorizando lo escrito en la tarea, y luego el lugar frecuente)
+  const floor = task.floor || knownLocation?.floor;
+  const apartment = task.apartment || knownLocation?.apt;
+
+  // Armamos el string final
+  let fullLocationText = baseLocation;
+  if (floor) fullLocationText += `, Piso ${floor}`;
+  if (apartment) fullLocationText += `, Depto ${apartment}`;
 
   return (
     <div
@@ -77,10 +87,10 @@ export function TaskCard({ task, className, showDelete = true }: TaskCardProps) 
 
       <div className="flex items-center justify-between mt-2 relative z-10">
         <div className="flex items-center text-sm text-neutral-400 min-w-0 pr-3">
-          {displayLocation && (
+          {fullLocationText && (
             <>
               <MapPin className="w-4 h-4 mr-1 shrink-0" />
-              <span className="truncate">{displayLocation}</span>
+              <span className="truncate">{fullLocationText}</span>
             </>
           )}
         </div>
