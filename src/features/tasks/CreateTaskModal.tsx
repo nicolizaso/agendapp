@@ -72,7 +72,6 @@ export function CreateTaskModal() {
   const [locationQuery, setLocationQuery] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
-  const [description, setDescription] = useState('');
   const [notes, setNotes] = useState('');
   const [tickets, setTickets] = useState<number>(1);
 
@@ -94,7 +93,6 @@ export function CreateTaskModal() {
         setTitle(taskToEdit.title);
         setCategory(taskToEdit.category || null);
         setLocationQuery(taskToEdit.location || '');
-        setDescription(taskToEdit.description || '');
         setNotes(taskToEdit.notes || '');
 
         setTickets(taskToEdit.tickets ?? 1);
@@ -126,7 +124,6 @@ export function CreateTaskModal() {
         setTitle('');
         setCategory(null);
         setLocationQuery('');
-        setDescription('');
         setNotes('');
         setIsRecurring(false);
         setRecurrenceFrequency(1);
@@ -166,7 +163,6 @@ export function CreateTaskModal() {
     const taskData = {
         id: taskToEdit ? taskToEdit.id : crypto.randomUUID(),
         title,
-        description: description.trim() || undefined,
         scheduledDate,
         category: category || undefined,
         location: locationQuery.trim(),
@@ -612,16 +608,6 @@ export function CreateTaskModal() {
                                 </button>
                             </div>
                         )}
-                    </div>
-                    <div>
-                        <label className="block text-xs font-medium text-neutral-400 mb-1">Descripción de la tarea</label>
-                        <textarea
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            rows={2}
-                            className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 text-sm text-neutral-200 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-red-600 transition-all resize-none"
-                            placeholder="Descripción opcional (se mostrará en la agenda)"
-                        />
                     </div>
                     <div>
                         <label className="block text-xs font-medium text-neutral-400 mb-1">Notas (solo lectura en detalle)</label>
