@@ -7,6 +7,7 @@ import { exportData, importData } from '../../backup/utils/backup';
 import { Cloud, Upload, AlertTriangle, Settings, Grid, Plus, Pencil, Trash2, MapPin, Download } from 'lucide-react';
 import { IconResolver } from '../../../lib/categoryUtils';
 import { CategoryForm } from './CategoryForm';
+import { bulkImportHolidays } from '../../../lib/importHolidays';
 import { LocationForm } from './LocationForm';
 import { cn } from '../../../lib/utils';
 import type { Category, Location } from '../../../types';
@@ -289,6 +290,12 @@ export function SettingsModal() {
                         * Al restaurar, se reemplazarán las tareas actuales.
                     </p>
                 </div>
+            </div>
+
+            <div className="mt-6 pt-6 border-t border-neutral-800">
+              <Button variant="outline" onClick={bulkImportHolidays} className="w-full">
+                Cargar Feriados 2026
+              </Button>
             </div>
           </div>
         )}
