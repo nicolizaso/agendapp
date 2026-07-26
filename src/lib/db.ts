@@ -25,9 +25,9 @@ export class VectorLifeDB extends Dexie {
   constructor() {
     super('VectorLifeDB');
 
-    // Esquema Maestro Definitivo (Versión 20 para forzar el upgrade en cualquier cliente local)
+    // Esquema Maestro Definitivo (Versión 21 para forzar el upgrade en cualquier cliente local)
     // Se han aplanado todas las versiones anteriores para evitar conflictos de upgrade paths.
-    this.version(20).stores({
+    this.version(21).stores({
       tasks: 'id, category, scheduledDate, status, recurringGroupId',
       categories: 'id, label, icon, color, bg, border, ring',
       locations: 'id, name',
@@ -37,7 +37,7 @@ export class VectorLifeDB extends Dexie {
       habitLogs: 'id, habitId, date',
       habitClaims: 'id',
       dailyNotes: 'date, content',
-      exercises: '++id, name, muscleGroup',
+      exercises: '++id, name, muscleGroup, equipment',
       workouts: '++id, date, name, durationSeconds',
       sets: '++id, workoutId, exerciseId, [exerciseId+date]',
       routines: '++id, name, created_at',

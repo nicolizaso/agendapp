@@ -1,21 +1,16 @@
-import { LayoutDashboard, CheckSquare, PlusCircle, Dumbbell, Ticket } from 'lucide-react';
+import { Dumbbell, ClipboardList, Library } from 'lucide-react';
 import { clsx } from 'clsx';
-import { useUIStore } from '../hooks/useUIStore';
 
 interface BottomNavProps {
   activeTab: string;
-  onTabChange: (tab: any) => void;
+  onTabChange: (tab: string) => void;
 }
 
 export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
-  const { openCreateModal } = useUIStore();
-
   const items = [
-    { id: 'dashboard', icon: LayoutDashboard, label: 'Inicio' },
-    { id: 'tasks', icon: CheckSquare, label: 'Tareas' },
-    { id: 'create', icon: PlusCircle, label: 'Crear' },
     { id: 'gym', icon: Dumbbell, label: 'Gym' },
-    { id: 'gamification', icon: Ticket, label: 'Premios' },
+    { id: 'routines', icon: ClipboardList, label: 'Rutinas' },
+    { id: 'exercises', icon: Library, label: 'Ejercicios' },
   ];
 
   return (
@@ -24,19 +19,6 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
         {items.map((item) => {
           const Icon = item.icon;
 
-          if (item.id === 'create') {
-            return (
-              <button
-                key={item.id}
-                onClick={() => openCreateModal()}
-                className="flex flex-col items-center justify-center w-full h-full gap-1 transition-colors text-rose-500 hover:text-rose-400"
-                aria-label="Crear"
-              >
-                <Icon className="w-8 h-8" />
-              </button>
-            );
-          }
-
           const isActive = activeTab === item.id;
           return (
             <button
@@ -44,7 +26,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
               onClick={() => onTabChange(item.id)}
               className={clsx(
                 "flex flex-col items-center justify-center w-full h-full gap-1 transition-colors",
-                isActive ? "text-red-600" : "text-neutral-500 hover:text-neutral-400"
+                isActive ? "text-lime-500" : "text-neutral-500 hover:text-neutral-400"
               )}
             >
               <Icon className={clsx("w-5 h-5", isActive && "fill-current/20")} />

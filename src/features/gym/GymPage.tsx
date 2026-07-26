@@ -13,7 +13,7 @@ export function GymPage() {
 
   if (isLoading) {
     return (
-        <div className="h-full flex items-center justify-center text-red-500">
+        <div className="h-full flex items-center justify-center text-lime-400">
             <Loader2 className="w-8 h-8 animate-spin" />
         </div>
     );

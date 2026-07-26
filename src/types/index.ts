@@ -75,6 +75,8 @@ export interface Exercise {
   id?: number;
   name: string;
   muscleGroup: string;
+  equipment?: string;
+  fitNotes?: string;
 }
 
 export interface Workout {

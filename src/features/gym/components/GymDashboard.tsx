@@ -1,54 +1,107 @@
 import { useEffect, useState } from 'react';
 import { useGymStore } from '../../../hooks/useGymStore';
 import { Button } from '../../../components/Button';
-import { CustomSelect } from '../../../components/ui/CustomSelect';
-import { RoutineModal } from './RoutineModal';
-import { Dumbbell, History, TrendingUp, ChevronRight, Plus } from 'lucide-react';
+import { Dumbbell, Calendar as CalendarIcon } from 'lucide-react';
 import { db } from '../../../lib/db';
-import type { Workout } from '../../../types';
-import { LineChart, Line, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
+import type { Routine } from '../../../types';
+import { WorkoutDetailModal } from './WorkoutDetailModal';
 
 export function GymDashboard() {
-  const { startWorkout, routines, getRoutines, loadRoutineIntoWorkout } = useGymStore();
-  const [recentWorkouts, setRecentWorkouts] = useState<Workout[]>([]);
-  const [chartData, setChartData] = useState<{date: string, count: number}[]>([]);
-  const [selectedRoutine, setSelectedRoutine] = useState<string>('');
-  const [isCreateRoutineOpen, setIsCreateRoutineOpen] = useState(false);
+  const { startWorkout, routines, getRoutines, loadRoutineIntoWorkout, getWorkoutsForMonth } = useGymStore();
+  const [suggestedRoutine, setSuggestedRoutine] = useState<Routine | null>(null);
+  const [trainedDays, setTrainedDays] = useState<number[]>([]);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
 
-  const routineOptions = routines.map(r => ({
-        value: r.id!.toString(),
-        label: r.name
-    }));
+  const [selectedWorkoutId, setSelectedWorkoutId] = useState<number | null>(null);
 
   useEffect(() => {
     getRoutines();
   }, [getRoutines]);
 
   useEffect(() => {
-    const loadData = async () => {
-      // Recent Workouts
-      const workouts = await db.workouts.orderBy('date').reverse().limit(5).toArray();
-      setRecentWorkouts(workouts);
+    if (routines.length > 0) {
+      // Pick a random routine for "Entrenamiento a 1 Clic"
+      const randomIndex = Math.floor(Math.random() * routines.length);
+      setSuggestedRoutine(routines[randomIndex]);
+    } else {
+      setSuggestedRoutine(null);
+    }
+  }, [routines]);
 
-      // Chart Data (Last 10 sessions duration)
-      const allWorkouts = await db.workouts.orderBy('date').toArray();
-      const data = allWorkouts.slice(-10).map(w => ({
-          date: format(w.date, 'dd/MM'),
-          count: Math.round(w.durationSeconds / 60)
-      }));
-      setChartData(data);
+  useEffect(() => {
+    const fetchTrainedDays = async () => {
+      const days = await getWorkoutsForMonth(currentMonth.getFullYear(), currentMonth.getMonth());
+      setTrainedDays(days);
     };
-    loadData();
-  }, []);
+    fetchTrainedDays();
+  }, [currentMonth, getWorkoutsForMonth]);
 
-  const handleStart = () => {
-    if (selectedRoutine) {
-      loadRoutineIntoWorkout(parseInt(selectedRoutine));
+  const handleStartSuggested = () => {
+    if (suggestedRoutine && suggestedRoutine.id) {
+      loadRoutineIntoWorkout(suggestedRoutine.id);
     } else {
       startWorkout();
     }
+  };
+
+  const renderCalendar = () => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDayIndex = new Date(year, month, 1).getDay();
+
+    // Adjust for Monday start (0=Monday, 6=Sunday)
+    const startDay = firstDayIndex === 0 ? 6 : firstDayIndex - 1;
+
+    const days = [];
+    for (let i = 0; i < startDay; i++) {
+        days.push(<div key={`empty-${i}`} className="h-8"></div>);
+    }
+
+    for (let i = 1; i <= daysInMonth; i++) {
+        const isTrained = trainedDays.includes(i);
+        days.push(
+            <div
+                key={i}
+                onClick={async () => {
+                    if (isTrained) {
+                        // Find the workout for this day
+                        const startOfDay = new Date(year, month, i);
+                        const endOfDay = new Date(year, month, i, 23, 59, 59);
+                        const workouts = await db.workouts.where('date').between(startOfDay, endOfDay).toArray();
+                        if (workouts.length > 0 && workouts[0].id) {
+                            setSelectedWorkoutId(workouts[0].id);
+                        }
+                    }
+                }}
+                className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${isTrained ? 'bg-lime-500 text-neutral-950 cursor-pointer shadow-[0_0_10px_rgba(132,204,22,0.4)]' : 'text-neutral-500'}`}
+            >
+                {i}
+            </div>
+        );
+    }
+
+    return (
+        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4">
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="font-bold text-neutral-200 flex items-center gap-2">
+                    <CalendarIcon className="w-4 h-4 text-lime-500" />
+                    Asistencia
+                </h3>
+                <span className="text-sm font-medium text-neutral-400 capitalize">
+                    {currentMonth.toLocaleString('es', { month: 'long', year: 'numeric' })}
+                </span>
+            </div>
+            <div className="grid grid-cols-7 gap-1 text-center mb-2">
+                {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(d => (
+                    <div key={d} className="text-xs font-bold text-neutral-600">{d}</div>
+                ))}
+            </div>
+            <div className="grid grid-cols-7 gap-y-2 gap-x-1 justify-items-center">
+                {days}
+            </div>
+        </div>
+    );
   };
 
   return (
@@ -58,107 +111,35 @@ export function GymDashboard() {
       <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 relative overflow-hidden">
         <div className="relative z-10">
             <h2 className="text-3xl font-heading font-bold text-white mb-2">Gym Tracker</h2>
-            <p className="text-neutral-400 mb-6">¿Listo para romper tus límites?</p>
 
-            {/* Routine Selector */}
-            <div className="mb-4 bg-neutral-950/50 p-4 rounded-xl border border-neutral-800/50 backdrop-blur-sm">
-              <label className="text-xs font-bold text-neutral-500 uppercase mb-2 block">Seleccionar Rutina</label>
-              <div className="flex gap-2">
-                <div className="flex-1">
-                    <CustomSelect
-                        value={selectedRoutine}
-                        onChange={setSelectedRoutine}
-                        options={routineOptions}
-                        placeholder="Seleccionar rutina..."
-                    />
-                </div>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setIsCreateRoutineOpen(true)}
-                  className="shrink-0"
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
+            <div className="mt-6 mb-4">
+                <p className="text-sm text-neutral-400 font-medium uppercase tracking-wider mb-1">Hoy toca:</p>
+                <h3 className="text-2xl font-bold text-lime-400 drop-shadow-md">
+                    {suggestedRoutine ? suggestedRoutine.name : 'Entrenamiento Libre'}
+                </h3>
             </div>
 
             <Button
-                onClick={handleStart}
-                className="w-full bg-red-600 hover:bg-red-700 text-white font-bold text-lg py-6 shadow-[0_0_20px_rgba(220,38,38,0.4)] cursor-pointer"
+                onClick={handleStartSuggested}
+                className="w-full bg-lime-500 hover:bg-lime-600 text-neutral-950 font-bold text-lg py-6 shadow-[0_0_20px_rgba(132,204,22,0.3)] min-h-[64px]"
             >
                 <Dumbbell className="w-6 h-6 mr-3" />
-                {selectedRoutine ? 'INICIAR RUTINA' : 'COMENZAR ENTRENAMIENTO'}
+                INICIAR ENTRENAMIENTO
             </Button>
         </div>
 
         {/* Decorative BG */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-red-600/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute top-0 right-0 w-64 h-64 bg-lime-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
       </div>
 
-      <RoutineModal
-        isOpen={isCreateRoutineOpen}
-        onClose={() => setIsCreateRoutineOpen(false)}
-      />
+      {renderCalendar()}
 
-      {/* Analytics Sparkline */}
-      {chartData.length > 1 && (
-        <div className="bg-neutral-900/50 border border-neutral-800 rounded-xl p-4">
-            <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-neutral-300 flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-red-500" />
-                    Rendimiento (Minutos)
-                </h3>
-            </div>
-            <div className="h-32 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData}>
-                        <XAxis dataKey="date" hide />
-                        <Tooltip
-                            contentStyle={{ backgroundColor: '#171717', border: '1px solid #262626', borderRadius: '8px' }}
-                            itemStyle={{ color: '#fff' }}
-                            labelStyle={{ color: '#a3a3a3' }}
-                        />
-                        <Line
-                            type="monotone"
-                            dataKey="count"
-                            stroke="#dc2626"
-                            strokeWidth={3}
-                            dot={{ fill: '#dc2626', strokeWidth: 0, r: 4 }}
-                            activeDot={{ r: 6, fill: '#fff' }}
-                        />
-                    </LineChart>
-                </ResponsiveContainer>
-            </div>
-        </div>
+      {selectedWorkoutId && (
+        <WorkoutDetailModal
+            workoutId={selectedWorkoutId}
+            onClose={() => setSelectedWorkoutId(null)}
+        />
       )}
-
-      {/* Recent History */}
-      <div>
-        <h3 className="font-bold text-neutral-300 mb-3 flex items-center gap-2">
-            <History className="w-4 h-4" />
-            Últimas Sesiones
-        </h3>
-        <div className="space-y-3">
-            {recentWorkouts.length === 0 ? (
-                <div className="text-center p-8 border border-dashed border-neutral-800 rounded-xl text-neutral-500">
-                    Sin historial reciente
-                </div>
-            ) : (
-                recentWorkouts.map(workout => (
-                    <div key={workout.id} className="bg-neutral-900 border border-neutral-800 p-4 rounded-xl flex items-center justify-between group cursor-pointer hover:border-neutral-700 transition-colors">
-                        <div>
-                            <h4 className="font-bold text-white">{workout.name}</h4>
-                            <p className="text-xs text-neutral-400 capitalize">
-                                {format(workout.date, "EEEE d 'de' MMMM", { locale: es })} • {Math.round(workout.durationSeconds / 60)} min
-                            </p>
-                        </div>
-                        <ChevronRight className="text-neutral-600 group-hover:text-white transition-colors" />
-                    </div>
-                ))
-            )}
-        </div>
-      </div>
     </div>
   );
 }

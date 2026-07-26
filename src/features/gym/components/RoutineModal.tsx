@@ -121,9 +121,9 @@ export function RoutineModal({ isOpen, onClose, initialData }: RoutineModalProps
               <button
                 key={ex.id}
                 onClick={() => handleAddExercise(ex)}
-                className="w-full text-left p-3 rounded-lg bg-neutral-800/50 hover:bg-neutral-800 border border-neutral-800 flex justify-between items-center"
+                className="w-full text-left p-4 rounded-lg bg-neutral-800/50 hover:bg-neutral-800 border border-neutral-800 flex justify-between items-center min-h-[56px]"
               >
-                <span className="text-neutral-200">{ex.name}</span>
+                <span className="text-neutral-200 font-medium">{ex.name}</span>
                 <span className="text-xs text-neutral-500 bg-neutral-900 px-2 py-1 rounded">{ex.muscleGroup}</span>
               </button>
             ))}
@@ -171,31 +171,32 @@ export function RoutineModal({ isOpen, onClose, initialData }: RoutineModalProps
 
                   <div className="grid grid-cols-3 gap-3">
                     <div>
-                      <label className="text-[10px] text-neutral-500 uppercase font-bold">Series</label>
+                      <label className="text-[10px] text-neutral-500 uppercase font-bold">Peso Inicial</label>
                       <input
-                        type="number"
-                        className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-2 py-1.5 text-sm text-center focus:border-red-500 focus:outline-none"
-                        value={ex.targetSets}
-                        onChange={(e) => updateExercise(idx, 'targetSets', parseInt(e.target.value) || 0)}
+                        type="text"
+                        placeholder="Op."
+                        className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-2 py-1.5 text-sm text-center focus:border-lime-500 focus:outline-none min-h-[44px]"
+                        value={ex.targetWeight}
+                        onChange={(e) => updateExercise(idx, 'targetWeight', e.target.value)}
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] text-neutral-500 uppercase font-bold">Reps</label>
+                      <label className="text-[10px] text-neutral-500 uppercase font-bold text-center block">Rango de Reps</label>
                       <input
                         type="text"
-                        className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-2 py-1.5 text-sm text-center focus:border-red-500 focus:outline-none"
+                        placeholder="8-12"
+                        className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-2 py-1.5 text-sm text-center focus:border-lime-500 focus:outline-none min-h-[44px]"
                         value={ex.targetReps}
                         onChange={(e) => updateExercise(idx, 'targetReps', e.target.value)}
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] text-neutral-500 uppercase font-bold">Peso</label>
+                      <label className="text-[10px] text-neutral-500 uppercase font-bold text-center block">Cant. Series</label>
                       <input
-                        type="text"
-                        placeholder="Op."
-                        className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-2 py-1.5 text-sm text-center focus:border-red-500 focus:outline-none"
-                        value={ex.targetWeight}
-                        onChange={(e) => updateExercise(idx, 'targetWeight', e.target.value)}
+                        type="number"
+                        className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-2 py-1.5 text-sm text-center focus:border-lime-500 focus:outline-none min-h-[44px]"
+                        value={ex.targetSets}
+                        onChange={(e) => updateExercise(idx, 'targetSets', parseInt(e.target.value) || 0)}
                       />
                     </div>
                   </div>
@@ -207,11 +208,11 @@ export function RoutineModal({ isOpen, onClose, initialData }: RoutineModalProps
           <div className="pt-2">
             <Button
               variant="primary"
-              className="w-full gap-2 justify-center"
+              className="w-full gap-2 justify-center min-h-[56px] text-lg"
               onClick={handleSave}
               disabled={!name || addedExercises.length === 0}
             >
-              <Save className="w-4 h-4" /> {initialData ? "Guardar Cambios" : "Guardar Rutina"}
+              <Save className="w-5 h-5" /> {initialData ? "Guardar Cambios" : "Guardar Rutina"}
             </Button>
           </div>
         </div>

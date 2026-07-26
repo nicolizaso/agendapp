@@ -5,6 +5,7 @@ import { RestTimer } from './RestTimer';
 import { Button } from '../../../components/Button';
 import { Search, Plus } from 'lucide-react';
 import { CreateExerciseModal } from './CreateExerciseModal';
+import { BusyMachineModal } from './BusyMachineModal';
 
 export function ActiveWorkout() {
   const {
@@ -21,6 +22,8 @@ export function ActiveWorkout() {
   const [isCreateExerciseOpen, setIsCreateExerciseOpen] = useState(false);
   const [search, setSearch] = useState('');
 
+  const [busyMachineProps, setBusyMachineProps] = useState<{ isOpen: boolean, exerciseIndex: number, currentExerciseName: string, muscleGroup: string } | null>(null);
+
   // Global Timer
   useEffect(() => {
     if (!activeWorkoutStartTime) return;
@@ -31,6 +34,21 @@ export function ActiveWorkout() {
     }, 1000);
     return () => clearInterval(interval);
   }, [activeWorkoutStartTime]);
+
+  useEffect(() => {
+    const handleOpenBusyMachineModal = (e: Event) => {
+        const customEvent = e as CustomEvent;
+        setBusyMachineProps({
+            isOpen: true,
+            exerciseIndex: customEvent.detail.exerciseIndex,
+            currentExerciseName: customEvent.detail.currentExerciseName,
+            muscleGroup: customEvent.detail.muscleGroup
+        });
+    };
+
+    window.addEventListener('open-busy-machine-modal', handleOpenBusyMachineModal);
+    return () => window.removeEventListener('open-busy-machine-modal', handleOpenBusyMachineModal);
+  }, []);
 
   const formatDuration = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
@@ -54,7 +72,7 @@ export function ActiveWorkout() {
                     {formatDuration(duration)}
                 </span>
             </div>
-            <Button onClick={finishWorkout} variant="primary" className="bg-red-600 hover:bg-red-700 text-white font-bold">
+            <Button onClick={finishWorkout} variant="primary" className="bg-lime-600 hover:bg-lime-700 text-white font-bold">
                 Finalizar
             </Button>
         </div>
@@ -82,7 +100,7 @@ export function ActiveWorkout() {
                             <input
                                 type="text"
                                 placeholder="Buscar ejercicio..."
-                                className="w-full bg-neutral-950 border border-neutral-800 rounded-lg pl-10 pr-4 py-3 text-white focus:border-red-500 focus:outline-none"
+                                className="w-full bg-neutral-950 border border-neutral-800 rounded-lg pl-10 pr-4 py-3 text-white focus:border-lime-500 focus:outline-none"
                                 value={search}
                                 onChange={e => setSearch(e.target.value)}
                                 autoFocus
@@ -137,6 +155,16 @@ export function ActiveWorkout() {
                 setIsAdding(false);
             }}
         />
+
+        {busyMachineProps && (
+            <BusyMachineModal
+                isOpen={busyMachineProps.isOpen}
+                onClose={() => setBusyMachineProps(null)}
+                exerciseIndex={busyMachineProps.exerciseIndex}
+                currentExerciseName={busyMachineProps.currentExerciseName}
+                muscleGroup={busyMachineProps.muscleGroup}
+            />
+        )}
     </div>
   );
 }

@@ -111,7 +111,7 @@ export function CustomSelect({ value, onChange, options, placeholder = 'Seleccio
                     </span>
                   </div>
                   {value === opt.value && (
-                    <Check size={16} className="text-red-500" />
+                    <Check size={16} className="text-lime-500" />
                   )}
                 </button>
               ))}

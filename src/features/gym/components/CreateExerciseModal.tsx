@@ -54,7 +54,7 @@ export function CreateExerciseModal({ isOpen, onClose, onExerciseCreated }: Crea
         <div className="space-y-2">
           <Label>Grupo Muscular</Label>
           <select
-            className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-3 py-2 text-white focus:border-red-500 focus:outline-none"
+            className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-3 py-2 text-white focus:border-lime-500 focus:outline-none"
             value={muscleGroup}
             onChange={(e) => setMuscleGroup(e.target.value)}
           >

@@ -66,29 +66,31 @@ export function RoutinesManager() {
     <div className="space-y-6 pb-20 animate-in fade-in duration-500 max-w-5xl mx-auto">
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-heading font-bold text-neutral-100">Mis Rutinas</h2>
-        <Button onClick={handleCreate} className="gap-2">
-            <Plus className="w-4 h-4" /> Nueva Rutina
+        <Button onClick={handleCreate} className="gap-2 min-h-[48px] px-6">
+            <Plus className="w-5 h-5" /> Nueva Rutina
         </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {routines.map(routine => (
-            <Card key={routine.id} className="bg-neutral-900 border-neutral-800">
-                <CardHeader className="pb-2">
-                    <CardTitle className="text-xl">{routine.name}</CardTitle>
-                </CardHeader>
-                <CardContent className="pb-2">
-                    <div className="flex items-center text-neutral-400 text-sm gap-2">
-                        <Dumbbell className="w-4 h-4" />
-                        <span>{counts[routine.id!] || 0} Ejercicios</span>
-                    </div>
-                </CardContent>
-                <CardFooter className="justify-end gap-2 pt-2">
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(routine)}>
-                        <Pencil className="w-4 h-4 text-neutral-400 hover:text-white" />
+            <Card key={routine.id} className="bg-neutral-900 border-neutral-800 flex flex-col justify-between min-h-[120px]">
+                <div>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-xl">{routine.name}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="pb-2">
+                        <div className="flex items-center text-neutral-400 text-sm gap-2">
+                            <Dumbbell className="w-4 h-4" />
+                            <span>{counts[routine.id!] || 0} Ejercicios</span>
+                        </div>
+                    </CardContent>
+                </div>
+                <CardFooter className="justify-end gap-3 pt-2 pb-4">
+                    <Button variant="secondary" className="min-h-[48px] px-6 gap-2 flex-1" onClick={() => handleEdit(routine)}>
+                        <Pencil className="w-5 h-5" /> Editar
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(routine.id!)}>
-                        <Trash2 className="w-4 h-4 text-neutral-400 hover:text-red-500" />
+                    <Button variant="ghost" size="icon" className="min-h-[48px] min-w-[48px]" onClick={() => handleDelete(routine.id!)}>
+                        <Trash2 className="w-5 h-5 text-neutral-400 hover:text-red-500" />
                     </Button>
                 </CardFooter>
             </Card>
