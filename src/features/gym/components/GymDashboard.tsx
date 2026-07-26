@@ -10,7 +10,7 @@ export function GymDashboard() {
   const { startWorkout, routines, getRoutines, loadRoutineIntoWorkout, getWorkoutsForMonth } = useGymStore();
   const [suggestedRoutine, setSuggestedRoutine] = useState<Routine | null>(null);
   const [trainedDays, setTrainedDays] = useState<number[]>([]);
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentMonth] = useState(new Date());
 
   const [selectedWorkoutId, setSelectedWorkoutId] = useState<number | null>(null);
 

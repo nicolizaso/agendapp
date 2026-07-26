@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useGymStore } from '../../../hooks/useGymStore';
-import { X, Plus, Timer } from 'lucide-react';
+import { Plus, Timer } from 'lucide-react';
 import { Button } from '../../../components/Button';
 
 export function RestTimer() {

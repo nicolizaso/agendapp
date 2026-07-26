@@ -91,11 +91,11 @@ function App() {
 
       <ConfirmDialog />
 
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      <BottomNav activeTab={activeTab} onTabChange={(tab) => setActiveTab(tab as Tab)} />
       <MobileMenu
         isOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
-        onNavigate={setActiveTab}
+        onNavigate={(tab) => setActiveTab(tab as Tab)}
       />
     </Layout>
   );

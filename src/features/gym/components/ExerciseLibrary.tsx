@@ -6,7 +6,6 @@ import { Search, Plus } from 'lucide-react';
 import { CreateExerciseModal } from './CreateExerciseModal';
 import { Card, CardContent } from '../../../components/Card';
 import { cn } from '../../../lib/utils';
-import type { Exercise } from '../../../types';
 
 const MUSCLE_GROUPS = ['Pecho', 'Espalda', 'Piernas', 'Hombros', 'Bíceps', 'Tríceps', 'Core', 'Cardio', 'Otro'];
 const EQUIPMENT = ['Mancuerna', 'Barra', 'Máquina', 'Polea', 'Peso Corporal'];
