@@ -46,7 +46,9 @@ interface GymState {
   loadRoutineIntoWorkout: (routineId: number) => Promise<void>;
 
   addActiveExercise: (exercise: Exercise) => void;
-  addExercise: (name: string, muscleGroup: string) => Promise<Exercise | null>;
+  swapActiveExercise: (exerciseIndex: number, newExercise: Exercise) => void;
+  addExercise: (name: string, muscleGroup: string, equipment?: string) => Promise<Exercise | null>;
+  updateExerciseFitNotes: (exerciseId: number, fitNotes: string) => Promise<void>;
   updateSet: (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps', value: string) => void;
   toggleSetComplete: (exerciseIndex: number, setIndex: number) => Promise<void>;
   addSet: (exerciseIndex: number) => void;
@@ -54,6 +56,7 @@ interface GymState {
 
   // Helpers
   getHistory: (exerciseId: number) => Promise<WorkoutSet[]>;
+  getWorkoutsForMonth: (year: number, month: number) => Promise<number[]>; // Returns days of the month with workouts
   calculate1RM: (weight: number, reps: number) => number;
 
   // Timer Actions
@@ -296,7 +299,29 @@ export const useGymStore = create<GymState>((set, get) => ({
     });
   },
 
-  addExercise: async (name: string, muscleGroup: string) => {
+  swapActiveExercise: (exerciseIndex: number, newExercise: Exercise) => {
+    const { activeExercises } = get();
+    const newExercises = [...activeExercises];
+    newExercises[exerciseIndex] = {
+      ...newExercises[exerciseIndex],
+      exerciseId: newExercise.id!,
+      name: newExercise.name,
+      muscleGroup: newExercise.muscleGroup,
+    };
+    set({ activeExercises: newExercises });
+  },
+
+  updateExerciseFitNotes: async (exerciseId: number, fitNotes: string) => {
+    try {
+      await db.exercises.update(exerciseId, { fitNotes });
+      const updatedExercises = await db.exercises.toArray();
+      set({ exercises: updatedExercises });
+    } catch (err) {
+      console.error('Failed to update exercise fitNotes', err);
+    }
+  },
+
+  addExercise: async (name: string, muscleGroup: string, equipment?: string) => {
     try {
       const { exercises } = get();
 
@@ -312,7 +337,8 @@ export const useGymStore = create<GymState>((set, get) => ({
       // Add to DB
       const id = await db.exercises.add({
         name: name.trim(),
-        muscleGroup
+        muscleGroup,
+        equipment
       });
 
       // Reload exercises
@@ -407,6 +433,18 @@ export const useGymStore = create<GymState>((set, get) => ({
       .reverse()
       .limit(5)
       .toArray();
+  },
+
+  getWorkoutsForMonth: async (year: number, month: number) => {
+    const start = new Date(year, month, 1);
+    const end = new Date(year, month + 1, 0, 23, 59, 59, 999);
+
+    const workouts = await db.workouts
+      .where('date')
+      .between(start, end)
+      .toArray();
+
+    return workouts.map(w => w.date.getDate());
   },
 
   calculate1RM: (weight: number, reps: number) => {

@@ -19,13 +19,17 @@ def verify_create_exercise():
                 page.get_by_role("button").filter(has_text="Gym").click()
 
             # 3. Wait for Gym Dashboard
-            expect(page.get_by_text("Gym Tracker")).to_be_visible()
+            expect(page.locator("h2", has_text="Gym Tracker")).to_be_visible()
 
-            # 4. Open Create Routine Modal
-            page.locator("button.shrink-0").click()
+            # 4. Click Rutinas Tab
+            page.get_by_role("button", name="Rutinas").first.click()
+            expect(page.locator("h2", has_text="Mis Rutinas")).to_be_visible()
 
-            # 5. In CreateRoutineModal ("Nueva Rutina")
-            expect(page.get_by_text("Nueva Rutina")).to_be_visible()
+            # 5. Open Create Routine Modal
+            page.get_by_role("button", name="Nueva Rutina").click()
+
+            # 6. In CreateRoutineModal ("Nueva Rutina")
+            expect(page.get_by_role("heading", name="Nueva Rutina")).to_be_visible()
 
             # Click "Agregar" button to open exercise selection
             page.get_by_role("button", name="Agregar").click()

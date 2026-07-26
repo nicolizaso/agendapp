@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useGymStore } from '../../../hooks/useGymStore';
-import { X, Plus, Timer } from 'lucide-react';
+import { Plus, Timer } from 'lucide-react';
 import { Button } from '../../../components/Button';
 
 export function RestTimer() {
@@ -40,7 +40,7 @@ export function RestTimer() {
         {/* Timer Display */}
         <div className="flex items-center gap-3">
             <div className="relative w-12 h-12 flex items-center justify-center bg-neutral-800 rounded-full">
-                <Timer className="w-5 h-5 text-red-500 animate-pulse" />
+                <Timer className="w-5 h-5 text-lime-400 animate-pulse" />
                 <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none">
                     <circle
                         cx="24" cy="24" r="20"
@@ -52,7 +52,7 @@ export function RestTimer() {
                         cx="24" cy="24" r="20"
                         fill="none" strokeWidth="2"
                         stroke="currentColor"
-                        className="text-red-500 transition-all duration-1000 ease-linear"
+                        className="text-lime-400 transition-all duration-1000 ease-linear"
                         strokeDasharray="125.6"
                         strokeDashoffset={125.6 - (125.6 * progress) / 100}
                     />
@@ -70,25 +70,23 @@ export function RestTimer() {
         <div className="flex items-center gap-2">
             <Button
                 variant="ghost"
-                size="icon"
                 onClick={() => startRestTimer(timeLeft + 30)}
-                className="bg-neutral-800 text-white hover:bg-neutral-700 w-10 h-10 rounded-full"
+                className="bg-neutral-800 text-white hover:bg-neutral-700 h-10 rounded-full px-3 gap-1"
             >
-                <Plus className="w-5 h-5" />
+                <Plus className="w-4 h-4" /> 30s
             </Button>
             <Button
                 variant="ghost"
-                size="icon"
                 onClick={stopRestTimer}
-                className="bg-red-500/10 text-red-500 hover:bg-red-500/20 w-10 h-10 rounded-full"
+                className="bg-red-500/10 text-red-500 hover:bg-red-500/20 h-10 rounded-full px-3"
             >
-                <X className="w-5 h-5" />
+                Saltear
             </Button>
         </div>
       </div>
 
       {/* Linear Progress Bar at strict bottom */}
-      <div className="absolute bottom-0 left-0 h-1 bg-red-600 transition-all duration-100 ease-linear" style={{ width: `${progress}%` }} />
+      <div className="absolute bottom-0 left-0 h-1 bg-lime-600 transition-all duration-100 ease-linear" style={{ width: `${progress}%` }} />
     </div>
   );
 }

@@ -4,11 +4,12 @@ import { ConfirmDialog } from './components/ui/ConfirmDialog';
 import { Button } from './components/Button';
 import { GymPage } from './features/gym/GymPage';
 import { RoutinesManager } from './features/gym/RoutinesManager';
-import { Dumbbell, Menu, ClipboardList } from 'lucide-react';
+import { ExerciseLibrary } from './features/gym/components/ExerciseLibrary';
+import { Dumbbell, Menu, ClipboardList, Library } from 'lucide-react';
 import { BottomNav } from './components/BottomNav';
 import { MobileMenu } from './components/MobileMenu';
 
-type Tab = 'gym' | 'routines';
+type Tab = 'gym' | 'routines' | 'exercises';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('gym');
@@ -34,7 +35,7 @@ function App() {
                 variant={activeTab === 'gym' ? 'primary' : 'ghost'}
                 onClick={() => setActiveTab('gym')}
                 size="sm"
-                className="gap-2"
+                className={`gap-2 ${activeTab === 'gym' ? 'bg-lime-500 hover:bg-lime-600 text-neutral-950' : ''}`}
             >
                 <Dumbbell className="w-4 h-4" /> Gym
             </Button>
@@ -42,9 +43,17 @@ function App() {
                 variant={activeTab === 'routines' ? 'primary' : 'ghost'}
                 onClick={() => setActiveTab('routines')}
                 size="sm"
-                className="gap-2"
+                className={`gap-2 ${activeTab === 'routines' ? 'bg-lime-500 hover:bg-lime-600 text-neutral-950' : ''}`}
             >
                 <ClipboardList className="w-4 h-4" /> Rutinas
+            </Button>
+            <Button
+                variant={activeTab === 'exercises' ? 'primary' : 'ghost'}
+                onClick={() => setActiveTab('exercises')}
+                size="sm"
+                className={`gap-2 ${activeTab === 'exercises' ? 'bg-lime-500 hover:bg-lime-600 text-neutral-950' : ''}`}
+            >
+                <Library className="w-4 h-4" /> Ejercicios
             </Button>
         </nav>
 
@@ -72,15 +81,21 @@ function App() {
         </div>
       )}
 
+      {activeTab === 'exercises' && (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+             <ExerciseLibrary />
+        </div>
+      )}
+
       </div> {/* End content wrapper */}
 
       <ConfirmDialog />
 
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      <BottomNav activeTab={activeTab} onTabChange={(tab) => setActiveTab(tab as Tab)} />
       <MobileMenu
         isOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
-        onNavigate={setActiveTab}
+        onNavigate={(tab) => setActiveTab(tab as Tab)}
       />
     </Layout>
   );

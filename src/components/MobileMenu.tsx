@@ -13,6 +13,7 @@ export function MobileMenu({ isOpen, onClose, onNavigate }: MobileMenuProps) {
   const menuItems = [
     { id: 'gym', icon: Dumbbell, label: 'Entrenamiento' },
     { id: 'routines', icon: ClipboardList, label: 'Rutinas' },
+    { id: 'exercises', icon: Dumbbell, label: 'Ejercicios' },
   ];
 
   return (
@@ -40,7 +41,7 @@ export function MobileMenu({ isOpen, onClose, onNavigate }: MobileMenuProps) {
                         }}
                         className="w-full flex items-center gap-4 p-4 rounded-xl text-neutral-300 hover:bg-neutral-900 hover:text-white transition-colors text-lg"
                     >
-                        <Icon className="w-6 h-6 text-red-600" />
+                        <Icon className="w-6 h-6 text-lime-500" />
                         {item.label}
                     </button>
                 )
