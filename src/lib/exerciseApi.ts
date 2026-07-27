@@ -1,29 +1,40 @@
 import type { Exercise } from '../types';
 
-// Endpoints mirror ordenados por confiabilidad (CDNs optimizados para GitHub)
+// CDNs de alta disponibilidad ordenados por confiabilidad
 const ENDPOINTS = [
   'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/dist/exercises.json',
   'https://cdn.statically.io/gh/yuhonas/free-exercise-db/main/dist/exercises.json',
   'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json',
-  '/exercises.json' // Fallback local dentro de public/
+  '/exercises.json', // Fallback local dentro de public/
 ];
 
-const BASE_IMG_URL = 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/';
+const BASE_CDN_URL = 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/';
 
+// Mapeo de primaryMuscles / bodyPart a categorías en español
 const MUSCLE_GROUP_TRANSLATIONS: Record<string, string> = {
+  abdominals: 'Core',
   chest: 'Pecho',
-  back: 'Espalda',
-  legs: 'Piernas',
+  lats: 'Espalda',
+  'lower back': 'Espalda',
+  'middle back': 'Espalda',
+  traps: 'Espalda',
+  neck: 'Espalda',
   shoulders: 'Hombros',
   biceps: 'Bíceps',
   triceps: 'Tríceps',
+  forearms: 'Bíceps',
+  quadriceps: 'Piernas',
+  hamstrings: 'Piernas',
+  calves: 'Piernas',
+  glutes: 'Piernas',
+  adductors: 'Piernas',
+  abductors: 'Piernas',
+  // Fallbacks para estructuras alternativas
+  back: 'Espalda',
+  legs: 'Piernas',
   core: 'Core',
   abs: 'Core',
   cardio: 'Cardio',
-  'upper legs': 'Piernas',
-  'lower legs': 'Piernas',
-  'upper arms': 'Bíceps',
-  'lower arms': 'Bíceps',
 };
 
 const EQUIPMENT_TRANSLATIONS: Record<string, string> = {
@@ -45,15 +56,17 @@ const EQUIPMENT_TRANSLATIONS: Record<string, string> = {
 export interface RemoteExercise {
   id: string;
   name: string;
-  bodyPart: string;
-  target: string;
-  equipment: string;
-  gifUrl: string;
-  instructions: string[];
+  bodyPart?: string;
+  target?: string;
+  primaryMuscles?: string[];
+  equipment?: string;
+  gifUrl?: string;
+  images?: string[];
+  instructions?: string[];
 }
 
 /**
- * Realiza un fetch iterando por los distintos CDNs hasta encontrar uno funcional.
+ * Petición con reintentos automáticos en mirrors de CDN.
  */
 async function fetchWithFallback(): Promise<RemoteExercise[]> {
   for (const url of ENDPOINTS) {
@@ -62,7 +75,6 @@ async function fetchWithFallback(): Promise<RemoteExercise[]> {
       if (response.ok) {
         return await response.json();
       }
-      console.warn(`[ExerciseAPI] ${url} respondió con estado ${response.status}`);
     } catch (error) {
       console.warn(`[ExerciseAPI] Falló la conexión con ${url}`);
     }
@@ -71,29 +83,34 @@ async function fetchWithFallback(): Promise<RemoteExercise[]> {
 }
 
 /**
- * Obtiene y mapea los ejercicios externos al formato de la app.
+ * Transforma y normaliza la respuesta remota al modelo interno del sistema.
  */
 export async function fetchExercises(): Promise<Exercise[]> {
   try {
     const data = await fetchWithFallback();
 
     return data.map((item) => {
-      // Normalización de la URL del GIF
-      let gifUrl = item.gifUrl;
-      if (gifUrl && !gifUrl.startsWith('http')) {
-        const path = gifUrl.startsWith('/') ? gifUrl.substring(1) : gifUrl;
-        gifUrl = path.startsWith('exercises/')
-          ? `https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/${path}`
-          : `${BASE_IMG_URL}${path}`;
+      // 1. Normalización de URL de la imagen principal (.jpg / .gif)
+      let gifUrl = '';
+      if (item.images && item.images.length > 0) {
+        gifUrl = `${BASE_CDN_URL}${item.images[0]}`;
+      } else if (item.gifUrl) {
+        gifUrl = item.gifUrl.startsWith('http')
+          ? item.gifUrl
+          : `${BASE_CDN_URL}${item.gifUrl.replace(/^\/?(exercises\/)?/, '')}`;
       }
 
-      // Traducciones y fallbacks
+      // 2. Traducción de grupo muscular basado en el músculo primario
+      const primaryMuscle = item.primaryMuscles?.[0]?.toLowerCase();
       const muscleGroup =
-        MUSCLE_GROUP_TRANSLATIONS[item.bodyPart?.toLowerCase()] ||
-        MUSCLE_GROUP_TRANSLATIONS[item.target?.toLowerCase()] ||
+        (primaryMuscle && MUSCLE_GROUP_TRANSLATIONS[primaryMuscle]) ||
+        MUSCLE_GROUP_TRANSLATIONS[item.bodyPart?.toLowerCase() || ''] ||
+        MUSCLE_GROUP_TRANSLATIONS[item.target?.toLowerCase() || ''] ||
         'Otro';
 
-      const equipment = EQUIPMENT_TRANSLATIONS[item.equipment?.toLowerCase()] || 'Otro';
+      // 3. Traducción de equipamiento
+      const equipmentKey = item.equipment?.toLowerCase() || '';
+      const equipment = EQUIPMENT_TRANSLATIONS[equipmentKey] || 'Otro';
 
       return {
         apiId: item.id,
@@ -105,7 +122,7 @@ export async function fetchExercises(): Promise<Exercise[]> {
       };
     });
   } catch (error) {
-    console.error('[ExerciseAPI] Error crítico al cargar ejercicios externos:', error);
+    console.error('[ExerciseAPI] Error al cargar ejercicios:', error);
     return [];
   }
 }
