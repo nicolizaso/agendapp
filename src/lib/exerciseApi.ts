@@ -1,9 +1,14 @@
 import type { Exercise } from '../types';
 
-// GitHub Pages sirve el contenido de 'dist' en la raíz '/'
-const PRIMARY_URL = 'https://yuhonas.github.io/free-exercise-db/exercises.json';
-const FALLBACK_URL = 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/dist/exercises.json';
-const BASE_IMG_URL = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
+// Endpoints mirror ordenados por confiabilidad (CDNs optimizados para GitHub)
+const ENDPOINTS = [
+  'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/dist/exercises.json',
+  'https://cdn.statically.io/gh/yuhonas/free-exercise-db/main/dist/exercises.json',
+  'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json',
+  '/exercises.json' // Fallback local dentro de public/
+];
+
+const BASE_IMG_URL = 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/';
 
 const MUSCLE_GROUP_TRANSLATIONS: Record<string, string> = {
   chest: 'Pecho',
@@ -48,33 +53,41 @@ export interface RemoteExercise {
 }
 
 /**
- * Consulta la base de datos externa de ejercicios con retry en CDN secundario.
+ * Realiza un fetch iterando por los distintos CDNs hasta encontrar uno funcional.
+ */
+async function fetchWithFallback(): Promise<RemoteExercise[]> {
+  for (const url of ENDPOINTS) {
+    try {
+      const response = await fetch(url);
+      if (response.ok) {
+        return await response.json();
+      }
+      console.warn(`[ExerciseAPI] ${url} respondió con estado ${response.status}`);
+    } catch (error) {
+      console.warn(`[ExerciseAPI] Falló la conexión con ${url}`);
+    }
+  }
+  throw new Error('Todos los endpoints de ejercicios fallaron.');
+}
+
+/**
+ * Obtiene y mapea los ejercicios externos al formato de la app.
  */
 export async function fetchExercises(): Promise<Exercise[]> {
   try {
-    let response = await fetch(PRIMARY_URL);
-
-    // Si la fuente principal responde con error, intentamos con el CDN de respaldo
-    if (!response.ok) {
-      console.warn(`[ExerciseAPI] Falló URL principal (${response.status}). Probando CDN de respaldo...`);
-      response = await fetch(FALLBACK_URL);
-    }
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch exercises: ${response.status} ${response.statusText}`);
-    }
-
-    const data: RemoteExercise[] = await response.json();
+    const data = await fetchWithFallback();
 
     return data.map((item) => {
+      // Normalización de la URL del GIF
       let gifUrl = item.gifUrl;
       if (gifUrl && !gifUrl.startsWith('http')) {
         const path = gifUrl.startsWith('/') ? gifUrl.substring(1) : gifUrl;
         gifUrl = path.startsWith('exercises/')
-          ? `https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/${path}`
+          ? `https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/${path}`
           : `${BASE_IMG_URL}${path}`;
       }
 
+      // Traducciones y fallbacks
       const muscleGroup =
         MUSCLE_GROUP_TRANSLATIONS[item.bodyPart?.toLowerCase()] ||
         MUSCLE_GROUP_TRANSLATIONS[item.target?.toLowerCase()] ||
@@ -88,11 +101,11 @@ export async function fetchExercises(): Promise<Exercise[]> {
         muscleGroup,
         equipment,
         gifUrl,
-        instructions: item.instructions,
+        instructions: item.instructions || [],
       };
     });
   } catch (error) {
-    console.error('Error fetching external exercises:', error);
+    console.error('[ExerciseAPI] Error crítico al cargar ejercicios externos:', error);
     return [];
   }
 }
