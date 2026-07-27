@@ -73,10 +73,13 @@ export interface DailyNote {
 
 export interface Exercise {
   id?: number;
+  apiId?: string;
   name: string;
   muscleGroup: string;
   equipment?: string;
   fitNotes?: string;
+  gifUrl?: string;
+  instructions?: string[];
 }
 
 export interface Workout {
