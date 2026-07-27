@@ -1,4 +1,4 @@
-import { Exercise } from '../types';
+import type { Exercise } from '../types';
 
 const JSON_URL = 'https://raw.githubusercontent.com/yuhnas/free-exercise-db/main/dist/exercises.json';
 const BASE_IMG_URL = 'https://raw.githubusercontent.com/yuhnas/free-exercise-db/main/exercises/';

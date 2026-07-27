@@ -11,13 +11,11 @@ const MUSCLE_GROUPS = ['Pecho', 'Espalda', 'Piernas', 'Hombros', 'Bíceps', 'Tr�
 const EQUIPMENT = ['Mancuerna', 'Barra', 'Máquina', 'Polea', 'Peso Corporal'];
 
 export function ExerciseLibrary() {
-  const { exercises, updateExerciseFitNotes, init } = useGymStore();
+  const { exercises, init } = useGymStore();
   const [search, setSearch] = useState('');
   const [selectedMuscle, setSelectedMuscle] = useState<string | null>(null);
   const [selectedEquipment, setSelectedEquipment] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [editingNotesId, setEditingNotesId] = useState<number | null>(null);
-  const [notesValue, setNotesValue] = useState('');
 
   useEffect(() => {
     init();
@@ -29,11 +27,6 @@ export function ExerciseLibrary() {
     const matchesEq = selectedEquipment ? ex.equipment === selectedEquipment : true;
     return matchesSearch && matchesMuscle && matchesEq;
   });
-
-  const handleSaveNotes = async (id: number) => {
-    await updateExerciseFitNotes(id, notesValue);
-    setEditingNotesId(null);
-  };
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-20">
@@ -126,7 +119,7 @@ export function ExerciseLibrary() {
   );
 }
 
-function ExerciseCard({ ex }: { ex: any }) {
+function ExerciseCard({ ex }: { ex: import('../../../types').Exercise }) {
   const { updateExerciseFitNotes } = useGymStore();
   const [editingNotesId, setEditingNotesId] = useState<number | null>(null);
   const [notesValue, setNotesValue] = useState('');
