@@ -1,7 +1,11 @@
 import type { Exercise } from '../types';
 
-const JSON_URL = 'https://raw.githubusercontent.com/yuhnas/free-exercise-db/main/dist/exercises.json';
-const BASE_IMG_URL = 'https://raw.githubusercontent.com/yuhnas/free-exercise-db/main/exercises/';
+// 🔴 URL Anterior (Causaba 404):
+// const JSON_URL = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json';
+
+// 🟢 URL Corregida (GitHub Pages):
+const JSON_URL = 'https://yuhonas.github.io/free-exercise-db/dist/exercises.json';
+const BASE_IMG_URL = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
 
 const MUSCLE_GROUP_TRANSLATIONS: Record<string, string> = {
   chest: 'Pecho',
@@ -15,8 +19,8 @@ const MUSCLE_GROUP_TRANSLATIONS: Record<string, string> = {
   cardio: 'Cardio',
   'upper legs': 'Piernas',
   'lower legs': 'Piernas',
-  'upper arms': 'Bíceps', // Or split by target
-  'lower arms': 'Bíceps', // Just a fallback
+  'upper arms': 'Bíceps',
+  'lower arms': 'Bíceps',
 };
 
 const EQUIPMENT_TRANSLATIONS: Record<string, string> = {
@@ -35,7 +39,6 @@ const EQUIPMENT_TRANSLATIONS: Record<string, string> = {
   'smith machine': 'Máquina',
 };
 
-// Interface reflecting typical ExerciseDB JSON structure
 export interface RemoteExercise {
   id: string;
   name: string;
@@ -46,39 +49,37 @@ export interface RemoteExercise {
   instructions: string[];
 }
 
+/**
+ * Obtiene el listado de ejercicios externos desde el CDN de GitHub Pages.
+ */
 export async function fetchExercises(): Promise<Exercise[]> {
   try {
     const response = await fetch(JSON_URL);
     if (!response.ok) {
-      throw new Error(`Failed to fetch exercises: ${response.statusText}`);
+      throw new Error(`Failed to fetch exercises: ${response.status} ${response.statusText}`);
     }
     const data: RemoteExercise[] = await response.json();
 
     return data.map((item) => {
-      // Resolve GIF URL
       let gifUrl = item.gifUrl;
       if (gifUrl && !gifUrl.startsWith('http')) {
-        // Remove leading slash if it exists
         const path = gifUrl.startsWith('/') ? gifUrl.substring(1) : gifUrl;
-        // Make it absolute if it refers to the repo's exercises folder
         if (path.startsWith('exercises/')) {
-          gifUrl = `https://raw.githubusercontent.com/yuhnas/free-exercise-db/main/${path}`;
+          gifUrl = `https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/${path}`;
         } else {
-           gifUrl = `${BASE_IMG_URL}${path}`;
+          gifUrl = `${BASE_IMG_URL}${path}`;
         }
       }
 
-      // Translate muscle group
-      let muscleGroup = MUSCLE_GROUP_TRANSLATIONS[item.bodyPart?.toLowerCase()] ||
-                        MUSCLE_GROUP_TRANSLATIONS[item.target?.toLowerCase()] ||
-                        'Otro';
+      const muscleGroup = MUSCLE_GROUP_TRANSLATIONS[item.bodyPart?.toLowerCase()] ||
+                          MUSCLE_GROUP_TRANSLATIONS[item.target?.toLowerCase()] ||
+                          'Otro';
 
-      // Translate equipment
-      let equipment = EQUIPMENT_TRANSLATIONS[item.equipment?.toLowerCase()] || 'Otro';
+      const equipment = EQUIPMENT_TRANSLATIONS[item.equipment?.toLowerCase()] || 'Otro';
 
       return {
         apiId: item.id,
-        name: item.name.charAt(0).toUpperCase() + item.name.slice(1), // Capitalize first letter
+        name: item.name.charAt(0).toUpperCase() + item.name.slice(1),
         muscleGroup,
         equipment,
         gifUrl,
