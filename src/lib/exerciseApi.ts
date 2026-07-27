@@ -1,10 +1,8 @@
 import type { Exercise } from '../types';
 
-// 🔴 URL Anterior (Causaba 404):
-// const JSON_URL = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json';
-
-// 🟢 URL Corregida (GitHub Pages):
-const JSON_URL = 'https://yuhonas.github.io/free-exercise-db/dist/exercises.json';
+// GitHub Pages sirve el contenido de 'dist' en la raíz '/'
+const PRIMARY_URL = 'https://yuhonas.github.io/free-exercise-db/exercises.json';
+const FALLBACK_URL = 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/dist/exercises.json';
 const BASE_IMG_URL = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
 
 const MUSCLE_GROUP_TRANSLATIONS: Record<string, string> = {
@@ -30,9 +28,9 @@ const EQUIPMENT_TRANSLATIONS: Record<string, string> = {
   cable: 'Polea',
   'body weight': 'Peso Corporal',
   bodyweight: 'Peso Corporal',
-  'assisted': 'Máquina',
-  'band': 'Otro',
-  'kettlebell': 'Otro',
+  assisted: 'Máquina',
+  band: 'Otro',
+  kettlebell: 'Otro',
   'leverage machine': 'Máquina',
   'medicine ball': 'Otro',
   'stability ball': 'Otro',
@@ -50,30 +48,37 @@ export interface RemoteExercise {
 }
 
 /**
- * Obtiene el listado de ejercicios externos desde el CDN de GitHub Pages.
+ * Consulta la base de datos externa de ejercicios con retry en CDN secundario.
  */
 export async function fetchExercises(): Promise<Exercise[]> {
   try {
-    const response = await fetch(JSON_URL);
+    let response = await fetch(PRIMARY_URL);
+
+    // Si la fuente principal responde con error, intentamos con el CDN de respaldo
+    if (!response.ok) {
+      console.warn(`[ExerciseAPI] Falló URL principal (${response.status}). Probando CDN de respaldo...`);
+      response = await fetch(FALLBACK_URL);
+    }
+
     if (!response.ok) {
       throw new Error(`Failed to fetch exercises: ${response.status} ${response.statusText}`);
     }
+
     const data: RemoteExercise[] = await response.json();
 
     return data.map((item) => {
       let gifUrl = item.gifUrl;
       if (gifUrl && !gifUrl.startsWith('http')) {
         const path = gifUrl.startsWith('/') ? gifUrl.substring(1) : gifUrl;
-        if (path.startsWith('exercises/')) {
-          gifUrl = `https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/${path}`;
-        } else {
-          gifUrl = `${BASE_IMG_URL}${path}`;
-        }
+        gifUrl = path.startsWith('exercises/')
+          ? `https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/${path}`
+          : `${BASE_IMG_URL}${path}`;
       }
 
-      const muscleGroup = MUSCLE_GROUP_TRANSLATIONS[item.bodyPart?.toLowerCase()] ||
-                          MUSCLE_GROUP_TRANSLATIONS[item.target?.toLowerCase()] ||
-                          'Otro';
+      const muscleGroup =
+        MUSCLE_GROUP_TRANSLATIONS[item.bodyPart?.toLowerCase()] ||
+        MUSCLE_GROUP_TRANSLATIONS[item.target?.toLowerCase()] ||
+        'Otro';
 
       const equipment = EQUIPMENT_TRANSLATIONS[item.equipment?.toLowerCase()] || 'Otro';
 
