@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import Dexie from 'dexie';
 import { db, seedDefaultExercises } from '../lib/db';
+import { fetchExercises } from '../lib/exerciseApi';
 import type { Exercise, WorkoutSet, Routine } from '../types';
 
 interface ActiveSetInput {
@@ -88,6 +89,69 @@ export const useGymStore = create<GymState>((set, get) => ({
       }
 
       await seedDefaultExercises();
+
+      // Perform background sync of exercises without blocking initial load
+      fetchExercises().then(async (remoteExercises) => {
+        if (remoteExercises.length === 0) return;
+
+        const currentExercises = await db.exercises.toArray();
+
+        // Use a transaction for bulk operations
+        await db.transaction('rw', db.exercises, async () => {
+          // As requested: delete all user-created exercises (those without apiId)
+          const userCreatedExercises = currentExercises.filter(e => !e.apiId);
+          if (userCreatedExercises.length > 0) {
+            const userCreatedIds = userCreatedExercises.map(e => e.id!).filter(id => id !== undefined);
+            if (userCreatedIds.length > 0) {
+              await db.exercises.bulkDelete(userCreatedIds);
+            }
+          }
+
+          const toAdd: Exercise[] = [];
+          const toUpdate: Exercise[] = [];
+
+          // Create a Map for faster lookups (O(1) instead of O(N))
+          const existingMap = new Map(
+             currentExercises.filter(e => e.apiId).map(e => [e.apiId, e])
+          );
+
+          for (const remote of remoteExercises) {
+            const existing = existingMap.get(remote.apiId);
+            if (existing) {
+              // Only update if something changed, preserving user's fitNotes and local ID
+              const needsUpdate =
+                existing.name !== remote.name ||
+                existing.muscleGroup !== remote.muscleGroup ||
+                existing.equipment !== remote.equipment ||
+                existing.gifUrl !== remote.gifUrl;
+
+              if (needsUpdate) {
+                toUpdate.push({
+                  ...remote,
+                  id: existing.id, // Preserve Dexie primary key
+                  fitNotes: existing.fitNotes // Preserve user notes
+                });
+              }
+            } else {
+               toAdd.push(remote);
+            }
+          }
+
+          if (toUpdate.length > 0) {
+            await db.exercises.bulkPut(toUpdate);
+          }
+          if (toAdd.length > 0) {
+            await db.exercises.bulkAdd(toAdd);
+          }
+        });
+
+        // Refresh state if changes occurred
+        const updatedExercises = await db.exercises.toArray();
+        useGymStore.setState({ exercises: updatedExercises });
+      }).catch(err => {
+         console.error('Failed to sync external exercises:', err);
+      });
+
       const exercises = await db.exercises.toArray();
       const routines = await db.routines.toArray();
 
