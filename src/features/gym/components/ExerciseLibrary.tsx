@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import { useGymStore } from '../../../hooks/useGymStore';
 import { Input } from '../../../components/Input';
 import { Button } from '../../../components/Button';
-import { Search, Plus, ImageOff, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, Plus, ImageOff, FileText, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from 'lucide-react';
 import { CreateExerciseModal } from './CreateExerciseModal';
 import { Card, CardContent } from '../../../components/Card';
 import { cn } from '../../../lib/utils';
 
 const MUSCLE_GROUPS = ['Pecho', 'Espalda', 'Piernas', 'Hombros', 'Bíceps', 'Tríceps', 'Core', 'Cardio', 'Otro'];
 const EQUIPMENT = ['Mancuerna', 'Barra', 'Máquina', 'Polea', 'Peso Corporal'];
+const PAGE_SIZE = 10;
 
 export function ExerciseLibrary() {
   const { exercises, init } = useGymStore();
@@ -16,17 +17,40 @@ export function ExerciseLibrary() {
   const [selectedMuscle, setSelectedMuscle] = useState<string | null>(null);
   const [selectedEquipment, setSelectedEquipment] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     init();
   }, [init]);
 
+  // Restablece la página a 1 ante cualquier cambio en filtros o buscador
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setCurrentPage(1);
+  };
+
+  const handleMuscleSelect = (muscle: string | null) => {
+    setSelectedMuscle(muscle);
+    setCurrentPage(1);
+  };
+
+  const handleEquipmentSelect = (equipment: string | null) => {
+    setSelectedEquipment(equipment);
+    setCurrentPage(1);
+  };
+
+  // Filtrado general en memoria
   const filteredExercises = exercises.filter((ex) => {
     const matchesSearch = ex.name.toLowerCase().includes(search.toLowerCase());
-    const matchesMuscle = selectedMuscle ? ex.muscleGroup === selectedMuscle : true;
-    const matchesEq = selectedEquipment ? ex.equipment === selectedEquipment : true;
+    const matchesMuscle = selectedMuscle ? ex.muscleGroup.toLowerCase() === selectedMuscle.toLowerCase() : true;
+    const matchesEq = selectedEquipment ? ex.equipment?.toLowerCase() === selectedEquipment.toLowerCase() : true;
     return matchesSearch && matchesMuscle && matchesEq;
   });
+
+  // Cálculo de paginado
+  const totalPages = Math.ceil(filteredExercises.length / PAGE_SIZE) || 1;
+  const startIndex = (currentPage - 1) * PAGE_SIZE;
+  const paginatedExercises = filteredExercises.slice(startIndex, startIndex + PAGE_SIZE);
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-20">
@@ -43,7 +67,7 @@ export function ExerciseLibrary() {
           <Input
             placeholder="Buscar ejercicio..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="pl-10"
           />
         </div>
@@ -55,7 +79,7 @@ export function ExerciseLibrary() {
             <Button
               variant={selectedMuscle === null ? 'primary' : 'ghost'}
               size="sm"
-              onClick={() => setSelectedMuscle(null)}
+              onClick={() => handleMuscleSelect(null)}
               className={cn('whitespace-nowrap shrink-0 rounded-full', selectedMuscle === null ? '' : 'bg-neutral-800')}
             >
               Todos
@@ -65,7 +89,7 @@ export function ExerciseLibrary() {
                 key={mg}
                 variant={selectedMuscle === mg ? 'primary' : 'ghost'}
                 size="sm"
-                onClick={() => setSelectedMuscle(mg === selectedMuscle ? null : mg)}
+                onClick={() => handleMuscleSelect(mg === selectedMuscle ? null : mg)}
                 className={cn('whitespace-nowrap shrink-0 rounded-full', selectedMuscle === mg ? '' : 'bg-neutral-800')}
               >
                 {mg}
@@ -81,7 +105,7 @@ export function ExerciseLibrary() {
             <Button
               variant={selectedEquipment === null ? 'primary' : 'ghost'}
               size="sm"
-              onClick={() => setSelectedEquipment(null)}
+              onClick={() => handleEquipmentSelect(null)}
               className={cn('whitespace-nowrap shrink-0 rounded-full', selectedEquipment === null ? '' : 'bg-neutral-800')}
             >
               Todos
@@ -91,7 +115,7 @@ export function ExerciseLibrary() {
                 key={eq}
                 variant={selectedEquipment === eq ? 'primary' : 'ghost'}
                 size="sm"
-                onClick={() => setSelectedEquipment(eq === selectedEquipment ? null : eq)}
+                onClick={() => handleEquipmentSelect(eq === selectedEquipment ? null : eq)}
                 className={cn('whitespace-nowrap shrink-0 rounded-full', selectedEquipment === eq ? '' : 'bg-neutral-800')}
               >
                 {eq}
@@ -101,10 +125,10 @@ export function ExerciseLibrary() {
         </div>
       </div>
 
-      {/* Grid de Ejercicios */}
+      {/* Grid de Ejercicios Paginado */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredExercises.map((ex) => (
-          <ExerciseCard key={ex.id} ex={ex} />
+        {paginatedExercises.map((ex, idx) => (
+          <ExerciseCard key={ex.id || ex.apiId || idx} ex={ex} />
         ))}
         {filteredExercises.length === 0 && (
           <div className="col-span-full py-12 text-center text-neutral-500 border border-dashed border-neutral-800 rounded-xl">
@@ -112,6 +136,35 @@ export function ExerciseLibrary() {
           </div>
         )}
       </div>
+
+      {/* Barra de Controles de Paginación */}
+      {filteredExercises.length > 0 && (
+        <div className="flex items-center justify-between border-t border-neutral-800 pt-4 mt-6">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="gap-1"
+          >
+            <ChevronLeft className="w-4 h-4" /> Anterior
+          </Button>
+
+          <span className="text-sm font-semibold text-neutral-400">
+            Página {currentPage} de {totalPages}
+          </span>
+
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className="gap-1"
+          >
+            Siguiente <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
 
       <CreateExerciseModal
         isOpen={isCreateModalOpen}
@@ -129,7 +182,7 @@ function ExerciseCard({ ex }: { ex: import('../../../types').Exercise }) {
   const { updateExerciseFitNotes } = useGymStore();
   const [editingNotesId, setEditingNotesId] = useState<number | null>(null);
   const [notesValue, setNotesValue] = useState('');
-  const [isNotesOpen, setIsNotesOpen] = useState(false); // Oculto por defecto
+  const [isNotesOpen, setIsNotesOpen] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
 
@@ -148,7 +201,6 @@ function ExerciseCard({ ex }: { ex: import('../../../types').Exercise }) {
   return (
     <Card className="bg-neutral-900 border-neutral-800 overflow-hidden flex flex-col justify-between">
       <div>
-        {/* Contenedor de Imagen/GIF */}
         <div className="h-40 bg-neutral-800 flex items-center justify-center relative overflow-hidden">
           {ex.gifUrl ? (
             <>
@@ -180,18 +232,17 @@ function ExerciseCard({ ex }: { ex: import('../../../types').Exercise }) {
             <span className="text-neutral-600 text-sm">Sin Imagen</span>
           )}
           <div className="absolute top-2 right-2 flex gap-1 z-10">
-            <span className="bg-neutral-950/80 backdrop-blur text-[10px] px-2 py-1 rounded text-neutral-300 border border-neutral-800">
+            <span className="bg-neutral-950/80 backdrop-blur text-[10px] px-2 py-1 rounded text-neutral-300 border border-neutral-800 font-semibold">
               {ex.muscleGroup}
             </span>
             {ex.equipment && (
-              <span className="bg-neutral-950/80 backdrop-blur text-[10px] px-2 py-1 rounded text-neutral-300 border border-neutral-800">
+              <span className="bg-neutral-950/80 backdrop-blur text-[10px] px-2 py-1 rounded text-neutral-300 border border-neutral-800 font-semibold">
                 {ex.equipment}
               </span>
             )}
           </div>
         </div>
 
-        {/* Contenido */}
         <CardContent className="p-4 space-y-3 relative z-10 bg-neutral-900">
           <h3 className="font-bold text-lg text-white leading-tight">{ex.name}</h3>
 
@@ -203,7 +254,6 @@ function ExerciseCard({ ex }: { ex: import('../../../types').Exercise }) {
         </CardContent>
       </div>
 
-      {/* Botón de acordeón y área desplegable de Fit Notes */}
       <div className="p-4 pt-0 bg-neutral-900 border-t border-neutral-800/50 mt-auto">
         <button
           type="button"
@@ -217,14 +267,9 @@ function ExerciseCard({ ex }: { ex: import('../../../types').Exercise }) {
               <span className="w-2 h-2 rounded-full bg-lime-500 inline-block" title="Tiene notas guardadas" />
             )}
           </div>
-          {isNotesOpen ? (
-            <ChevronUp className="w-4 h-4 text-neutral-400" />
-          ) : (
-            <ChevronDown className="w-4 h-4 text-neutral-400" />
-          )}
+          {isNotesOpen ? <ChevronUp className="w-4 h-4 text-neutral-400" /> : <ChevronDown className="w-4 h-4 text-neutral-400" />}
         </button>
 
-        {/* Desplegable animado */}
         {isNotesOpen && (
           <div className="mt-2 bg-neutral-950/80 rounded-lg p-3 border border-neutral-800 space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
             {editingNotesId === ex.id ? (
@@ -248,7 +293,7 @@ function ExerciseCard({ ex }: { ex: import('../../../types').Exercise }) {
               </div>
             ) : (
               <div
-                className="cursor-text text-sm text-neutral-300 min-h-[36px] whitespace-pre-wrap hover:text-white transition-colors"
+                className="cursor-text text-sm text-neutral-300 min-h-9 whitespace-pre-wrap hover:text-white transition-colors"
                 onClick={() => {
                   setEditingNotesId(ex.id!);
                   setNotesValue(ex.fitNotes || '');

@@ -14,7 +14,7 @@ export interface Task {
   category?: string;
   location?: string;
   notes?: string;
-  endTime?: string; // Formato "HH:mm"
+  endTime?: string;
   isAllDay?: boolean;
   recurrenceId?: string;
   recurringGroupId?: string;
@@ -54,20 +54,20 @@ export interface Habit {
 }
 
 export interface HabitLog {
-  id: string; // ${habitId}_${date}
+  id: string;
   habitId: string;
-  date: string; // ISO Date YYYY-MM-DD
+  date: string;
 }
 
 export interface HabitClaim {
-  id: string; // week_YYYY-MM-DD (Monday)
+  id: string;
   weekStartDate: string;
   claimedAt: string;
   earnedTickets: { categoryId: string; amount: number }[];
 }
 
 export interface DailyNote {
-  date: string; // YYYY-MM-DD (PK)
+  date: string;
   content: string;
 }
 
@@ -96,7 +96,7 @@ export interface WorkoutSet {
   weight: number;
   reps: number;
   rpe?: number;
-  date: Date; // For efficient indexing [exerciseId+date]
+  date: Date;
 }
 
 export interface Routine {
@@ -111,14 +111,14 @@ export interface RoutineExercise {
   exerciseId: number;
   order: number;
   targetSets: number;
-  targetReps: string; // string to pre-fill inputs directly
-  targetWeight?: string; // string to pre-fill inputs directly
+  targetReps: string;
+  targetWeight?: string;
 }
 
 export interface Category {
-  id: string; // e.g. "trabajo"
-  label: string; // e.g. "Trabajo"
-  icon: string; // e.g. "Briefcase"
+  id: string;
+  label: string;
+  icon: string;
   color: string;
   bg: string;
   border: string;

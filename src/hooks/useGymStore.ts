@@ -1,11 +1,11 @@
 import { create } from 'zustand';
 import Dexie from 'dexie';
-import { db, seedDefaultExercises } from '../lib/db';
+import { db } from '../lib/db';
 import { fetchExercises } from '../lib/exerciseApi';
 import type { Exercise, WorkoutSet, Routine } from '../types';
 
 interface ActiveSetInput {
-  weight: string; // Keep as string for inputs
+  weight: string;
   reps: string;
   completed: boolean;
 }
@@ -18,28 +18,23 @@ interface ActiveExerciseData {
 }
 
 interface GymState {
-  // Global State
   isLoading: boolean;
   exercises: Exercise[];
   routines: Routine[];
 
-  // Active Workout State
   isWorkoutActive: boolean;
   activeWorkoutId: number | null;
   activeWorkoutStartTime: Date | null;
   activeExercises: ActiveExerciseData[];
 
-  // Rest Timer State
-  restTimerTarget: number | null; // Timestamp when rest ends
-  restTimerDuration: number; // Duration in seconds
+  restTimerTarget: number | null;
+  restTimerDuration: number;
 
-  // Actions
   init: () => Promise<void>;
   startWorkout: () => Promise<void>;
   finishWorkout: () => Promise<void>;
   cancelWorkout: () => Promise<void>;
 
-  // Routine Actions
   createRoutine: (name: string, exercises: { exerciseId: number; targetSets: number; targetReps: string; targetWeight?: string }[]) => Promise<void>;
   updateRoutine: (id: number, name: string, exercises: { exerciseId: number; targetSets: number; targetReps: string; targetWeight?: string }[]) => Promise<void>;
   deleteRoutine: (id: number) => Promise<void>;
@@ -55,12 +50,10 @@ interface GymState {
   addSet: (exerciseIndex: number) => void;
   removeSet: (exerciseIndex: number, setIndex: number) => void;
 
-  // Helpers
   getHistory: (exerciseId: number) => Promise<WorkoutSet[]>;
-  getWorkoutsForMonth: (year: number, month: number) => Promise<number[]>; // Returns days of the month with workouts
+  getWorkoutsForMonth: (year: number, month: number) => Promise<number[]>;
   calculate1RM: (weight: number, reps: number) => number;
 
-  // Timer Actions
   startRestTimer: (durationSeconds?: number) => void;
   stopRestTimer: () => void;
 }
@@ -78,86 +71,62 @@ export const useGymStore = create<GymState>((set, get) => ({
   restTimerTarget: null,
   restTimerDuration: 90,
 
+  /**
+   * Inicialización:
+   * 1. Elimina cualquier ejercicio en IndexedDB que no tenga apiId (hardcodeados / creados localmente).
+   * 2. Si no hay datos de API almacenados, consulta la API remota.
+   * 3. Garantiza que solo los datos provenientes de la API queden en el estado del store.
+   */
   init: async () => {
     set({ isLoading: true });
     try {
       try {
-          await db.open();
+        await db.open();
       } catch (e) {
-          console.warn("Esperando auto-sanación de DB en useGymStore...");
-          return; // Stop if the DB failed, db.ts reload will handle it.
+        console.warn("Esperando DB en useGymStore...");
+        return;
       }
 
-      await seedDefaultExercises();
+      // 1. PURGA: Elimina cualquier ejercicio que no provenga de la API (sin apiId)
+      const currentExercises = await db.exercises.toArray();
+      const nonApiExerciseIds = currentExercises
+        .filter((ex) => !ex.apiId)
+        .map((ex) => ex.id!)
+        .filter(Boolean);
 
-      // Perform background sync of exercises without blocking initial load
-      fetchExercises().then(async (remoteExercises) => {
-        if (remoteExercises.length === 0) return;
+      if (nonApiExerciseIds.length > 0) {
+        await db.exercises.bulkDelete(nonApiExerciseIds);
+      }
 
-        const currentExercises = await db.exercises.toArray();
+      // 2. CARGA/FETCH: Si no hay ejercicios de la API guardados, consultamos la API remota
+      let apiExercises = await db.exercises.toArray();
+      
+      if (apiExercises.length === 0) {
+        const remoteExercises = await fetchExercises();
 
-        // Use a transaction for bulk operations
-        await db.transaction('rw', db.exercises, async () => {
-          // As requested: delete all user-created exercises (those without apiId)
-          const userCreatedExercises = currentExercises.filter(e => !e.apiId);
-          if (userCreatedExercises.length > 0) {
-            const userCreatedIds = userCreatedExercises.map(e => e.id!).filter(id => id !== undefined);
-            if (userCreatedIds.length > 0) {
-              await db.exercises.bulkDelete(userCreatedIds);
-            }
-          }
-
-          const toAdd: Exercise[] = [];
-          const toUpdate: Exercise[] = [];
-
-          // Create a Map for faster lookups (O(1) instead of O(N))
-          const existingMap = new Map(
-             currentExercises.filter(e => e.apiId).map(e => [e.apiId, e])
-          );
-
-          for (const remote of remoteExercises) {
-            const existing = existingMap.get(remote.apiId);
-            if (existing) {
-              // Only update if something changed, preserving user's fitNotes and local ID
-              const needsUpdate =
-                existing.name !== remote.name ||
-                existing.muscleGroup !== remote.muscleGroup ||
-                existing.equipment !== remote.equipment ||
-                existing.gifUrl !== remote.gifUrl;
-
-              if (needsUpdate) {
-                toUpdate.push({
-                  ...remote,
-                  id: existing.id, // Preserve Dexie primary key
-                  fitNotes: existing.fitNotes // Preserve user notes
-                });
+        if (remoteExercises.length > 0) {
+          await db.transaction('rw', db.exercises, async () => {
+            // Deduplicación por apiId antes de guardar
+            const uniqueMap = new Map<string, Exercise>();
+            for (const remote of remoteExercises) {
+              if (remote.apiId && !uniqueMap.has(remote.apiId)) {
+                uniqueMap.set(remote.apiId, remote);
               }
-            } else {
-               toAdd.push(remote);
             }
-          }
+            await db.exercises.bulkAdd(Array.from(uniqueMap.values()));
+          });
 
-          if (toUpdate.length > 0) {
-            await db.exercises.bulkPut(toUpdate);
-          }
-          if (toAdd.length > 0) {
-            await db.exercises.bulkAdd(toAdd);
-          }
-        });
+          apiExercises = await db.exercises.toArray();
+        }
+      }
 
-        // Refresh state if changes occurred
-        const updatedExercises = await db.exercises.toArray();
-        useGymStore.setState({ exercises: updatedExercises });
-      }).catch(err => {
-         console.error('Failed to sync external exercises:', err);
-      });
-
-      const exercises = await db.exercises.toArray();
+      // 3. FILTRADO ESTRICTO: Solo enviamos al estado los ejercicios que tienen apiId
+      const cleanApiExercises = apiExercises.filter((ex) => Boolean(ex.apiId));
       const routines = await db.routines.toArray();
 
-      set({ exercises, routines, isLoading: false });
+      set({ exercises: cleanApiExercises, routines, isLoading: false });
     } catch (error) {
-      console.error('Failed to init gym store', error);
+      console.error('Error al inicializar GymStore:', error);
       set({ isLoading: false });
     }
   },
@@ -191,19 +160,19 @@ export const useGymStore = create<GymState>((set, get) => ({
         });
 
         const routineExercises = exercises.map((ex, index) => ({
-            routineId: routineId as number,
-            exerciseId: ex.exerciseId,
-            order: index,
-            targetSets: ex.targetSets,
-            targetReps: ex.targetReps,
-            targetWeight: ex.targetWeight
+          routineId: routineId as number,
+          exerciseId: ex.exerciseId,
+          order: index,
+          targetSets: ex.targetSets,
+          targetReps: ex.targetReps,
+          targetWeight: ex.targetWeight
         }));
 
         await db.routineExercises.bulkAdd(routineExercises);
       });
       get().getRoutines();
     } catch (err) {
-        console.error('Failed to create routine', err);
+      console.error('Failed to create routine', err);
     }
   },
 
@@ -211,25 +180,22 @@ export const useGymStore = create<GymState>((set, get) => ({
     try {
       await db.transaction('rw', db.routines, db.routineExercises, async () => {
         await db.routines.update(id, { name });
-
-        // Delete existing exercises for this routine
         await db.routineExercises.where('routineId').equals(id).delete();
 
-        // Add new exercises
         const routineExercises = exercises.map((ex, index) => ({
-            routineId: id,
-            exerciseId: ex.exerciseId,
-            order: index,
-            targetSets: ex.targetSets,
-            targetReps: ex.targetReps,
-            targetWeight: ex.targetWeight
+          routineId: id,
+          exerciseId: ex.exerciseId,
+          order: index,
+          targetSets: ex.targetSets,
+          targetReps: ex.targetReps,
+          targetWeight: ex.targetWeight
         }));
 
         await db.routineExercises.bulkAdd(routineExercises);
       });
       get().getRoutines();
     } catch (err) {
-        console.error('Failed to update routine', err);
+      console.error('Failed to update routine', err);
     }
   },
 
@@ -241,65 +207,64 @@ export const useGymStore = create<GymState>((set, get) => ({
       });
       get().getRoutines();
     } catch (err) {
-        console.error('Failed to delete routine', err);
+      console.error('Failed to delete routine', err);
     }
   },
 
   getRoutines: async () => {
-      try {
-          const routines = await db.routines.toArray();
-          set({ routines });
-      } catch (err) {
-          console.error('Failed to fetch routines', err);
-      }
+    try {
+      const routines = await db.routines.toArray();
+      set({ routines });
+    } catch (err) {
+      console.error('Failed to fetch routines', err);
+    }
   },
 
   loadRoutineIntoWorkout: async (routineId) => {
     const { exercises } = get();
     try {
-        const routine = await db.routines.get(routineId);
-        if (!routine) return;
+      const routine = await db.routines.get(routineId);
+      if (!routine) return;
 
-        const routineExercises = await db.routineExercises
-            .where('routineId')
-            .equals(routineId)
-            .sortBy('order');
+      const routineExercises = await db.routineExercises
+        .where('routineId')
+        .equals(routineId)
+        .sortBy('order');
 
-        const startTime = new Date();
-        const workoutId = await db.workouts.add({
-            date: startTime,
-            name: routine.name, // Use Routine Name
-            durationSeconds: 0,
-        });
+      const startTime = new Date();
+      const workoutId = await db.workouts.add({
+        date: startTime,
+        name: routine.name,
+        durationSeconds: 0,
+      });
 
-        const activeExercises: ActiveExerciseData[] = routineExercises.map(rex => {
-            const exerciseDef = exercises.find(e => e.id === rex.exerciseId);
-            if (!exerciseDef) return null;
+      const activeExercises: ActiveExerciseData[] = routineExercises.map(rex => {
+        const exerciseDef = exercises.find(e => e.id === rex.exerciseId);
+        if (!exerciseDef) return null;
 
-            // Generate rows based on targetSets
-            const sets: ActiveSetInput[] = Array.from({ length: rex.targetSets }).map(() => ({
-                weight: rex.targetWeight || '',
-                reps: rex.targetReps || '',
-                completed: false
-            }));
+        const sets: ActiveSetInput[] = Array.from({ length: rex.targetSets }).map(() => ({
+          weight: rex.targetWeight || '',
+          reps: rex.targetReps || '',
+          completed: false
+        }));
 
-            return {
-                exerciseId: rex.exerciseId,
-                name: exerciseDef.name,
-                muscleGroup: exerciseDef.muscleGroup,
-                sets
-            };
-        }).filter((e): e is ActiveExerciseData => e !== null);
+        return {
+          exerciseId: rex.exerciseId,
+          name: exerciseDef.name,
+          muscleGroup: exerciseDef.muscleGroup,
+          sets
+        };
+      }).filter((e): e is ActiveExerciseData => e !== null);
 
-        set({
-            isWorkoutActive: true,
-            activeWorkoutId: workoutId as number,
-            activeWorkoutStartTime: startTime,
-            activeExercises
-        });
+      set({
+        isWorkoutActive: true,
+        activeWorkoutId: workoutId as number,
+        activeWorkoutStartTime: startTime,
+        activeExercises
+      });
 
     } catch (err) {
-        console.error('Failed to load routine', err);
+      console.error('Failed to load routine', err);
     }
   },
 
@@ -311,9 +276,7 @@ export const useGymStore = create<GymState>((set, get) => ({
     const durationSeconds = Math.round((endTime.getTime() - activeWorkoutStartTime.getTime()) / 1000);
 
     try {
-      await db.workouts.update(activeWorkoutId, {
-        durationSeconds
-      });
+      await db.workouts.update(activeWorkoutId, { durationSeconds });
 
       set({
         isWorkoutActive: false,
@@ -332,7 +295,6 @@ export const useGymStore = create<GymState>((set, get) => ({
     if (activeWorkoutId) {
       try {
         await db.workouts.delete(activeWorkoutId);
-        // Also delete sets associated?
         const setsToDelete = await db.sets.where('workoutId').equals(activeWorkoutId).toArray();
         await db.sets.bulkDelete(setsToDelete.map(s => s.id!));
       } catch (err) {
@@ -357,7 +319,7 @@ export const useGymStore = create<GymState>((set, get) => ({
           exerciseId: exercise.id!,
           name: exercise.name,
           muscleGroup: exercise.muscleGroup,
-          sets: [{ weight: '', reps: '', completed: false }] // Start with 1 empty set
+          sets: [{ weight: '', reps: '', completed: false }]
         }
       ]
     });
@@ -389,7 +351,6 @@ export const useGymStore = create<GymState>((set, get) => ({
     try {
       const { exercises } = get();
 
-      // Check for duplicates (case insensitive)
       const existing = exercises.find(
         e => e.name.toLowerCase() === name.trim().toLowerCase()
       );
@@ -398,18 +359,15 @@ export const useGymStore = create<GymState>((set, get) => ({
         return existing;
       }
 
-      // Add to DB
       const id = await db.exercises.add({
         name: name.trim(),
         muscleGroup,
         equipment
       });
 
-      // Reload exercises
       const updatedExercises = await db.exercises.toArray();
       set({ exercises: updatedExercises });
 
-      // Return the new exercise object
       return updatedExercises.find(e => e.id === id) || null;
 
     } catch (err) {
@@ -421,7 +379,6 @@ export const useGymStore = create<GymState>((set, get) => ({
   addSet: (exerciseIndex: number) => {
     const { activeExercises } = get();
     const newExercises = [...activeExercises];
-    // Copy previous set values for convenience if exists
     const prevSet = newExercises[exerciseIndex].sets[newExercises[exerciseIndex].sets.length - 1];
 
     newExercises[exerciseIndex].sets.push({
@@ -433,10 +390,10 @@ export const useGymStore = create<GymState>((set, get) => ({
   },
 
   removeSet: (exerciseIndex: number, setIndex: number) => {
-     const { activeExercises } = get();
-     const newExercises = [...activeExercises];
-     newExercises[exerciseIndex].sets.splice(setIndex, 1);
-     set({ activeExercises: newExercises });
+    const { activeExercises } = get();
+    const newExercises = [...activeExercises];
+    newExercises[exerciseIndex].sets.splice(setIndex, 1);
+    set({ activeExercises: newExercises });
   },
 
   updateSet: (exerciseIndex, setIndex, field, value) => {
@@ -451,7 +408,6 @@ export const useGymStore = create<GymState>((set, get) => ({
     const exercise = activeExercises[exerciseIndex];
     const setItem = exercise.sets[setIndex];
 
-    // Toggle state locally
     const isCompleting = !setItem.completed;
 
     const newExercises = [...activeExercises];
@@ -459,38 +415,28 @@ export const useGymStore = create<GymState>((set, get) => ({
     set({ activeExercises: newExercises });
 
     if (isCompleting && activeWorkoutId) {
-       // Validate inputs
-       const weight = parseFloat(setItem.weight);
-       const reps = parseFloat(setItem.reps);
+      const weight = parseFloat(setItem.weight);
+      const reps = parseFloat(setItem.reps);
 
-       if (!isNaN(weight) && !isNaN(reps)) {
-         try {
-           // Save to DB
-           await db.sets.add({
-             workoutId: activeWorkoutId,
-             exerciseId: exercise.exerciseId,
-             weight,
-             reps,
-             date: new Date()
-           });
+      if (!isNaN(weight) && !isNaN(reps)) {
+        try {
+          await db.sets.add({
+            workoutId: activeWorkoutId,
+            exerciseId: exercise.exerciseId,
+            weight,
+            reps,
+            date: new Date()
+          });
 
-           // Trigger Auto Timer
-           startRestTimer(90); // Default 90s
-         } catch (err) {
-           console.error('Failed to log set', err);
-         }
-       }
-    } else if (!isCompleting) {
-        // Optional: Remove from DB if un-checked?
-        // For now, simpler to just append logs. Unchecking is visual only in this simple version,
-        // or we need to track the `setId` created in DB to delete it.
-        // Let's keep it simple: "Checking" saves a record. Unchecking just resets UI state
-        // but doesn't delete the record (or we'd need to store the DB ID in the set object).
+          startRestTimer(90);
+        } catch (err) {
+          console.error('Failed to log set', err);
+        }
+      }
     }
   },
 
   getHistory: async (exerciseId: number) => {
-    // Get last 5 sets for this exercise, ordered by date desc
     return await db.sets
       .where('[exerciseId+date]')
       .between([exerciseId, Dexie.minKey], [exerciseId, Dexie.maxKey])

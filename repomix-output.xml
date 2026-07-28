@@ -568,6 +568,14 @@ export default defineConfig([
 </html>
 </file>
 
+<file path="read_calendar.py">
+with open('src/features/dashboard/CalendarSection.tsx', 'r') as f:
+    lines = f.readlines()
+    for i, line in enumerate(lines):
+        if 50 <= i <= 90:
+            print(f"{i}: {line.rstrip()}")
+</file>
+
 <file path="README.md">
 # React + TypeScript + Vite
 
@@ -2358,14 +2366,6 @@ with sync_playwright() as playwright:
        </div>
 </file>
 
-<file path="read_calendar.py">
-with open('src/features/dashboard/CalendarSection.tsx', 'r') as f:
-    lines = f.readlines()
-    for i, line in enumerate(lines):
-        if 50 <= i <= 90:
-            print(f"{i}: {line.rstrip()}")
-</file>
-
 <file path="src/components/BottomNav.tsx">
 import { Dumbbell, ClipboardList, Library } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -2403,6 +2403,72 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
             </button>
           );
         })}
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="src/components/MobileMenu.tsx">
+import { User, X, Dumbbell, ClipboardList } from 'lucide-react';
+import { Button } from './Button';
+
+interface MobileMenuProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onNavigate: (tab: any) => void;
+}
+
+export function MobileMenu({ isOpen, onClose, onNavigate }: MobileMenuProps) {
+  if (!isOpen) return null;
+
+  const menuItems = [
+    { id: 'gym', icon: Dumbbell, label: 'Entrenamiento' },
+    { id: 'routines', icon: ClipboardList, label: 'Rutinas' },
+    { id: 'exercises', icon: Dumbbell, label: 'Ejercicios' },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 bg-neutral-950/95 backdrop-blur-sm md:hidden animate-in fade-in duration-200">
+      <div className="flex flex-col h-full p-6">
+        <div className="flex justify-between items-center mb-8">
+            <div className="flex items-center gap-3">
+                <img src="/logo.png" alt="Logo" className="w-8 h-8" />
+                <span className="font-heading font-bold text-xl text-white">Menú</span>
+            </div>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+                <X className="w-6 h-6" />
+            </Button>
+        </div>
+
+        <nav className="flex-1 space-y-2">
+            {menuItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                    <button
+                        key={item.id}
+                        onClick={() => {
+                            onNavigate(item.id);
+                            onClose();
+                        }}
+                        className="w-full flex items-center gap-4 p-4 rounded-xl text-neutral-300 hover:bg-neutral-900 hover:text-white transition-colors text-lg"
+                    >
+                        <Icon className="w-6 h-6 text-lime-500" />
+                        {item.label}
+                    </button>
+                )
+            })}
+
+            <div className="h-px bg-neutral-800 my-4" />
+
+             <button
+                disabled
+                className="w-full flex items-center gap-4 p-4 rounded-xl text-neutral-500 cursor-not-allowed text-lg"
+            >
+                <User className="w-6 h-6 text-neutral-500" />
+                Perfil (Pronto)
+            </button>
+        </nav>
       </div>
     </div>
   );
@@ -2690,101 +2756,6 @@ export function RestTimer() {
 }
 </file>
 
-<file path="src/lib/exerciseApi.ts">
-import type { Exercise } from '../types';
-
-const JSON_URL = 'https://raw.githubusercontent.com/yuhnas/free-exercise-db/main/dist/exercises.json';
-const BASE_IMG_URL = 'https://raw.githubusercontent.com/yuhnas/free-exercise-db/main/exercises/';
-
-const MUSCLE_GROUP_TRANSLATIONS: Record<string, string> = {
-  chest: 'Pecho',
-  back: 'Espalda',
-  legs: 'Piernas',
-  shoulders: 'Hombros',
-  biceps: 'Bíceps',
-  triceps: 'Tríceps',
-  core: 'Core',
-  abs: 'Core',
-  cardio: 'Cardio',
-  'upper legs': 'Piernas',
-  'lower legs': 'Piernas',
-  'upper arms': 'Bíceps', // Or split by target
-  'lower arms': 'Bíceps', // Just a fallback
-};
-
-const EQUIPMENT_TRANSLATIONS: Record<string, string> = {
-  dumbbell: 'Mancuerna',
-  barbell: 'Barra',
-  machine: 'Máquina',
-  cable: 'Polea',
-  'body weight': 'Peso Corporal',
-  bodyweight: 'Peso Corporal',
-  'assisted': 'Máquina',
-  'band': 'Otro',
-  'kettlebell': 'Otro',
-  'leverage machine': 'Máquina',
-  'medicine ball': 'Otro',
-  'stability ball': 'Otro',
-  'smith machine': 'Máquina',
-};
-
-// Interface reflecting typical ExerciseDB JSON structure
-export interface RemoteExercise {
-  id: string;
-  name: string;
-  bodyPart: string;
-  target: string;
-  equipment: string;
-  gifUrl: string;
-  instructions: string[];
-}
-
-export async function fetchExercises(): Promise<Exercise[]> {
-  try {
-    const response = await fetch(JSON_URL);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch exercises: ${response.statusText}`);
-    }
-    const data: RemoteExercise[] = await response.json();
-
-    return data.map((item) => {
-      // Resolve GIF URL
-      let gifUrl = item.gifUrl;
-      if (gifUrl && !gifUrl.startsWith('http')) {
-        // Remove leading slash if it exists
-        const path = gifUrl.startsWith('/') ? gifUrl.substring(1) : gifUrl;
-        // Make it absolute if it refers to the repo's exercises folder
-        if (path.startsWith('exercises/')) {
-          gifUrl = `https://raw.githubusercontent.com/yuhnas/free-exercise-db/main/${path}`;
-        } else {
-           gifUrl = `${BASE_IMG_URL}${path}`;
-        }
-      }
-
-      // Translate muscle group
-      let muscleGroup = MUSCLE_GROUP_TRANSLATIONS[item.bodyPart?.toLowerCase()] ||
-                        MUSCLE_GROUP_TRANSLATIONS[item.target?.toLowerCase()] ||
-                        'Otro';
-
-      // Translate equipment
-      let equipment = EQUIPMENT_TRANSLATIONS[item.equipment?.toLowerCase()] || 'Otro';
-
-      return {
-        apiId: item.id,
-        name: item.name.charAt(0).toUpperCase() + item.name.slice(1), // Capitalize first letter
-        muscleGroup,
-        equipment,
-        gifUrl,
-        instructions: item.instructions,
-      };
-    });
-  } catch (error) {
-    console.error('Error fetching external exercises:', error);
-    return [];
-  }
-}
-</file>
-
 <file path="verify_create_exercise.py">
 from playwright.sync_api import sync_playwright, expect
 
@@ -2868,7 +2839,7 @@ import { fetchExercises } from '../lib/exerciseApi';
 import type { Exercise, WorkoutSet, Routine } from '../types';
 
 interface ActiveSetInput {
-  weight: string; // Keep as string for inputs
+  weight: string;
   reps: string;
   completed: boolean;
 }
@@ -2881,28 +2852,23 @@ interface ActiveExerciseData {
 }
 
 interface GymState {
-  // Global State
   isLoading: boolean;
   exercises: Exercise[];
   routines: Routine[];
 
-  // Active Workout State
   isWorkoutActive: boolean;
   activeWorkoutId: number | null;
   activeWorkoutStartTime: Date | null;
   activeExercises: ActiveExerciseData[];
 
-  // Rest Timer State
-  restTimerTarget: number | null; // Timestamp when rest ends
-  restTimerDuration: number; // Duration in seconds
+  restTimerTarget: number | null;
+  restTimerDuration: number;
 
-  // Actions
   init: () => Promise<void>;
   startWorkout: () => Promise<void>;
   finishWorkout: () => Promise<void>;
   cancelWorkout: () => Promise<void>;
 
-  // Routine Actions
   createRoutine: (name: string, exercises: { exerciseId: number; targetSets: number; targetReps: string; targetWeight?: string }[]) => Promise<void>;
   updateRoutine: (id: number, name: string, exercises: { exerciseId: number; targetSets: number; targetReps: string; targetWeight?: string }[]) => Promise<void>;
   deleteRoutine: (id: number) => Promise<void>;
@@ -2918,12 +2884,10 @@ interface GymState {
   addSet: (exerciseIndex: number) => void;
   removeSet: (exerciseIndex: number, setIndex: number) => void;
 
-  // Helpers
   getHistory: (exerciseId: number) => Promise<WorkoutSet[]>;
-  getWorkoutsForMonth: (year: number, month: number) => Promise<number[]>; // Returns days of the month with workouts
+  getWorkoutsForMonth: (year: number, month: number) => Promise<number[]>;
   calculate1RM: (weight: number, reps: number) => number;
 
-  // Timer Actions
   startRestTimer: (durationSeconds?: number) => void;
   stopRestTimer: () => void;
 }
@@ -2941,84 +2905,76 @@ export const useGymStore = create<GymState>((set, get) => ({
   restTimerTarget: null,
   restTimerDuration: 90,
 
+  /**
+   * Inicialización inteligente: Carga primero desde IndexedDB y solo sincroniza
+   * desde la red si la BDD local no contiene ejercicios.
+   */
   init: async () => {
     set({ isLoading: true });
     try {
       try {
-          await db.open();
+        await db.open();
       } catch (e) {
-          console.warn("Esperando auto-sanación de DB en useGymStore...");
-          return; // Stop if the DB failed, db.ts reload will handle it.
+        console.warn("Esperando DB en useGymStore...");
+        return;
       }
 
       await seedDefaultExercises();
 
-      // Perform background sync of exercises without blocking initial load
-      fetchExercises().then(async (remoteExercises) => {
-        if (remoteExercises.length === 0) return;
+      let currentExercises = await db.exercises.toArray();
 
-        const currentExercises = await db.exercises.toArray();
+      // OPTIMIZACIÓN ANTI-SOBRECONSULTA: Solo hace fetch si hay menos de 15 ejercicios locales
+      if (currentExercises.length <= 15) {
+        const remoteExercises = await fetchExercises();
 
-        // Use a transaction for bulk operations
-        await db.transaction('rw', db.exercises, async () => {
-          // As requested: delete all user-created exercises (those without apiId)
-          const userCreatedExercises = currentExercises.filter(e => !e.apiId);
-          if (userCreatedExercises.length > 0) {
-            const userCreatedIds = userCreatedExercises.map(e => e.id!).filter(id => id !== undefined);
-            if (userCreatedIds.length > 0) {
-              await db.exercises.bulkDelete(userCreatedIds);
-            }
-          }
-
-          const toAdd: Exercise[] = [];
-          const toUpdate: Exercise[] = [];
-
-          // Create a Map for faster lookups (O(1) instead of O(N))
-          const existingMap = new Map(
-             currentExercises.filter(e => e.apiId).map(e => [e.apiId, e])
-          );
-
-          for (const remote of remoteExercises) {
-            const existing = existingMap.get(remote.apiId);
-            if (existing) {
-              // Only update if something changed, preserving user's fitNotes and local ID
-              const needsUpdate =
-                existing.name !== remote.name ||
-                existing.muscleGroup !== remote.muscleGroup ||
-                existing.equipment !== remote.equipment ||
-                existing.gifUrl !== remote.gifUrl;
-
-              if (needsUpdate) {
-                toUpdate.push({
-                  ...remote,
-                  id: existing.id, // Preserve Dexie primary key
-                  fitNotes: existing.fitNotes // Preserve user notes
-                });
+        if (remoteExercises.length > 0) {
+          await db.transaction('rw', db.exercises, async () => {
+            const userCreatedExercises = currentExercises.filter(e => !e.apiId);
+            if (userCreatedExercises.length > 0) {
+              const userCreatedIds = userCreatedExercises.map(e => e.id!).filter(id => id !== undefined);
+              if (userCreatedIds.length > 0) {
+                await db.exercises.bulkDelete(userCreatedIds);
               }
-            } else {
-               toAdd.push(remote);
             }
-          }
 
-          if (toUpdate.length > 0) {
-            await db.exercises.bulkPut(toUpdate);
-          }
-          if (toAdd.length > 0) {
-            await db.exercises.bulkAdd(toAdd);
-          }
-        });
+            const existingMap = new Map(
+              currentExercises.filter(e => e.apiId).map(e => [e.apiId, e])
+            );
 
-        // Refresh state if changes occurred
-        const updatedExercises = await db.exercises.toArray();
-        useGymStore.setState({ exercises: updatedExercises });
-      }).catch(err => {
-         console.error('Failed to sync external exercises:', err);
-      });
+            const toAdd: Exercise[] = [];
+            const toUpdate: Exercise[] = [];
 
-      const exercises = await db.exercises.toArray();
+            for (const remote of remoteExercises) {
+              const existing = existingMap.get(remote.apiId);
+              if (existing) {
+                const needsUpdate =
+                  existing.name !== remote.name ||
+                  existing.muscleGroup !== remote.muscleGroup ||
+                  existing.equipment !== remote.equipment ||
+                  existing.gifUrl !== remote.gifUrl;
+
+                if (needsUpdate) {
+                  toUpdate.push({
+                    ...remote,
+                    id: existing.id,
+                    fitNotes: existing.fitNotes
+                  });
+                }
+              } else {
+                toAdd.push(remote);
+              }
+            }
+
+            if (toUpdate.length > 0) await db.exercises.bulkPut(toUpdate);
+            if (toAdd.length > 0) await db.exercises.bulkAdd(toAdd);
+          });
+
+          currentExercises = await db.exercises.toArray();
+        }
+      }
+
       const routines = await db.routines.toArray();
-
-      set({ exercises, routines, isLoading: false });
+      set({ exercises: currentExercises, routines, isLoading: false });
     } catch (error) {
       console.error('Failed to init gym store', error);
       set({ isLoading: false });
@@ -3054,19 +3010,19 @@ export const useGymStore = create<GymState>((set, get) => ({
         });
 
         const routineExercises = exercises.map((ex, index) => ({
-            routineId: routineId as number,
-            exerciseId: ex.exerciseId,
-            order: index,
-            targetSets: ex.targetSets,
-            targetReps: ex.targetReps,
-            targetWeight: ex.targetWeight
+          routineId: routineId as number,
+          exerciseId: ex.exerciseId,
+          order: index,
+          targetSets: ex.targetSets,
+          targetReps: ex.targetReps,
+          targetWeight: ex.targetWeight
         }));
 
         await db.routineExercises.bulkAdd(routineExercises);
       });
       get().getRoutines();
     } catch (err) {
-        console.error('Failed to create routine', err);
+      console.error('Failed to create routine', err);
     }
   },
 
@@ -3074,25 +3030,22 @@ export const useGymStore = create<GymState>((set, get) => ({
     try {
       await db.transaction('rw', db.routines, db.routineExercises, async () => {
         await db.routines.update(id, { name });
-
-        // Delete existing exercises for this routine
         await db.routineExercises.where('routineId').equals(id).delete();
 
-        // Add new exercises
         const routineExercises = exercises.map((ex, index) => ({
-            routineId: id,
-            exerciseId: ex.exerciseId,
-            order: index,
-            targetSets: ex.targetSets,
-            targetReps: ex.targetReps,
-            targetWeight: ex.targetWeight
+          routineId: id,
+          exerciseId: ex.exerciseId,
+          order: index,
+          targetSets: ex.targetSets,
+          targetReps: ex.targetReps,
+          targetWeight: ex.targetWeight
         }));
 
         await db.routineExercises.bulkAdd(routineExercises);
       });
       get().getRoutines();
     } catch (err) {
-        console.error('Failed to update routine', err);
+      console.error('Failed to update routine', err);
     }
   },
 
@@ -3104,65 +3057,64 @@ export const useGymStore = create<GymState>((set, get) => ({
       });
       get().getRoutines();
     } catch (err) {
-        console.error('Failed to delete routine', err);
+      console.error('Failed to delete routine', err);
     }
   },
 
   getRoutines: async () => {
-      try {
-          const routines = await db.routines.toArray();
-          set({ routines });
-      } catch (err) {
-          console.error('Failed to fetch routines', err);
-      }
+    try {
+      const routines = await db.routines.toArray();
+      set({ routines });
+    } catch (err) {
+      console.error('Failed to fetch routines', err);
+    }
   },
 
   loadRoutineIntoWorkout: async (routineId) => {
     const { exercises } = get();
     try {
-        const routine = await db.routines.get(routineId);
-        if (!routine) return;
+      const routine = await db.routines.get(routineId);
+      if (!routine) return;
 
-        const routineExercises = await db.routineExercises
-            .where('routineId')
-            .equals(routineId)
-            .sortBy('order');
+      const routineExercises = await db.routineExercises
+        .where('routineId')
+        .equals(routineId)
+        .sortBy('order');
 
-        const startTime = new Date();
-        const workoutId = await db.workouts.add({
-            date: startTime,
-            name: routine.name, // Use Routine Name
-            durationSeconds: 0,
-        });
+      const startTime = new Date();
+      const workoutId = await db.workouts.add({
+        date: startTime,
+        name: routine.name,
+        durationSeconds: 0,
+      });
 
-        const activeExercises: ActiveExerciseData[] = routineExercises.map(rex => {
-            const exerciseDef = exercises.find(e => e.id === rex.exerciseId);
-            if (!exerciseDef) return null;
+      const activeExercises: ActiveExerciseData[] = routineExercises.map(rex => {
+        const exerciseDef = exercises.find(e => e.id === rex.exerciseId);
+        if (!exerciseDef) return null;
 
-            // Generate rows based on targetSets
-            const sets: ActiveSetInput[] = Array.from({ length: rex.targetSets }).map(() => ({
-                weight: rex.targetWeight || '',
-                reps: rex.targetReps || '',
-                completed: false
-            }));
+        const sets: ActiveSetInput[] = Array.from({ length: rex.targetSets }).map(() => ({
+          weight: rex.targetWeight || '',
+          reps: rex.targetReps || '',
+          completed: false
+        }));
 
-            return {
-                exerciseId: rex.exerciseId,
-                name: exerciseDef.name,
-                muscleGroup: exerciseDef.muscleGroup,
-                sets
-            };
-        }).filter((e): e is ActiveExerciseData => e !== null);
+        return {
+          exerciseId: rex.exerciseId,
+          name: exerciseDef.name,
+          muscleGroup: exerciseDef.muscleGroup,
+          sets
+        };
+      }).filter((e): e is ActiveExerciseData => e !== null);
 
-        set({
-            isWorkoutActive: true,
-            activeWorkoutId: workoutId as number,
-            activeWorkoutStartTime: startTime,
-            activeExercises
-        });
+      set({
+        isWorkoutActive: true,
+        activeWorkoutId: workoutId as number,
+        activeWorkoutStartTime: startTime,
+        activeExercises
+      });
 
     } catch (err) {
-        console.error('Failed to load routine', err);
+      console.error('Failed to load routine', err);
     }
   },
 
@@ -3174,9 +3126,7 @@ export const useGymStore = create<GymState>((set, get) => ({
     const durationSeconds = Math.round((endTime.getTime() - activeWorkoutStartTime.getTime()) / 1000);
 
     try {
-      await db.workouts.update(activeWorkoutId, {
-        durationSeconds
-      });
+      await db.workouts.update(activeWorkoutId, { durationSeconds });
 
       set({
         isWorkoutActive: false,
@@ -3195,7 +3145,6 @@ export const useGymStore = create<GymState>((set, get) => ({
     if (activeWorkoutId) {
       try {
         await db.workouts.delete(activeWorkoutId);
-        // Also delete sets associated?
         const setsToDelete = await db.sets.where('workoutId').equals(activeWorkoutId).toArray();
         await db.sets.bulkDelete(setsToDelete.map(s => s.id!));
       } catch (err) {
@@ -3220,7 +3169,7 @@ export const useGymStore = create<GymState>((set, get) => ({
           exerciseId: exercise.id!,
           name: exercise.name,
           muscleGroup: exercise.muscleGroup,
-          sets: [{ weight: '', reps: '', completed: false }] // Start with 1 empty set
+          sets: [{ weight: '', reps: '', completed: false }]
         }
       ]
     });
@@ -3252,7 +3201,6 @@ export const useGymStore = create<GymState>((set, get) => ({
     try {
       const { exercises } = get();
 
-      // Check for duplicates (case insensitive)
       const existing = exercises.find(
         e => e.name.toLowerCase() === name.trim().toLowerCase()
       );
@@ -3261,18 +3209,15 @@ export const useGymStore = create<GymState>((set, get) => ({
         return existing;
       }
 
-      // Add to DB
       const id = await db.exercises.add({
         name: name.trim(),
         muscleGroup,
         equipment
       });
 
-      // Reload exercises
       const updatedExercises = await db.exercises.toArray();
       set({ exercises: updatedExercises });
 
-      // Return the new exercise object
       return updatedExercises.find(e => e.id === id) || null;
 
     } catch (err) {
@@ -3284,7 +3229,6 @@ export const useGymStore = create<GymState>((set, get) => ({
   addSet: (exerciseIndex: number) => {
     const { activeExercises } = get();
     const newExercises = [...activeExercises];
-    // Copy previous set values for convenience if exists
     const prevSet = newExercises[exerciseIndex].sets[newExercises[exerciseIndex].sets.length - 1];
 
     newExercises[exerciseIndex].sets.push({
@@ -3296,10 +3240,10 @@ export const useGymStore = create<GymState>((set, get) => ({
   },
 
   removeSet: (exerciseIndex: number, setIndex: number) => {
-     const { activeExercises } = get();
-     const newExercises = [...activeExercises];
-     newExercises[exerciseIndex].sets.splice(setIndex, 1);
-     set({ activeExercises: newExercises });
+    const { activeExercises } = get();
+    const newExercises = [...activeExercises];
+    newExercises[exerciseIndex].sets.splice(setIndex, 1);
+    set({ activeExercises: newExercises });
   },
 
   updateSet: (exerciseIndex, setIndex, field, value) => {
@@ -3314,7 +3258,6 @@ export const useGymStore = create<GymState>((set, get) => ({
     const exercise = activeExercises[exerciseIndex];
     const setItem = exercise.sets[setIndex];
 
-    // Toggle state locally
     const isCompleting = !setItem.completed;
 
     const newExercises = [...activeExercises];
@@ -3322,38 +3265,28 @@ export const useGymStore = create<GymState>((set, get) => ({
     set({ activeExercises: newExercises });
 
     if (isCompleting && activeWorkoutId) {
-       // Validate inputs
-       const weight = parseFloat(setItem.weight);
-       const reps = parseFloat(setItem.reps);
+      const weight = parseFloat(setItem.weight);
+      const reps = parseFloat(setItem.reps);
 
-       if (!isNaN(weight) && !isNaN(reps)) {
-         try {
-           // Save to DB
-           await db.sets.add({
-             workoutId: activeWorkoutId,
-             exerciseId: exercise.exerciseId,
-             weight,
-             reps,
-             date: new Date()
-           });
+      if (!isNaN(weight) && !isNaN(reps)) {
+        try {
+          await db.sets.add({
+            workoutId: activeWorkoutId,
+            exerciseId: exercise.exerciseId,
+            weight,
+            reps,
+            date: new Date()
+          });
 
-           // Trigger Auto Timer
-           startRestTimer(90); // Default 90s
-         } catch (err) {
-           console.error('Failed to log set', err);
-         }
-       }
-    } else if (!isCompleting) {
-        // Optional: Remove from DB if un-checked?
-        // For now, simpler to just append logs. Unchecking is visual only in this simple version,
-        // or we need to track the `setId` created in DB to delete it.
-        // Let's keep it simple: "Checking" saves a record. Unchecking just resets UI state
-        // but doesn't delete the record (or we'd need to store the DB ID in the set object).
+          startRestTimer(90);
+        } catch (err) {
+          console.error('Failed to log set', err);
+        }
+      }
     }
   },
 
   getHistory: async (exerciseId: number) => {
-    // Get last 5 sets for this exercise, ordered by date desc
     return await db.sets
       .where('[exerciseId+date]')
       .between([exerciseId, Dexie.minKey], [exerciseId, Dexie.maxKey])
@@ -3393,84 +3326,19 @@ export const useGymStore = create<GymState>((set, get) => ({
 }));
 </file>
 
-<file path="src/components/MobileMenu.tsx">
-import { User, X, Dumbbell, ClipboardList } from 'lucide-react';
-import { Button } from './Button';
-
-interface MobileMenuProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onNavigate: (tab: any) => void;
-}
-
-export function MobileMenu({ isOpen, onClose, onNavigate }: MobileMenuProps) {
-  if (!isOpen) return null;
-
-  const menuItems = [
-    { id: 'gym', icon: Dumbbell, label: 'Entrenamiento' },
-    { id: 'routines', icon: ClipboardList, label: 'Rutinas' },
-    { id: 'exercises', icon: Dumbbell, label: 'Ejercicios' },
-  ];
-
-  return (
-    <div className="fixed inset-0 z-50 bg-neutral-950/95 backdrop-blur-sm md:hidden animate-in fade-in duration-200">
-      <div className="flex flex-col h-full p-6">
-        <div className="flex justify-between items-center mb-8">
-            <div className="flex items-center gap-3">
-                <img src="/logo.png" alt="Logo" className="w-8 h-8" />
-                <span className="font-heading font-bold text-xl text-white">Menú</span>
-            </div>
-            <Button variant="ghost" size="sm" onClick={onClose}>
-                <X className="w-6 h-6" />
-            </Button>
-        </div>
-
-        <nav className="flex-1 space-y-2">
-            {menuItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                    <button
-                        key={item.id}
-                        onClick={() => {
-                            onNavigate(item.id);
-                            onClose();
-                        }}
-                        className="w-full flex items-center gap-4 p-4 rounded-xl text-neutral-300 hover:bg-neutral-900 hover:text-white transition-colors text-lg"
-                    >
-                        <Icon className="w-6 h-6 text-lime-500" />
-                        {item.label}
-                    </button>
-                )
-            })}
-
-            <div className="h-px bg-neutral-800 my-4" />
-
-             <button
-                disabled
-                className="w-full flex items-center gap-4 p-4 rounded-xl text-neutral-500 cursor-not-allowed text-lg"
-            >
-                <User className="w-6 h-6 text-neutral-500" />
-                Perfil (Pronto)
-            </button>
-        </nav>
-      </div>
-    </div>
-  );
-}
-</file>
-
 <file path="src/features/gym/components/ExerciseLibrary.tsx">
 import { useState, useEffect } from 'react';
 import { useGymStore } from '../../../hooks/useGymStore';
 import { Input } from '../../../components/Input';
 import { Button } from '../../../components/Button';
-import { Search, Plus, ImageOff } from 'lucide-react';
+import { Search, Plus, ImageOff, FileText, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from 'lucide-react';
 import { CreateExerciseModal } from './CreateExerciseModal';
 import { Card, CardContent } from '../../../components/Card';
 import { cn } from '../../../lib/utils';
 
 const MUSCLE_GROUPS = ['Pecho', 'Espalda', 'Piernas', 'Hombros', 'Bíceps', 'Tríceps', 'Core', 'Cardio', 'Otro'];
 const EQUIPMENT = ['Mancuerna', 'Barra', 'Máquina', 'Polea', 'Peso Corporal'];
+const PAGE_SIZE = 10;
 
 export function ExerciseLibrary() {
   const { exercises, init } = useGymStore();
@@ -3478,99 +3346,154 @@ export function ExerciseLibrary() {
   const [selectedMuscle, setSelectedMuscle] = useState<string | null>(null);
   const [selectedEquipment, setSelectedEquipment] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     init();
   }, [init]);
 
-  const filteredExercises = exercises.filter(ex => {
+  // Restablece la página a 1 ante cualquier cambio en filtros o buscador
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setCurrentPage(1);
+  };
+
+  const handleMuscleSelect = (muscle: string | null) => {
+    setSelectedMuscle(muscle);
+    setCurrentPage(1);
+  };
+
+  const handleEquipmentSelect = (equipment: string | null) => {
+    setSelectedEquipment(equipment);
+    setCurrentPage(1);
+  };
+
+  // Filtrado general en memoria
+  const filteredExercises = exercises.filter((ex) => {
     const matchesSearch = ex.name.toLowerCase().includes(search.toLowerCase());
-    const matchesMuscle = selectedMuscle ? ex.muscleGroup === selectedMuscle : true;
-    const matchesEq = selectedEquipment ? ex.equipment === selectedEquipment : true;
+    const matchesMuscle = selectedMuscle ? ex.muscleGroup.toLowerCase() === selectedMuscle.toLowerCase() : true;
+    const matchesEq = selectedEquipment ? ex.equipment?.toLowerCase() === selectedEquipment.toLowerCase() : true;
     return matchesSearch && matchesMuscle && matchesEq;
   });
+
+  // Cálculo de paginado
+  const totalPages = Math.ceil(filteredExercises.length / PAGE_SIZE) || 1;
+  const startIndex = (currentPage - 1) * PAGE_SIZE;
+  const paginatedExercises = filteredExercises.slice(startIndex, startIndex + PAGE_SIZE);
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-20">
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-heading font-bold text-neutral-100">Biblioteca</h2>
         <Button onClick={() => setIsCreateModalOpen(true)} className="gap-2">
-            <Plus className="w-4 h-4" /> Nuevo
+          <Plus className="w-4 h-4" /> Nuevo
         </Button>
       </div>
 
       <div className="space-y-4">
-          <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
-              <Input
-                  placeholder="Buscar ejercicio..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10"
-              />
-          </div>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
+          <Input
+            placeholder="Buscar ejercicio..."
+            value={search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="pl-10"
+          />
+        </div>
 
-          <div className="space-y-2">
-              <p className="text-xs text-neutral-500 font-bold uppercase">Grupo Muscular</p>
-              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                  <Button
-                      variant={selectedMuscle === null ? 'primary' : 'ghost'}
-                      size="sm"
-                      onClick={() => setSelectedMuscle(null)}
-                      className={cn("whitespace-nowrap shrink-0 rounded-full", selectedMuscle === null ? '' : 'bg-neutral-800')}
-                  >
-                      Todos
-                  </Button>
-                  {MUSCLE_GROUPS.map(mg => (
-                      <Button
-                          key={mg}
-                          variant={selectedMuscle === mg ? 'primary' : 'ghost'}
-                          size="sm"
-                          onClick={() => setSelectedMuscle(mg === selectedMuscle ? null : mg)}
-                          className={cn("whitespace-nowrap shrink-0 rounded-full", selectedMuscle === mg ? '' : 'bg-neutral-800')}
-                      >
-                          {mg}
-                      </Button>
-                  ))}
-              </div>
+        {/* Filtros Grupo Muscular */}
+        <div className="space-y-2">
+          <p className="text-xs text-neutral-500 font-bold uppercase">Grupo Muscular</p>
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            <Button
+              variant={selectedMuscle === null ? 'primary' : 'ghost'}
+              size="sm"
+              onClick={() => handleMuscleSelect(null)}
+              className={cn('whitespace-nowrap shrink-0 rounded-full', selectedMuscle === null ? '' : 'bg-neutral-800')}
+            >
+              Todos
+            </Button>
+            {MUSCLE_GROUPS.map((mg) => (
+              <Button
+                key={mg}
+                variant={selectedMuscle === mg ? 'primary' : 'ghost'}
+                size="sm"
+                onClick={() => handleMuscleSelect(mg === selectedMuscle ? null : mg)}
+                className={cn('whitespace-nowrap shrink-0 rounded-full', selectedMuscle === mg ? '' : 'bg-neutral-800')}
+              >
+                {mg}
+              </Button>
+            ))}
           </div>
+        </div>
 
-          <div className="space-y-2">
-              <p className="text-xs text-neutral-500 font-bold uppercase">Equipamiento</p>
-              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                  <Button
-                      variant={selectedEquipment === null ? 'primary' : 'ghost'}
-                      size="sm"
-                      onClick={() => setSelectedEquipment(null)}
-                      className={cn("whitespace-nowrap shrink-0 rounded-full", selectedEquipment === null ? '' : 'bg-neutral-800')}
-                  >
-                      Todos
-                  </Button>
-                  {EQUIPMENT.map(eq => (
-                      <Button
-                          key={eq}
-                          variant={selectedEquipment === eq ? 'primary' : 'ghost'}
-                          size="sm"
-                          onClick={() => setSelectedEquipment(eq === selectedEquipment ? null : eq)}
-                          className={cn("whitespace-nowrap shrink-0 rounded-full", selectedEquipment === eq ? '' : 'bg-neutral-800')}
-                      >
-                          {eq}
-                      </Button>
-                  ))}
-              </div>
+        {/* Filtros Equipamiento */}
+        <div className="space-y-2">
+          <p className="text-xs text-neutral-500 font-bold uppercase">Equipamiento</p>
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            <Button
+              variant={selectedEquipment === null ? 'primary' : 'ghost'}
+              size="sm"
+              onClick={() => handleEquipmentSelect(null)}
+              className={cn('whitespace-nowrap shrink-0 rounded-full', selectedEquipment === null ? '' : 'bg-neutral-800')}
+            >
+              Todos
+            </Button>
+            {EQUIPMENT.map((eq) => (
+              <Button
+                key={eq}
+                variant={selectedEquipment === eq ? 'primary' : 'ghost'}
+                size="sm"
+                onClick={() => handleEquipmentSelect(eq === selectedEquipment ? null : eq)}
+                className={cn('whitespace-nowrap shrink-0 rounded-full', selectedEquipment === eq ? '' : 'bg-neutral-800')}
+              >
+                {eq}
+              </Button>
+            ))}
           </div>
+        </div>
       </div>
 
+      {/* Grid de Ejercicios Paginado */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredExercises.map(ex => (
-            <ExerciseCard key={ex.id} ex={ex} />
+        {paginatedExercises.map((ex, idx) => (
+          <ExerciseCard key={ex.id || ex.apiId || idx} ex={ex} />
         ))}
         {filteredExercises.length === 0 && (
-            <div className="col-span-full py-12 text-center text-neutral-500 border border-dashed border-neutral-800 rounded-xl">
-                No se encontraron ejercicios con esos filtros.
-            </div>
+          <div className="col-span-full py-12 text-center text-neutral-500 border border-dashed border-neutral-800 rounded-xl">
+            No se encontraron ejercicios con esos filtros.
+          </div>
         )}
       </div>
+
+      {/* Barra de Controles de Paginación */}
+      {filteredExercises.length > 0 && (
+        <div className="flex items-center justify-between border-t border-neutral-800 pt-4 mt-6">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="gap-1"
+          >
+            <ChevronLeft className="w-4 h-4" /> Anterior
+          </Button>
+
+          <span className="text-sm font-semibold text-neutral-400">
+            Página {currentPage} de {totalPages}
+          </span>
+
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className="gap-1"
+          >
+            Siguiente <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
 
       <CreateExerciseModal
         isOpen={isCreateModalOpen}
@@ -3581,10 +3504,14 @@ export function ExerciseLibrary() {
   );
 }
 
+/**
+ * Tarjeta individual de ejercicio con acordeón desplegable para Fit Notes.
+ */
 function ExerciseCard({ ex }: { ex: import('../../../types').Exercise }) {
   const { updateExerciseFitNotes } = useGymStore();
   const [editingNotesId, setEditingNotesId] = useState<number | null>(null);
   const [notesValue, setNotesValue] = useState('');
+  const [isNotesOpen, setIsNotesOpen] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
 
@@ -3593,90 +3520,253 @@ function ExerciseCard({ ex }: { ex: import('../../../types').Exercise }) {
     setEditingNotesId(null);
   };
 
+  const handleToggleNotes = () => {
+    if (!isNotesOpen) {
+      setNotesValue(ex.fitNotes || '');
+    }
+    setIsNotesOpen((prev) => !prev);
+  };
+
   return (
-    <Card className="bg-neutral-900 border-neutral-800 overflow-hidden">
+    <Card className="bg-neutral-900 border-neutral-800 overflow-hidden flex flex-col justify-between">
+      <div>
         <div className="h-40 bg-neutral-800 flex items-center justify-center relative overflow-hidden">
-            {ex.gifUrl ? (
-                <>
-                    {!imageLoaded && !imageError && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-neutral-800/80 animate-pulse">
-                             <div className="w-8 h-8 border-2 border-lime-500/50 border-t-lime-500 rounded-full animate-spin"></div>
-                        </div>
-                    )}
-                    {imageError ? (
-                         <div className="flex flex-col items-center justify-center text-neutral-600">
-                             <ImageOff className="w-8 h-8 mb-2" />
-                             <span className="text-xs">Imagen no disponible</span>
-                         </div>
-                    ) : (
-                        <img
-                            src={ex.gifUrl}
-                            alt={ex.name}
-                            className={cn("w-full h-full object-cover transition-opacity duration-300", imageLoaded ? "opacity-100" : "opacity-0")}
-                            onLoad={() => setImageLoaded(true)}
-                            onError={() => setImageError(true)}
-                            loading="lazy"
-                        />
-                    )}
-                </>
-            ) : (
-                <span className="text-neutral-600 text-sm">Sin Imagen</span>
-            )}
-            <div className="absolute top-2 right-2 flex gap-1 z-10">
-                <span className="bg-neutral-950/80 backdrop-blur text-[10px] px-2 py-1 rounded text-neutral-300 border border-neutral-800">
-                    {ex.muscleGroup}
-                </span>
-                {ex.equipment && (
-                     <span className="bg-neutral-950/80 backdrop-blur text-[10px] px-2 py-1 rounded text-neutral-300 border border-neutral-800">
-                        {ex.equipment}
-                    </span>
-                )}
-            </div>
-        </div>
-        <CardContent className="p-4 space-y-3 relative z-10 bg-neutral-900">
-            <h3 className="font-bold text-lg text-white leading-tight">{ex.name}</h3>
-
-            {ex.instructions && ex.instructions.length > 0 && (
-                <div className="text-xs text-neutral-400 line-clamp-2">
-                    {ex.instructions.join(" ")}
+          {ex.gifUrl ? (
+            <>
+              {!imageLoaded && !imageError && (
+                <div className="absolute inset-0 flex items-center justify-center bg-neutral-800/80 animate-pulse">
+                  <div className="w-8 h-8 border-2 border-lime-500/50 border-t-lime-500 rounded-full animate-spin" />
                 </div>
+              )}
+              {imageError ? (
+                <div className="flex flex-col items-center justify-center text-neutral-600">
+                  <ImageOff className="w-8 h-8 mb-2" />
+                  <span className="text-xs">Imagen no disponible</span>
+                </div>
+              ) : (
+                <img
+                  src={ex.gifUrl}
+                  alt={ex.name}
+                  className={cn(
+                    'w-full h-full object-cover transition-opacity duration-300',
+                    imageLoaded ? 'opacity-100' : 'opacity-0'
+                  )}
+                  onLoad={() => setImageLoaded(true)}
+                  onError={() => setImageError(true)}
+                  loading="lazy"
+                />
+              )}
+            </>
+          ) : (
+            <span className="text-neutral-600 text-sm">Sin Imagen</span>
+          )}
+          <div className="absolute top-2 right-2 flex gap-1 z-10">
+            <span className="bg-neutral-950/80 backdrop-blur text-[10px] px-2 py-1 rounded text-neutral-300 border border-neutral-800 font-semibold">
+              {ex.muscleGroup}
+            </span>
+            {ex.equipment && (
+              <span className="bg-neutral-950/80 backdrop-blur text-[10px] px-2 py-1 rounded text-neutral-300 border border-neutral-800 font-semibold">
+                {ex.equipment}
+              </span>
             )}
+          </div>
+        </div>
 
-            <div className="bg-neutral-950/50 rounded-lg p-3 border border-neutral-800/50">
-                <p className="text-xs text-neutral-500 font-bold uppercase mb-1">Fit Notes</p>
-                {editingNotesId === ex.id ? (
-                    <div className="space-y-2">
-                        <textarea
-                            className="w-full bg-neutral-900 border border-neutral-700 rounded p-2 text-sm text-neutral-200 focus:outline-none focus:border-lime-500"
-                            rows={2}
-                            value={notesValue}
-                            onChange={(e) => setNotesValue(e.target.value)}
-                            placeholder="Ej. Asiento en 3, usar polea baja..."
-                        />
-                        <div className="flex gap-2 justify-end">
-                            <Button size="sm" variant="ghost" onClick={() => setEditingNotesId(null)}>
-                                Cancelar
-                            </Button>
-                            <Button size="sm" variant="primary" onClick={() => handleSaveNotes(ex.id!)}>
-                                Guardar
-                            </Button>
-                        </div>
-                    </div>
-                ) : (
-                    <div
-                        className="cursor-text text-sm text-neutral-300 min-h-[40px] whitespace-pre-wrap"
-                        onClick={() => {
-                            setEditingNotesId(ex.id!);
-                            setNotesValue(ex.fitNotes || '');
-                        }}
-                    >
-                        {ex.fitNotes || <span className="text-neutral-600 italic">Tocar para añadir notas...</span>}
-                    </div>
-                )}
+        <CardContent className="p-4 space-y-3 relative z-10 bg-neutral-900">
+          <h3 className="font-bold text-lg text-white leading-tight">{ex.name}</h3>
+
+          {ex.instructions && ex.instructions.length > 0 && (
+            <div className="text-xs text-neutral-400 line-clamp-2">
+              {ex.instructions.join(' ')}
             </div>
+          )}
         </CardContent>
+      </div>
+
+      <div className="p-4 pt-0 bg-neutral-900 border-t border-neutral-800/50 mt-auto">
+        <button
+          type="button"
+          onClick={handleToggleNotes}
+          className="w-full flex items-center justify-between text-xs font-semibold text-neutral-400 hover:text-white py-2 px-3 rounded-lg bg-neutral-950/60 hover:bg-neutral-800 transition-colors border border-neutral-800"
+        >
+          <div className="flex items-center gap-2">
+            <FileText className="w-3.5 h-3.5 text-lime-500" />
+            <span>Fit Notes</span>
+            {ex.fitNotes && (
+              <span className="w-2 h-2 rounded-full bg-lime-500 inline-block" title="Tiene notas guardadas" />
+            )}
+          </div>
+          {isNotesOpen ? <ChevronUp className="w-4 h-4 text-neutral-400" /> : <ChevronDown className="w-4 h-4 text-neutral-400" />}
+        </button>
+
+        {isNotesOpen && (
+          <div className="mt-2 bg-neutral-950/80 rounded-lg p-3 border border-neutral-800 space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+            {editingNotesId === ex.id ? (
+              <div className="space-y-2">
+                <textarea
+                  className="w-full bg-neutral-900 border border-neutral-700 rounded p-2 text-sm text-neutral-200 focus:outline-none focus:border-lime-500"
+                  rows={2}
+                  value={notesValue}
+                  onChange={(e) => setNotesValue(e.target.value)}
+                  placeholder="Ej. Asiento en 3, usar polea baja..."
+                  autoFocus
+                />
+                <div className="flex gap-2 justify-end">
+                  <Button size="sm" variant="ghost" onClick={() => setEditingNotesId(null)}>
+                    Cancelar
+                  </Button>
+                  <Button size="sm" variant="primary" onClick={() => handleSaveNotes(ex.id!)}>
+                    Guardar
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div
+                className="cursor-text text-sm text-neutral-300 min-h-9 whitespace-pre-wrap hover:text-white transition-colors"
+                onClick={() => {
+                  setEditingNotesId(ex.id!);
+                  setNotesValue(ex.fitNotes || '');
+                }}
+              >
+                {ex.fitNotes || <span className="text-neutral-600 italic">Tocar para añadir notas...</span>}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </Card>
   );
+}
+</file>
+
+<file path="src/lib/exerciseApi.ts">
+import type { Exercise } from '../types';
+
+// CDNs de alta disponibilidad ordenados por confiabilidad
+const ENDPOINTS = [
+  'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/dist/exercises.json',
+  'https://cdn.statically.io/gh/yuhonas/free-exercise-db/main/dist/exercises.json',
+  'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json',
+  '/exercises.json', // Fallback local dentro de public/
+];
+
+const BASE_CDN_URL = 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/';
+
+// Mapeo de primaryMuscles / bodyPart a categorías en español
+const MUSCLE_GROUP_TRANSLATIONS: Record<string, string> = {
+  abdominals: 'Core',
+  chest: 'Pecho',
+  lats: 'Espalda',
+  'lower back': 'Espalda',
+  'middle back': 'Espalda',
+  traps: 'Espalda',
+  neck: 'Espalda',
+  shoulders: 'Hombros',
+  biceps: 'Bíceps',
+  triceps: 'Tríceps',
+  forearms: 'Bíceps',
+  quadriceps: 'Piernas',
+  hamstrings: 'Piernas',
+  calves: 'Piernas',
+  glutes: 'Piernas',
+  adductors: 'Piernas',
+  abductors: 'Piernas',
+  // Fallbacks para estructuras alternativas
+  back: 'Espalda',
+  legs: 'Piernas',
+  core: 'Core',
+  abs: 'Core',
+  cardio: 'Cardio',
+};
+
+const EQUIPMENT_TRANSLATIONS: Record<string, string> = {
+  dumbbell: 'Mancuerna',
+  barbell: 'Barra',
+  machine: 'Máquina',
+  cable: 'Polea',
+  'body weight': 'Peso Corporal',
+  bodyweight: 'Peso Corporal',
+  assisted: 'Máquina',
+  band: 'Otro',
+  kettlebell: 'Otro',
+  'leverage machine': 'Máquina',
+  'medicine ball': 'Otro',
+  'stability ball': 'Otro',
+  'smith machine': 'Máquina',
+};
+
+export interface RemoteExercise {
+  id: string;
+  name: string;
+  bodyPart?: string;
+  target?: string;
+  primaryMuscles?: string[];
+  equipment?: string;
+  gifUrl?: string;
+  images?: string[];
+  instructions?: string[];
+}
+
+/**
+ * Petición con reintentos automáticos en mirrors de CDN.
+ */
+async function fetchWithFallback(): Promise<RemoteExercise[]> {
+  for (const url of ENDPOINTS) {
+    try {
+      const response = await fetch(url);
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch (error) {
+      console.warn(`[ExerciseAPI] Falló la conexión con ${url}`);
+    }
+  }
+  throw new Error('Todos los endpoints de ejercicios fallaron.');
+}
+
+/**
+ * Transforma y normaliza la respuesta remota al modelo interno del sistema.
+ */
+export async function fetchExercises(): Promise<Exercise[]> {
+  try {
+    const data = await fetchWithFallback();
+
+    return data.map((item) => {
+      // 1. Normalización de URL de la imagen principal (.jpg / .gif)
+      let gifUrl = '';
+      if (item.images && item.images.length > 0) {
+        gifUrl = `${BASE_CDN_URL}${item.images[0]}`;
+      } else if (item.gifUrl) {
+        gifUrl = item.gifUrl.startsWith('http')
+          ? item.gifUrl
+          : `${BASE_CDN_URL}${item.gifUrl.replace(/^\/?(exercises\/)?/, '')}`;
+      }
+
+      // 2. Traducción de grupo muscular basado en el músculo primario
+      const primaryMuscle = item.primaryMuscles?.[0]?.toLowerCase();
+      const muscleGroup =
+        (primaryMuscle && MUSCLE_GROUP_TRANSLATIONS[primaryMuscle]) ||
+        MUSCLE_GROUP_TRANSLATIONS[item.bodyPart?.toLowerCase() || ''] ||
+        MUSCLE_GROUP_TRANSLATIONS[item.target?.toLowerCase() || ''] ||
+        'Otro';
+
+      // 3. Traducción de equipamiento
+      const equipmentKey = item.equipment?.toLowerCase() || '';
+      const equipment = EQUIPMENT_TRANSLATIONS[equipmentKey] || 'Otro';
+
+      return {
+        apiId: item.id,
+        name: item.name.charAt(0).toUpperCase() + item.name.slice(1),
+        muscleGroup,
+        equipment,
+        gifUrl,
+        instructions: item.instructions || [],
+      };
+    });
+  } catch (error) {
+    console.error('[ExerciseAPI] Error al cargar ejercicios:', error);
+    return [];
+  }
 }
 </file>
 
