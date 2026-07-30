@@ -34,6 +34,7 @@ export function CreateExerciseModal({ isOpen, onClose, onExerciseCreated }: Crea
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Focus cleanup and basic reset when opening/closing
+  // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
   useEffect(() => {
     if (isOpen) {
       setName('');
