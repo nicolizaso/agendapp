@@ -213,6 +213,7 @@ export function CreateExerciseModal({ isOpen, onClose, onExerciseCreated }: Crea
           </div>
         </form>
       </div>
-    </>
+    </>,
+    document.body
   );
 }
