@@ -6,6 +6,7 @@ import { Input } from '../../../components/Input';
 import { Button } from '../../../components/Button';
 import { cn } from '../../../lib/utils';
 import type { Exercise } from '../../../types';
+import { CreateExerciseModal } from './CreateExerciseModal';
 
 const MUSCLE_GROUPS = ['Todos', 'Pecho', 'Espalda', 'Piernas', 'Hombros', 'Bíceps', 'Tríceps', 'Core', 'Cardio', 'Otro'];
 const EQUIPMENT = ['Todos', 'Mancuerna', 'Barra', 'Máquina', 'Polea', 'Peso Corporal'];
@@ -67,6 +68,7 @@ export function ExerciseSelectorDrawer({
   const [selectedMuscle, setSelectedMuscle] = useState('Todos');
   const [selectedEquipment, setSelectedEquipment] = useState('Todos');
   const [stagedExercises, setStagedExercises] = useState<Exercise[]>([]);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   /**
    * Filtrado y deduplicación estricta por nombre de ejercicio.
@@ -117,12 +119,17 @@ export function ExerciseSelectorDrawer({
     });
   };
 
+  const handleExerciseCreated = (newExercise: Exercise) => {
+    setStagedExercises((prev) => [...prev, newExercise]);
+  };
+
   const handleFinish = () => {
     onConfirm(stagedExercises);
     onClose();
   };
 
   return createPortal(
+    <>
     <div className="fixed inset-0 z-9999 h-dvh w-screen bg-neutral-950 flex flex-col animate-in slide-in-from-bottom duration-200">
       {/* 1. Header Fijo Superior y Filtros */}
       <div className="p-4 border-b border-neutral-800 bg-neutral-950/95 backdrop-blur-md space-y-3 shrink-0">
@@ -201,7 +208,15 @@ export function ExerciseSelectorDrawer({
             );
           })}
         </div>
-      </div>
+              <Button
+            type="button"
+            variant="outline"
+            onClick={() => setIsCreateModalOpen(true)}
+            className="w-full h-11 border-dashed border-neutral-700 text-neutral-300 hover:text-white hover:border-lime-400/50 hover:bg-neutral-900 rounded-xl font-bold text-sm gap-2 shrink-0 mt-3"
+        >
+            <Plus className="w-4 h-4 text-lime-400" /> Crear nuevo ejercicio
+        </Button>
+</div>
 
       {/* 2. Catálogo de Tarjetas (Grilla de 2 columnas) */}
       <div className="flex-1 overflow-y-auto p-3 pb-32">
@@ -311,7 +326,13 @@ export function ExerciseSelectorDrawer({
           Listo ({stagedExercises.length})
         </Button>
       </div>
-    </div>,
+    </div>
+      <CreateExerciseModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onExerciseCreated={handleExerciseCreated}
+      />
+    </>,
     document.body
   );
 }

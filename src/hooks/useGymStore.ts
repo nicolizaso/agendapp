@@ -43,7 +43,7 @@ interface GymState {
 
   addActiveExercise: (exercise: Exercise) => void;
   swapActiveExercise: (exerciseIndex: number, newExercise: Exercise) => void;
-  addExercise: (name: string, muscleGroup: string, equipment?: string) => Promise<Exercise | null>;
+  addExercise: (name: string, muscleGroup: string, equipment?: string, fitNotes?: string, gifUrl?: string, instructions?: string[]) => Promise<Exercise | null>;
   updateExerciseFitNotes: (exerciseId: number, fitNotes: string) => Promise<void>;
   updateSet: (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps', value: string) => void;
   toggleSetComplete: (exerciseIndex: number, setIndex: number) => Promise<void>;
@@ -347,7 +347,7 @@ export const useGymStore = create<GymState>((set, get) => ({
     }
   },
 
-  addExercise: async (name: string, muscleGroup: string, equipment?: string) => {
+  addExercise: async (name: string, muscleGroup: string, equipment?: string, fitNotes?: string, gifUrl?: string, instructions?: string[]) => {
     try {
       const { exercises } = get();
 
@@ -362,7 +362,10 @@ export const useGymStore = create<GymState>((set, get) => ({
       const id = await db.exercises.add({
         name: name.trim(),
         muscleGroup,
-        equipment
+        equipment,
+        fitNotes,
+        gifUrl,
+        instructions
       });
 
       const updatedExercises = await db.exercises.toArray();
