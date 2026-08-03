@@ -129,7 +129,7 @@ export const useGymStore = create<GymState>((set, get) => ({
 
       // 2. CARGA/FETCH: Si no hay ejercicios de la API guardados, consultamos la API remota
       let apiExercises = await db.exercises.toArray();
-      
+
       if (apiExercises.length === 0) {
         const remoteExercises = await fetchExercises();
 
@@ -193,7 +193,7 @@ export const useGymStore = create<GymState>((set, get) => ({
 
         const routineExercises = exercises.map((ex, index) => ({
           routineId: routineId as number,
-          exerciseId: Number(ex.exerciseId),
+          exerciseId: ex.exerciseId,
           order: index,
           targetSets: ex.targetSets,
           targetReps: ex.targetReps,
@@ -216,7 +216,7 @@ export const useGymStore = create<GymState>((set, get) => ({
 
         const routineExercises = exercises.map((ex, index) => ({
           routineId: id,
-          exerciseId: Number(ex.exerciseId),
+          exerciseId: ex.exerciseId,
           order: index,
           targetSets: ex.targetSets,
           targetReps: ex.targetReps,
