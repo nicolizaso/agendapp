@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useGymStore } from '../../../hooks/useGymStore';
 import { Search, X, Check, Plus, ImageOff } from 'lucide-react';
@@ -69,6 +69,11 @@ export function ExerciseSelectorDrawer({
   const [selectedEquipment, setSelectedEquipment] = useState('Todos');
   const [stagedExercises, setStagedExercises] = useState<Exercise[]>([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [visibleCount, setVisibleCount] = useState<number>(10);
+
+  useEffect(() => {
+    setVisibleCount(10);
+  }, [search, selectedMuscle, selectedEquipment]);
 
   /**
    * Filtrado y deduplicación estricta por nombre de ejercicio.
@@ -221,7 +226,7 @@ export function ExerciseSelectorDrawer({
       {/* 2. Catálogo de Tarjetas (Grilla de 2 columnas) */}
       <div className="flex-1 overflow-y-auto p-3 pb-32">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3">
-          {filteredExercises.map((ex) => {
+          {filteredExercises.slice(0, visibleCount).map((ex) => {
             const isAlreadyInRoutine = alreadyAddedIds.includes(ex.id!);
             const isStaged = stagedExercises.some((item) => item.id === ex.id);
 
@@ -313,6 +318,17 @@ export function ExerciseSelectorDrawer({
           <div className="py-20 text-center text-neutral-500 text-sm border border-dashed border-neutral-800/60 rounded-2xl my-4">
             No se encontraron ejercicios con los filtros seleccionados.
           </div>
+        )}
+
+        {/* Botón Ver más */}
+        {visibleCount < filteredExercises.length && (
+          <button
+            type="button"
+            onClick={() => setVisibleCount((prev) => prev + 10)}
+            className="w-full py-3 mt-4 bg-neutral-900 border border-neutral-800 text-neutral-300 hover:bg-neutral-800 rounded-xl font-medium mb-4"
+          >
+            Ver más
+          </button>
         )}
       </div>
 

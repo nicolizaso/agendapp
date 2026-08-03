@@ -2,14 +2,13 @@ import { useState, useEffect } from 'react';
 import { useGymStore } from '../../../hooks/useGymStore';
 import { Input } from '../../../components/Input';
 import { Button } from '../../../components/Button';
-import { Search, Plus, ImageOff, FileText, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Plus, ImageOff, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import { CreateExerciseModal } from './CreateExerciseModal';
 import { Card, CardContent } from '../../../components/Card';
 import { cn } from '../../../lib/utils';
 
 const MUSCLE_GROUPS = ['Pecho', 'Espalda', 'Piernas', 'Hombros', 'Bíceps', 'Tríceps', 'Core', 'Cardio', 'Otro'];
 const EQUIPMENT = ['Mancuerna', 'Barra', 'Máquina', 'Polea', 'Peso Corporal'];
-const PAGE_SIZE = 10;
 
 export function ExerciseLibrary() {
   const { exercises, init } = useGymStore();
@@ -17,26 +16,30 @@ export function ExerciseLibrary() {
   const [selectedMuscle, setSelectedMuscle] = useState<string | null>(null);
   const [selectedEquipment, setSelectedEquipment] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [visibleCount, setVisibleCount] = useState<number>(10);
 
   useEffect(() => {
     init();
   }, [init]);
 
+  useEffect(() => {
+    setVisibleCount(10);
+  }, [search, selectedMuscle, selectedEquipment]);
+
   // Restablece la página a 1 ante cualquier cambio en filtros o buscador
   const handleSearchChange = (value: string) => {
     setSearch(value);
-    setCurrentPage(1);
+
   };
 
   const handleMuscleSelect = (muscle: string | null) => {
     setSelectedMuscle(muscle);
-    setCurrentPage(1);
+
   };
 
   const handleEquipmentSelect = (equipment: string | null) => {
     setSelectedEquipment(equipment);
-    setCurrentPage(1);
+
   };
 
   // Filtrado general en memoria
@@ -48,9 +51,7 @@ export function ExerciseLibrary() {
   });
 
   // Cálculo de paginado
-  const totalPages = Math.ceil(filteredExercises.length / PAGE_SIZE) || 1;
-  const startIndex = (currentPage - 1) * PAGE_SIZE;
-  const paginatedExercises = filteredExercises.slice(startIndex, startIndex + PAGE_SIZE);
+  const paginatedExercises = filteredExercises.slice(0, visibleCount);
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-20">
@@ -137,33 +138,15 @@ export function ExerciseLibrary() {
         )}
       </div>
 
-      {/* Barra de Controles de Paginación */}
-      {filteredExercises.length > 0 && (
-        <div className="flex items-center justify-between border-t border-neutral-800 pt-4 mt-6">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-            className="gap-1"
-          >
-            <ChevronLeft className="w-4 h-4" /> Anterior
-          </Button>
-
-          <span className="text-sm font-semibold text-neutral-400">
-            Página {currentPage} de {totalPages}
-          </span>
-
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-            disabled={currentPage === totalPages}
-            className="gap-1"
-          >
-            Siguiente <ChevronRight className="w-4 h-4" />
-          </Button>
-        </div>
+      {/* Botón Ver más */}
+      {visibleCount < filteredExercises.length && (
+        <button
+          type="button"
+          onClick={() => setVisibleCount((prev) => prev + 10)}
+          className="w-full py-3 mt-4 bg-neutral-900 border border-neutral-800 text-neutral-300 hover:bg-neutral-800 rounded-xl font-medium"
+        >
+          Ver más
+        </button>
       )}
 
       <CreateExerciseModal
