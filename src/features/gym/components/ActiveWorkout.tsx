@@ -14,7 +14,6 @@ export const ActiveWorkout: React.FC = () => {
     activeWorkoutStartTime,
     activeExercises,
     exercises,
-    currentExerciseIndex,
     setCurrentExerciseIndex,
     toggleSetComplete,
     finishWorkout,
