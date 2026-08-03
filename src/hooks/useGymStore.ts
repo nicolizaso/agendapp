@@ -26,6 +26,8 @@ interface GymState {
   activeWorkoutId: number | null;
   activeWorkoutStartTime: Date | null;
   activeExercises: ActiveExerciseData[];
+  currentExerciseIndex: number;
+  setCurrentExerciseIndex: (index: number) => void;
 
   restTimerTarget: number | null;
   restTimerDuration: number;
@@ -67,6 +69,7 @@ export const useGymStore = create<GymState>((set, get) => ({
   activeWorkoutId: null,
   activeWorkoutStartTime: null,
   activeExercises: [],
+  currentExerciseIndex: 0,
 
   restTimerTarget: null,
   restTimerDuration: 90,
@@ -144,7 +147,8 @@ export const useGymStore = create<GymState>((set, get) => ({
         isWorkoutActive: true,
         activeWorkoutId: id as number,
         activeWorkoutStartTime: startTime,
-        activeExercises: []
+        activeExercises: [],
+        currentExerciseIndex: 0
       });
     } catch (err) {
       console.error('Failed to start workout', err);
@@ -260,7 +264,8 @@ export const useGymStore = create<GymState>((set, get) => ({
         isWorkoutActive: true,
         activeWorkoutId: workoutId as number,
         activeWorkoutStartTime: startTime,
-        activeExercises
+        activeExercises,
+        currentExerciseIndex: 0
       });
 
     } catch (err) {
@@ -283,12 +288,15 @@ export const useGymStore = create<GymState>((set, get) => ({
         activeWorkoutId: null,
         activeWorkoutStartTime: null,
         activeExercises: [],
+        currentExerciseIndex: 0,
         restTimerTarget: null
       });
     } catch (err) {
       console.error('Failed to finish workout', err);
     }
   },
+
+  setCurrentExerciseIndex: (index: number) => set({ currentExerciseIndex: index }),
 
   cancelWorkout: async () => {
     const { activeWorkoutId } = get();
@@ -306,6 +314,7 @@ export const useGymStore = create<GymState>((set, get) => ({
       activeWorkoutId: null,
       activeWorkoutStartTime: null,
       activeExercises: [],
+      currentExerciseIndex: 0,
       restTimerTarget: null
     });
   },
