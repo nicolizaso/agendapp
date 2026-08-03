@@ -13,7 +13,7 @@ interface RoutineMetaData {
 
 export function RoutinesManager() {
   const { routines, getRoutines, deleteRoutine, exercises: allExercises, init, loadRoutineIntoWorkout } = useGymStore();
-  
+
   const [metaMap, setMetaData] = useState<Record<number, RoutineMetaData>>({});
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingRoutineData, setEditingRoutineData] = useState<{
@@ -30,8 +30,7 @@ export function RoutinesManager() {
   useEffect(() => {
     const fetchMetaData = async () => {
       const newMetaMap: Record<number, RoutineMetaData> = {};
-      const freshExercises = await db.exercises.toArray();
-      
+
       for (const routine of routines) {
         if (routine.id) {
           const routineExercises = await db.routineExercises
@@ -41,7 +40,7 @@ export function RoutinesManager() {
 
           const muscles = new Set<string>();
           routineExercises.forEach((rex) => {
-            const exDef = freshExercises.find((e) => String(e.id) === String(rex.exerciseId) || (e.apiId && String(e.apiId) === String(rex.exerciseId)));
+            const exDef = allExercises.find((e) => e.id === rex.exerciseId);
             if (exDef?.muscleGroup) {
               muscles.add(exDef.muscleGroup);
             }
@@ -64,17 +63,15 @@ export function RoutinesManager() {
   // Manejo de edición
   const handleEdit = async (routine: Routine) => {
     if (!routine.id) return;
-
-    const freshExercises = await db.exercises.toArray();
     const routineExercises = await db.routineExercises
       .where('routineId')
       .equals(routine.id)
       .sortBy('order');
 
     const formattedExercises: RoutineExerciseInput[] = routineExercises.map((rex) => {
-      const exDef = freshExercises.find((e) => String(e.id) === String(rex.exerciseId) || (e.apiId && String(e.apiId) === String(rex.exerciseId)));
+      const exDef = allExercises.find((e) => e.id === rex.exerciseId);
       return {
-        exerciseId: Number(rex.exerciseId),
+        exerciseId: rex.exerciseId,
         name: exDef ? exDef.name : 'Ejercicio desconocido',
         muscleGroup: exDef?.muscleGroup || 'Otro',
         equipment: exDef?.equipment || 'Otro',
