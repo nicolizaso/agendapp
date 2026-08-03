@@ -6,14 +6,13 @@ import { Timer, Check, Lightbulb, History, MoreHorizontal, ChevronUp, Plus, Sear
 import { CreateExerciseModal } from './CreateExerciseModal';
 import { Modal } from '../../../components/Modal';
 import { Button } from '../../../components/Button';
-import { cn } from '../../../lib/utils';
+
 
 export const ActiveWorkout: React.FC = () => {
   const {
     activeWorkoutStartTime,
     activeExercises,
     exercises,
-    routines,
     currentExerciseIndex,
     setCurrentExerciseIndex,
     toggleSetComplete,
