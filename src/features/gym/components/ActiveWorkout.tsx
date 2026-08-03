@@ -71,8 +71,7 @@ export const ActiveWorkout: React.FC = () => {
 
   if (!activeWorkoutStartTime) return null;
 
-  const currentIdx = currentExerciseIndex || 0;
-      // Optional: activeSession might not have a routine ID stored, we just show a default title
+        // Optional: activeSession might not have a routine ID stored, we just show a default title
   const title = activeExercises.length > 0 ? 'Entrenamiento Activo' : 'Entrenamiento Activo';
 
   const formatTime = (totalSecs: number) => {
