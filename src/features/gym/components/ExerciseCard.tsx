@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useGymStore } from '../../../hooks/useGymStore';
-import { Button } from '../../../components/Button';
-import { Trash2, Plus, Check, ChevronDown, ChevronUp } from 'lucide-react';
-import { cn } from '../../../lib/utils';
+import { Check, Lightbulb, History as HistoryIcon, MoreHorizontal } from 'lucide-react';
 import type { WorkoutSet } from '../../../types';
 
 interface ExerciseCardProps {
@@ -16,13 +14,8 @@ interface ExerciseCardProps {
 export function ExerciseCard({ exerciseIndex, isExpanded, onExpand, onSetCompleted, openSetEditor }: ExerciseCardProps) {
   const {
       activeExercises,
-      updateSet,
-      toggleSetComplete,
-      addSet,
-      removeSet,
-      getHistory,
-      calculate1RM
-  } = useGymStore();
+            getHistory,
+        } = useGymStore();
 
   const exercise = activeExercises[exerciseIndex];
   const [lastHistory, setLastHistory] = useState<WorkoutSet[]>([]);
@@ -125,7 +118,7 @@ export function ExerciseCard({ exerciseIndex, isExpanded, onExpand, onSetComplet
               {/* Actions inside Card */}
               <div className="flex gap-3 mt-1">
                 <button className="flex-1 h-12 rounded-xl bg-neutral-800 text-neutral-300 text-xs font-semibold flex items-center justify-center gap-2 active:scale-95 transition-all">
-                  <History className="w-4 h-4" /> Historial
+                  <HistoryIcon className="w-4 h-4" /> Historial
                 </button>
                 <button
                   onClick={() => {

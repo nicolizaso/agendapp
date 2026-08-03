@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useGymStore } from '../../../hooks/useGymStore';
 import { RestTimer } from './RestTimer';
 import { BusyMachineModal } from './BusyMachineModal';
-import { Timer, Check, Lightbulb, History, MoreHorizontal, ChevronUp, Plus, Search } from 'lucide-react';
+import { Timer, Plus, Search } from 'lucide-react';
 import { CreateExerciseModal } from './CreateExerciseModal';
 import { ExerciseCard } from './ExerciseCard';
 import { Modal } from '../../../components/Modal';
@@ -19,7 +19,7 @@ export const ActiveWorkout: React.FC = () => {
     toggleSetComplete,
     finishWorkout,
     updateSet,
-    cancelWorkout,
+
     addActiveExercise
   } = useGymStore();
 
@@ -73,8 +73,7 @@ export const ActiveWorkout: React.FC = () => {
 
   const currentIdx = currentExerciseIndex || 0;
   const currentSessionExercise = activeExercises[currentIdx];
-  const currentExerciseData = exercises.find(e => e.id === currentSessionExercise?.exerciseId);
-  // Optional: activeSession might not have a routine ID stored, we just show a default title
+    // Optional: activeSession might not have a routine ID stored, we just show a default title
   const title = activeExercises.length > 0 ? 'Entrenamiento Activo' : 'Entrenamiento Activo';
 
   const formatTime = (totalSecs: number) => {
@@ -99,19 +98,7 @@ export const ActiveWorkout: React.FC = () => {
     });
   };
 
-  const handleSetClick = (setIndex: number) => {
-    if ('vibrate' in navigator) navigator.vibrate(40);
-    toggleSetComplete(currentIdx, setIndex);
-  };
 
-  const openSetEditor = (setIndex: number) => {
-    const set = currentSessionExercise?.sets[setIndex];
-    if (set) {
-      setEditWeight(set.weight);
-      setEditReps(set.reps);
-      setEditingSet({ exerciseIndex: currentIdx, setIndex });
-    }
-  };
 
   const handleSaveSet = () => {
     if (editingSet) {
@@ -122,7 +109,6 @@ export const ActiveWorkout: React.FC = () => {
   };
 
   const nextExercise = activeExercises[currentIdx + 1];
-  const nextExerciseData = nextExercise ? exercises.find(e => e.id === nextExercise.exerciseId) : null;
 
   const filteredExercises = exercises.filter(ex =>
     ex.name.toLowerCase().includes(search.toLowerCase()) ||
