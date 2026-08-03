@@ -13,21 +13,37 @@ export function RestTimer() {
         return;
     }
 
-    const interval = setInterval(() => {
+    const calculateTime = () => {
       const now = Date.now();
       const diff = Math.ceil((restTimerTarget - now) / 1000);
 
       if (diff <= 0) {
         stopRestTimer();
-        // Optional: Vibration or Sound here
         if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
       } else {
         setTimeLeft(diff);
       }
-    }, 100);
+    };
 
-    return () => clearInterval(interval);
+    calculateTime(); // calculate immediately on mount or target change
+    const interval = setInterval(calculateTime, 100);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        calculateTime();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', calculateTime);
+
+    return () => {
+        clearInterval(interval);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+        window.removeEventListener('focus', calculateTime);
+    };
   }, [restTimerTarget, stopRestTimer]);
+
 
   if (!restTimerTarget) return null;
 

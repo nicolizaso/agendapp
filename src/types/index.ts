@@ -133,3 +133,24 @@ export interface Location {
   apt?: string;
   notes?: string;
 }
+export interface ActiveSetInput {
+  weight: string;
+  reps: string;
+  completed: boolean;
+}
+
+export interface ActiveExerciseData {
+  exerciseId: number;
+  name: string;
+  muscleGroup: string;
+  sets: ActiveSetInput[];
+}
+
+export interface ActiveWorkoutDraft {
+  id?: number;
+  workoutId: number;
+  startTime: Date;
+  activeExercises: ActiveExerciseData[];
+  restTimerTarget: number | null;
+  restTimerDuration: number;
+}

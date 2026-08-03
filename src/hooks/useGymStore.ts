@@ -2,20 +2,7 @@ import { create } from 'zustand';
 import Dexie from 'dexie';
 import { db } from '../lib/db';
 import { fetchExercises } from '../lib/exerciseApi';
-import type { Exercise, WorkoutSet, Routine } from '../types';
-
-interface ActiveSetInput {
-  weight: string;
-  reps: string;
-  completed: boolean;
-}
-
-interface ActiveExerciseData {
-  exerciseId: number;
-  name: string;
-  muscleGroup: string;
-  sets: ActiveSetInput[];
-}
+import type { Exercise, WorkoutSet, Routine, ActiveWorkoutDraft, ActiveExerciseData, ActiveSetInput } from '../types';
 
 interface GymState {
   isLoading: boolean;
@@ -36,6 +23,7 @@ interface GymState {
   startWorkout: () => Promise<void>;
   finishWorkout: () => Promise<void>;
   cancelWorkout: () => Promise<void>;
+  saveActiveDraft: () => Promise<void>;
 
   createRoutine: (name: string, exercises: { exerciseId: number; targetSets: number; targetReps: string; targetWeight?: string }[]) => Promise<void>;
   updateRoutine: (id: number, name: string, exercises: { exerciseId: number; targetSets: number; targetReps: string; targetWeight?: string }[]) => Promise<void>;
@@ -61,6 +49,29 @@ interface GymState {
 }
 
 export const useGymStore = create<GymState>((set, get) => ({
+
+  saveActiveDraft: async () => {
+    const state = get();
+    if (!state.isWorkoutActive || !state.activeWorkoutId || !state.activeWorkoutStartTime) {
+        await db.activeWorkoutDraft.clear();
+        return;
+    }
+
+    const draft: ActiveWorkoutDraft = {
+        id: 1,
+        workoutId: state.activeWorkoutId,
+        startTime: state.activeWorkoutStartTime,
+        activeExercises: state.activeExercises,
+        restTimerTarget: state.restTimerTarget,
+        restTimerDuration: state.restTimerDuration
+    };
+
+    try {
+        await db.activeWorkoutDraft.put(draft);
+    } catch (e) {
+        console.error('Failed to save active workout draft', e);
+    }
+  },
   isLoading: false,
   exercises: [],
   routines: [],
@@ -89,6 +100,21 @@ export const useGymStore = create<GymState>((set, get) => ({
         console.warn("Esperando DB en useGymStore...");
         return;
       }
+      // Restore active workout draft if exists
+      const drafts = await db.activeWorkoutDraft.toArray();
+      if (drafts.length > 0) {
+        const draft = drafts[0];
+        set({
+            isWorkoutActive: true,
+            activeWorkoutId: draft.workoutId,
+            activeWorkoutStartTime: draft.startTime,
+            activeExercises: draft.activeExercises,
+            restTimerTarget: draft.restTimerTarget,
+            restTimerDuration: draft.restTimerDuration,
+            currentExerciseIndex: 0
+        });
+      }
+
 
       // 1. PURGA: Elimina cualquier ejercicio que no provenga de la API (sin apiId)
       const currentExercises = await db.exercises.toArray();
@@ -110,6 +136,7 @@ export const useGymStore = create<GymState>((set, get) => ({
         if (remoteExercises.length > 0) {
           await db.transaction('rw', db.exercises, async () => {
             // Deduplicación por apiId antes de guardar
+
             const uniqueMap = new Map<string, Exercise>();
             for (const remote of remoteExercises) {
               if (remote.apiId && !uniqueMap.has(remote.apiId)) {
@@ -150,6 +177,7 @@ export const useGymStore = create<GymState>((set, get) => ({
         activeExercises: [],
         currentExerciseIndex: 0
       });
+      get().saveActiveDraft();
     } catch (err) {
       console.error('Failed to start workout', err);
     }
@@ -267,6 +295,7 @@ export const useGymStore = create<GymState>((set, get) => ({
         activeExercises,
         currentExerciseIndex: 0
       });
+      get().saveActiveDraft();
 
     } catch (err) {
       console.error('Failed to load routine', err);
@@ -291,6 +320,7 @@ export const useGymStore = create<GymState>((set, get) => ({
         currentExerciseIndex: 0,
         restTimerTarget: null
       });
+      db.activeWorkoutDraft.clear();
     } catch (err) {
       console.error('Failed to finish workout', err);
     }
@@ -317,6 +347,7 @@ export const useGymStore = create<GymState>((set, get) => ({
       currentExerciseIndex: 0,
       restTimerTarget: null
     });
+    db.activeWorkoutDraft.clear();
   },
 
   addActiveExercise: (exercise: Exercise) => {
@@ -332,6 +363,7 @@ export const useGymStore = create<GymState>((set, get) => ({
         }
       ]
     });
+    get().saveActiveDraft();
   },
 
   swapActiveExercise: (exerciseIndex: number, newExercise: Exercise) => {
@@ -344,6 +376,7 @@ export const useGymStore = create<GymState>((set, get) => ({
       muscleGroup: newExercise.muscleGroup,
     };
     set({ activeExercises: newExercises });
+    get().saveActiveDraft();
   },
 
   updateExerciseFitNotes: async (exerciseId: number, fitNotes: string) => {
@@ -399,6 +432,7 @@ export const useGymStore = create<GymState>((set, get) => ({
       completed: false
     });
     set({ activeExercises: newExercises });
+    get().saveActiveDraft();
   },
 
   removeSet: (exerciseIndex: number, setIndex: number) => {
@@ -406,6 +440,7 @@ export const useGymStore = create<GymState>((set, get) => ({
     const newExercises = [...activeExercises];
     newExercises[exerciseIndex].sets.splice(setIndex, 1);
     set({ activeExercises: newExercises });
+    get().saveActiveDraft();
   },
 
   updateSet: (exerciseIndex, setIndex, field, value) => {
@@ -413,6 +448,7 @@ export const useGymStore = create<GymState>((set, get) => ({
     const newExercises = [...activeExercises];
     newExercises[exerciseIndex].sets[setIndex][field] = value;
     set({ activeExercises: newExercises });
+    get().saveActiveDraft();
   },
 
   toggleSetComplete: async (exerciseIndex, setIndex) => {
@@ -425,6 +461,7 @@ export const useGymStore = create<GymState>((set, get) => ({
     const newExercises = [...activeExercises];
     newExercises[exerciseIndex].sets[setIndex].completed = isCompleting;
     set({ activeExercises: newExercises });
+    get().saveActiveDraft();
 
     if (isCompleting && activeWorkoutId) {
       const weight = parseFloat(setItem.weight);
@@ -480,9 +517,11 @@ export const useGymStore = create<GymState>((set, get) => ({
       restTimerDuration: durationSeconds,
       restTimerTarget: Date.now() + durationSeconds * 1000
     });
+    get().saveActiveDraft();
   },
 
   stopRestTimer: () => {
     set({ restTimerTarget: null });
+    get().saveActiveDraft();
   }
 }));
