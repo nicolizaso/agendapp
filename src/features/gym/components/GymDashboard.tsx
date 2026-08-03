@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useGymStore } from '../../../hooks/useGymStore';
 import { Button } from '../../../components/Button';
-import { Dumbbell, Calendar as CalendarIcon } from 'lucide-react';
+import { Dumbbell, Calendar as CalendarIcon, ChevronDown, Check } from 'lucide-react';
 import { db } from '../../../lib/db';
 import type { Routine } from '../../../types';
 import { WorkoutDetailModal } from './WorkoutDetailModal';
@@ -13,6 +13,19 @@ export function GymDashboard() {
   const [currentMonth] = useState(new Date());
 
   const [selectedWorkoutId, setSelectedWorkoutId] = useState<number | null>(null);
+
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     getRoutines();
@@ -108,15 +121,49 @@ export function GymDashboard() {
     <div className="space-y-6 pb-20 animate-in fade-in duration-500">
 
       {/* Hero Section */}
-      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 relative overflow-hidden">
+      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 relative">
         <div className="relative z-10">
             <h2 className="text-3xl font-heading font-bold text-white mb-2">Gym Tracker</h2>
 
-            <div className="mt-6 mb-4">
+            <div className="mt-6 mb-4 relative" ref={dropdownRef}>
                 <p className="text-sm text-neutral-400 font-medium uppercase tracking-wider mb-1">Hoy toca:</p>
-                <h3 className="text-2xl font-bold text-lime-400 drop-shadow-md">
-                    {suggestedRoutine ? suggestedRoutine.name : 'Entrenamiento Libre'}
-                </h3>
+                <div
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    className="group flex items-center justify-between cursor-pointer hover:opacity-80 transition-opacity"
+                >
+                    <h3 className="text-2xl font-bold text-lime-400 drop-shadow-md">
+                        {suggestedRoutine ? suggestedRoutine.name : 'Entrenamiento Libre'}
+                    </h3>
+                    <ChevronDown className={`w-6 h-6 text-lime-400 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                </div>
+
+                {isDropdownOpen && (
+                    <div className="absolute top-full left-0 w-full z-30 mt-2 bg-neutral-900 border border-neutral-800 rounded-xl shadow-2xl max-h-56 overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+                        <div
+                            className={`p-4 flex items-center justify-between cursor-pointer hover:bg-neutral-800 border-b border-neutral-800 ${!suggestedRoutine ? 'text-lime-400' : 'text-neutral-200'}`}
+                            onClick={() => {
+                                setSuggestedRoutine(null);
+                                setIsDropdownOpen(false);
+                            }}
+                        >
+                            <span className="font-medium">Entrenamiento Libre</span>
+                            {!suggestedRoutine && <Check className="w-5 h-5" />}
+                        </div>
+                        {routines.map((routine) => (
+                            <div
+                                key={routine.id}
+                                className={`p-4 flex items-center justify-between cursor-pointer hover:bg-neutral-800 border-b border-neutral-800 last:border-0 ${suggestedRoutine?.id === routine.id ? 'text-lime-400' : 'text-neutral-200'}`}
+                                onClick={() => {
+                                    setSuggestedRoutine(routine);
+                                    setIsDropdownOpen(false);
+                                }}
+                            >
+                                <span className="font-medium">{routine.name}</span>
+                                {suggestedRoutine?.id === routine.id && <Check className="w-5 h-5" />}
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             <Button
@@ -129,7 +176,9 @@ export function GymDashboard() {
         </div>
 
         {/* Decorative BG */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-lime-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+        <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-lime-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+        </div>
       </div>
 
       {renderCalendar()}
