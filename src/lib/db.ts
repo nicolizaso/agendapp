@@ -1,5 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 import type {
+  ActiveWorkoutDraft,
   Task, Reward, RewardClaim, UserStats, Habit, HabitLog,
   HabitClaim, DailyNote, Exercise, Workout, WorkoutSet,
   Routine, RoutineExercise, Category, Location
@@ -21,11 +22,13 @@ export class VectorLifeDB extends Dexie {
   routineExercises!: Table<RoutineExercise>;
   categories!: Table<Category>;
   locations!: Table<Location>;
+  activeWorkoutDraft!: Table<ActiveWorkoutDraft>;
 
   constructor() {
     super('VectorLifeDB');
 
-    this.version(22).stores({
+    this.version(23).stores({
+      activeWorkoutDraft: '++id, workoutId',
       tasks: 'id, category, scheduledDate, status, recurringGroupId',
       categories: 'id, label, icon, color, bg, border, ring',
       locations: 'id, name',

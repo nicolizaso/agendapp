@@ -40,13 +40,33 @@ export const ActiveWorkout: React.FC = () => {
   // General Timer
   useEffect(() => {
     if (!activeWorkoutStartTime) return;
-    const interval = setInterval(() => {
+
+    const calculateTime = () => {
       const start = new Date(activeWorkoutStartTime).getTime();
-      const now = new Date().getTime();
+      const now = Date.now();
       setElapsedSeconds(Math.floor((now - start) / 1000));
-    }, 1000);
-    return () => clearInterval(interval);
+    };
+
+    calculateTime();
+    const interval = setInterval(calculateTime, 1000);
+
+    // Add visibility and focus listeners to recalculate immediately
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        calculateTime();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', calculateTime);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', calculateTime);
+    };
   }, [activeWorkoutStartTime]);
+
 
   if (!activeWorkoutStartTime) return null;
 
