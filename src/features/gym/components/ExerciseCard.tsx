@@ -1,7 +1,5 @@
-import { useState, useEffect } from 'react';
 import { useGymStore } from '../../../hooks/useGymStore';
 import { Check, Lightbulb, History as HistoryIcon, MoreHorizontal } from 'lucide-react';
-import type { WorkoutSet } from '../../../types';
 
 interface ExerciseCardProps {
   exerciseIndex: number;
@@ -14,23 +12,14 @@ interface ExerciseCardProps {
 export function ExerciseCard({ exerciseIndex, isExpanded, onExpand, onSetCompleted, openSetEditor }: ExerciseCardProps) {
   const {
       activeExercises,
-            getHistory,
         } = useGymStore();
 
   const exercise = activeExercises[exerciseIndex];
-  const [lastHistory, setLastHistory] = useState<WorkoutSet[]>([]);
 
   const { exercises } = useGymStore();
   const exerciseData = exercises.find(e => e.id === exercise.exerciseId);
 
-  useEffect(() => {
-    getHistory(exercise.exerciseId).then(setLastHistory);
-  }, [exercise.exerciseId, getHistory]);
-
   // "Ghost" info: Best/Last set from history
-  const ghostText = lastHistory.length > 0
-    ? `Última vez: ${lastHistory[0].weight}kg x ${lastHistory[0].reps}`
-    : 'Primer registro';
 
   return (
     <article className="bg-[#171717] border border-neutral-800 rounded-3xl overflow-hidden shadow-xl flex flex-col mb-4">
