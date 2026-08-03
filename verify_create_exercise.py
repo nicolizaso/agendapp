@@ -26,7 +26,7 @@ def verify_create_exercise():
             expect(page.locator("h2", has_text="Mis Rutinas")).to_be_visible()
 
             # 5. Open Create Routine Modal
-            page.get_by_role("button", name="Nueva Rutina").click()
+            page.get_by_role("button").filter(has_text="Nueva").click() if page.get_by_role("button").filter(has_text="Nueva").is_visible() else page.get_by_role("button").filter(has_text="Crear mi primera rutina").click()
 
             # 6. In CreateRoutineModal ("Nueva Rutina")
             expect(page.get_by_role("heading", name="Nueva Rutina")).to_be_visible()
@@ -36,17 +36,17 @@ def verify_create_exercise():
 
             # 6. In Exercise Selection ("Agregar Ejercicio")
             # Click the new Plus button next to search input
-            page.locator("input[placeholder='Buscar ejercicio...'] + button").click()
+            page.get_by_role("button").filter(has_text="Crear nuevo ejercicio").click()
 
             # 7. Verify Create Exercise Modal opens
             expect(page.get_by_role("heading", name="Crear Ejercicio")).to_be_visible()
 
             # 8. Fill form
-            page.fill("input[placeholder='Ej. Burpees']", "Playwright Test Exercise")
+            page.fill("input[placeholder='Ej. Press de Banca']", "Playwright Test Exercise")
 
             # Select Muscle Group
             # Target the select inside the form to avoid conflict with background select
-            page.locator("form select").select_option("Pecho")
+            page.locator("form").get_by_role("button", name="Pecho").click()
 
             # 9. Submit
             page.get_by_role("button", name="Crear Ejercicio").click()
