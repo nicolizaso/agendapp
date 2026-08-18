@@ -62,6 +62,32 @@ export class CargaDB extends Dexie {
       trainingPlans: '++id, name, startDate',
       planExercises: '++id, planId, exerciseId, order',
     });
+
+    // La agenda pasa de turnos con fecha fija a un horario semanal recurrente:
+    // día de la semana + hora, sin fecha puntual ni semana de plan guardada.
+    this.version(3)
+      .stores({
+        exercises: '++id, apiId, name, muscleGroup, equipment',
+        workouts: '++id, date, name, durationSeconds',
+        sets: '++id, workoutId, exerciseId, [exerciseId+date], [workoutId+exerciseId]',
+        routines: '++id, name, created_at',
+        routineExercises: '++id, routineId, exerciseId, order',
+        activeWorkoutDraft: '++id, workoutId',
+        scheduledSessions: '++id, dayOfWeek, routineId, planId',
+        trainingPlans: '++id, name, startDate',
+        planExercises: '++id, planId, exerciseId, order',
+      })
+      .upgrade(async (tx) => {
+        await tx
+          .table('scheduledSessions')
+          .toCollection()
+          .modify((session) => {
+            const previousDate = session.date instanceof Date ? session.date : new Date(session.date);
+            session.dayOfWeek = previousDate.getDay();
+            delete session.date;
+            delete session.weekIndex;
+          });
+      });
   }
 }
 
