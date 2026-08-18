@@ -29,11 +29,11 @@ export function AgendaPage() {
         <SubTabButton active={subTab === 'calendar'} onClick={() => setSubTab('calendar')}>
           Calendario
         </SubTabButton>
-        <SubTabButton active={subTab === 'sessions'} onClick={() => setSubTab('sessions')}>
-          Turnos
-        </SubTabButton>
         <SubTabButton active={subTab === 'plans'} onClick={() => setSubTab('plans')}>
           Planes
+        </SubTabButton>
+        <SubTabButton active={subTab === 'sessions'} onClick={() => setSubTab('sessions')}>
+          Turnos
         </SubTabButton>
       </div>
 
