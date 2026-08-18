@@ -1,8 +1,4 @@
-/* ---------------------------------------------------------------------------
-   Modelo de dominio de Carga.
-   Los tipos heredados de la agenda original viven en `./legacy` y sólo se
-   conservan para que las tablas antiguas de IndexedDB sigan tipadas.
---------------------------------------------------------------------------- */
+/* Modelo de dominio de Carga. */
 
 export interface Exercise {
   id?: number;
@@ -87,5 +83,3 @@ export interface WorkoutSummary {
   totalVolume: number;
   exerciseCount: number;
 }
-
-export type { Category, DailyNote, Habit, HabitClaim, HabitLog, Location, Reward, RewardClaim, Task, UserStats } from './legacy';

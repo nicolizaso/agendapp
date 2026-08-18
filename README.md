@@ -47,9 +47,14 @@ src/
 
 ## Datos
 
-La base local se llama `VectorLifeDB` por razones históricas y conserva tablas de
-una agenda anterior que la app ya no usa; se mantienen declaradas para no borrar
-datos de instalaciones viejas.
+La base local se llama `CargaDB` y guarda únicamente datos de entrenamiento:
+ejercicios, sesiones, series, rutinas y el borrador de la sesión en curso.
+
+Quien venía de la agenda que precedió a Carga tenía sus datos en `VectorLifeDB`.
+La primera vez que se abre esta versión, el historial de entrenamiento se copia a
+`CargaDB` conservando los ids y la base vieja se elimina con todo lo que no era de
+entrenamiento. Si la copia falla, la base original queda intacta y se reintenta en
+el siguiente arranque.
 
 El catálogo de ejercicios se descarga una sola vez desde
 [free-exercise-db](https://github.com/yuhonas/free-exercise-db) (con varios CDN de

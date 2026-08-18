@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import Dexie from 'dexie';
-import { db } from '../lib/db';
+import { db, openDatabase } from '../lib/db';
 import { fetchExercises } from '../lib/exerciseApi';
 import type {
   Exercise,
@@ -177,7 +177,7 @@ export const useGymStore = create<GymState>((set, get) => ({
     set({ isLoading: true, loadError: null });
 
     try {
-      await db.open();
+      await openDatabase();
 
       const draft = (await db.activeWorkoutDraft.toArray())[0];
       if (draft) {
