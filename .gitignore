@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Herramientas y salidas locales
+*.orig
+verification/
+repomix-output.xml

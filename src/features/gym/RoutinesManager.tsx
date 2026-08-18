@@ -1,170 +1,160 @@
 import { useEffect, useState } from 'react';
+import { ClipboardList, Dumbbell, Pencil, Play, Plus, Trash2 } from 'lucide-react';
 import { useGymStore } from '../../hooks/useGymStore';
+import { useUIStore } from '../../hooks/useUIStore';
 import { Button } from '../../components/Button';
-import { Plus, Pencil, Trash2, Dumbbell, Play, ClipboardList } from 'lucide-react';
 import { db } from '../../lib/db';
-import type { Routine } from '../../types';
+import { MUSCLE_BADGE } from './taxonomy';
+import { cn } from '../../lib/utils';
 import { RoutineFormFullScreen, type RoutineExerciseInput } from './components/RoutineFormFullScreen';
+import type { Routine } from '../../types';
 
-interface RoutineMetaData {
+interface RoutineMeta {
   count: number;
   muscleGroups: string[];
 }
 
 export function RoutinesManager() {
-  const { routines, getRoutines, deleteRoutine, exercises: allExercises, init, loadRoutineIntoWorkout } = useGymStore();
-  
-  const [metaMap, setMetaData] = useState<Record<number, RoutineMetaData>>({});
+  const routines = useGymStore((state) => state.routines);
+  const getRoutines = useGymStore((state) => state.getRoutines);
+  const deleteRoutine = useGymStore((state) => state.deleteRoutine);
+  const loadRoutineIntoWorkout = useGymStore((state) => state.loadRoutineIntoWorkout);
+  const openConfirmDialog = useUIStore((state) => state.openConfirmDialog);
+
+  const [meta, setMeta] = useState<Record<number, RoutineMeta>>({});
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingRoutineData, setEditingRoutineData] = useState<{
-    routine: Routine;
-    exercises: RoutineExerciseInput[];
-  } | null>(null);
+  const [editing, setEditing] = useState<{ routine: Routine; exercises: RoutineExerciseInput[] } | null>(null);
 
   useEffect(() => {
-    init();
     getRoutines();
-  }, [init, getRoutines]);
+  }, [getRoutines]);
 
-  // Carga de metadatos (cantidad de ejercicios y grupos musculares clave)
+  // Cantidad de ejercicios y músculos de cada rutina, leídos de IndexedDB.
   useEffect(() => {
-    const fetchMetaData = async () => {
-      const newMetaMap: Record<number, RoutineMetaData> = {};
-      const freshExercises = await db.exercises.toArray();
-      
+    let cancelled = false;
+
+    (async () => {
+      const catalog = await db.exercises.toArray();
+      const next: Record<number, RoutineMeta> = {};
+
       for (const routine of routines) {
-        if (routine.id) {
-          const routineExercises = await db.routineExercises
-            .where('routineId')
-            .equals(routine.id)
-            .sortBy('order');
+        if (typeof routine.id !== 'number') continue;
 
-          const muscles = new Set<string>();
-          routineExercises.forEach((rex) => {
-            const exDef = freshExercises.find((e) => String(e.id) === String(rex.exerciseId) || (e.apiId && String(e.apiId) === String(rex.exerciseId)));
-            if (exDef?.muscleGroup) {
-              muscles.add(exDef.muscleGroup);
-            }
-          });
+        const routineExercises = await db.routineExercises.where('routineId').equals(routine.id).toArray();
+        const muscles = new Set<string>();
 
-          newMetaMap[routine.id] = {
-            count: routineExercises.length,
-            muscleGroups: Array.from(muscles).slice(0, 3), // Máximo 3 badges
-          };
+        for (const item of routineExercises) {
+          const definition = catalog.find((exercise) => exercise.id === item.exerciseId);
+          if (definition?.muscleGroup) muscles.add(definition.muscleGroup);
         }
+
+        next[routine.id] = { count: routineExercises.length, muscleGroups: Array.from(muscles).slice(0, 3) };
       }
-      setMetaData(newMetaMap);
+
+      if (!cancelled) setMeta(next);
+    })();
+
+    return () => {
+      cancelled = true;
     };
+  }, [routines]);
 
-    if (routines.length > 0) {
-      fetchMetaData();
-    }
-  }, [routines, allExercises]);
-
-  // Manejo de edición
   const handleEdit = async (routine: Routine) => {
-    if (!routine.id) return;
+    if (typeof routine.id !== 'number') return;
 
-    const freshExercises = await db.exercises.toArray();
-    const routineExercises = await db.routineExercises
-      .where('routineId')
-      .equals(routine.id)
-      .sortBy('order');
+    const catalog = await db.exercises.toArray();
+    const routineExercises = await db.routineExercises.where('routineId').equals(routine.id).sortBy('order');
 
-    const formattedExercises: RoutineExerciseInput[] = routineExercises.map((rex) => {
-      const exDef = freshExercises.find((e) => String(e.id) === String(rex.exerciseId) || (e.apiId && String(e.apiId) === String(rex.exerciseId)));
+    const exercises: RoutineExerciseInput[] = routineExercises.map((item) => {
+      const definition = catalog.find((exercise) => exercise.id === item.exerciseId);
       return {
-        exerciseId: Number(rex.exerciseId),
-        name: exDef ? exDef.name : 'Ejercicio desconocido',
-        muscleGroup: exDef?.muscleGroup || 'Otro',
-        equipment: exDef?.equipment || 'Otro',
-        targetSets: rex.targetSets,
-        targetReps: rex.targetReps,
-        targetWeight: rex.targetWeight || '',
+        exerciseId: item.exerciseId,
+        name: definition?.name ?? 'Ejercicio no disponible',
+        muscleGroup: definition?.muscleGroup ?? 'Otro',
+        equipment: definition?.equipment ?? 'Otro',
+        targetSets: item.targetSets,
+        targetReps: item.targetReps,
+        targetWeight: item.targetWeight ?? '',
       };
     });
 
-    setEditingRoutineData({ routine, exercises: formattedExercises });
+    setEditing({ routine, exercises });
     setIsFormOpen(true);
   };
 
-  // Manejo de eliminación con confirmación
-  const handleDelete = async (id: number) => {
-    if (confirm('¿Estás seguro de eliminar esta rutina?')) {
-      await deleteRoutine(id);
-    }
+  const handleDelete = (routine: Routine) => {
+    if (typeof routine.id !== 'number') return;
+
+    openConfirmDialog({
+      title: '¿Eliminar la rutina?',
+      message: `"${routine.name}" se borra de forma permanente. Tus entrenamientos ya registrados no se tocan.`,
+      variant: 'danger',
+      confirmLabel: 'Eliminar',
+      onConfirm: () => {
+        deleteRoutine(routine.id as number);
+      },
+    });
   };
 
-  const handleCreateNew = () => {
-    setEditingRoutineData(null);
+  const openCreate = () => {
+    setEditing(null);
     setIsFormOpen(true);
   };
 
   return (
-    <div className="space-y-6 pb-28 animate-in fade-in duration-300 max-w-5xl mx-auto px-1">
-      {/* Header Superior Fijo / Principal */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl sm:text-3xl font-heading font-bold text-neutral-100">
-          Mis Rutinas
-        </h2>
+    <div className="space-y-6 pb-24">
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-heading text-2xl font-bold tracking-tight text-ink-100 sm:text-3xl">Rutinas</h1>
+          <p className="mt-1 text-sm text-ink-400">Tus planes armados, listos para empezar en un toque.</p>
+        </div>
         {routines.length > 0 && (
-          <Button
-            onClick={handleCreateNew}
-            variant="outline"
-            className="min-h-12 min-w-12 px-4 gap-2 border-neutral-800 hover:bg-neutral-800 text-neutral-200"
-          >
-            <Plus className="w-5 h-5 text-lime-400" />
+          <Button onClick={openCreate}>
+            <Plus className="h-4 w-4" />
             <span className="hidden sm:inline">Nueva</span>
           </Button>
         )}
-      </div>
+      </header>
 
-      {/* ESTADO B: Sin Rutinas (Empty State) */}
       {routines.length === 0 ? (
-        <div className="min-h-[65vh] flex flex-col items-center justify-center p-6 text-center bg-neutral-900/40 border border-neutral-800/80 rounded-2xl">
-          <div className="bg-neutral-900 p-6 rounded-full border border-neutral-800 mb-4 shadow-inner">
-            <ClipboardList className="w-12 h-12 text-lime-400" />
-          </div>
-          <h3 className="text-xl font-bold text-neutral-100 mb-2">
-            Aún no tenés rutinas creadas
-          </h3>
-          <p className="text-sm text-neutral-400 max-w-xs mb-6 leading-relaxed">
-            Organizá tus días de entrenamiento para que la app calcule tu progreso y pesos automáticamente.
+        <div className="flex flex-col items-center justify-center rounded-card border border-ink-800 bg-ink-900/40 px-6 py-16 text-center">
+          <span className="mb-5 flex h-20 w-20 items-center justify-center rounded-full border border-ink-800 bg-ink-900 text-ember-400">
+            <ClipboardList className="h-9 w-9" />
+          </span>
+          <h2 className="font-heading text-xl font-bold text-ink-100">Todavía no tenés rutinas</h2>
+          <p className="mt-2 max-w-xs text-sm leading-relaxed text-ink-400">
+            Armá tus días de entrenamiento una vez y después arrancá cada sesión con un solo toque.
           </p>
-          <Button
-            onClick={handleCreateNew}
-            className="w-full max-w-xs h-14 bg-lime-400 hover:bg-lime-500 text-neutral-950 font-bold rounded-xl text-base shadow-lg shadow-lime-400/10 active:scale-95 transition-all"
-          >
+          <Button size="lg" className="mt-6 w-full max-w-xs" onClick={openCreate}>
             Crear mi primera rutina
           </Button>
         </div>
       ) : (
-        /* ESTADO A: Con Rutinas Creadas */
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {routines.map((routine) => {
-            const meta = metaMap[routine.id!] || { count: 0, muscleGroups: [] };
+            const info = meta[routine.id as number] ?? { count: 0, muscleGroups: [] };
 
             return (
-              <div
+              <article
                 key={routine.id}
-                className="bg-neutral-900 border border-neutral-800 rounded-xl p-4 flex flex-col justify-between space-y-4 hover:border-neutral-700 transition-colors"
+                className="flex flex-col justify-between gap-4 rounded-card border border-ink-800 bg-ink-900 p-5 transition-colors hover:border-ink-700"
               >
                 <div>
-                  <h3 className="text-lg font-bold text-white mb-2 leading-snug">
-                    {routine.name}
-                  </h3>
+                  <h2 className="font-heading text-lg font-bold leading-snug text-ink-100">{routine.name}</h2>
 
-                  {/* Badges de Metadatos */}
-                  <div className="flex flex-wrap gap-2 items-center">
-                    <span className="bg-neutral-800 text-neutral-300 text-xs px-2.5 py-1 rounded-md font-medium flex items-center gap-1.5">
-                      <Dumbbell className="w-3.5 h-3.5 text-neutral-400" />
-                      {meta.count} {meta.count === 1 ? 'ejercicio' : 'ejercicios'}
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <span className="flex items-center gap-1.5 rounded-md border border-ink-700 bg-ink-850 px-2 py-1 text-xs font-medium text-ink-300">
+                      <Dumbbell className="h-3.5 w-3.5 text-ink-500" />
+                      {info.count} {info.count === 1 ? 'ejercicio' : 'ejercicios'}
                     </span>
 
-                    {meta.muscleGroups.map((muscle) => (
+                    {info.muscleGroups.map((muscle) => (
                       <span
                         key={muscle}
-                        className="bg-lime-950/50 text-lime-400 border border-lime-800/40 text-xs px-2.5 py-1 rounded-md font-medium"
+                        className={cn(
+                          'rounded-md border px-2 py-1 text-xs font-medium',
+                          MUSCLE_BADGE[muscle.toLowerCase()] ?? MUSCLE_BADGE.otro
+                        )}
                       >
                         {muscle}
                       </span>
@@ -172,57 +162,52 @@ export function RoutinesManager() {
                   </div>
                 </div>
 
-                {/* Botonera Inferior de la Tarjeta */}
-                <div className="flex items-center gap-2 pt-2 border-t border-neutral-800/60">
+                <div className="flex items-center gap-2 border-t border-ink-800 pt-4">
                   <Button
+                    size="lg"
+                    className="flex-1"
+                    disabled={info.count === 0}
                     onClick={() => routine.id && loadRoutineIntoWorkout(routine.id)}
-                    className="flex-1 h-12 bg-lime-400 hover:bg-lime-500 text-neutral-950 font-bold gap-2 text-sm rounded-lg active:scale-95"
                   >
-                    <Play className="w-4 h-4 fill-current" /> ENTRENAR
+                    <Play className="h-4 w-4 fill-current" /> Entrenar
                   </Button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleEdit(routine)}
-                    aria-label="Editar Rutina"
-                    className="w-12 h-12 flex items-center justify-center text-neutral-400 hover:text-white bg-neutral-800/50 hover:bg-neutral-800 rounded-lg transition-colors shrink-0"
-                  >
-                    <Pencil className="w-5 h-5" />
-                  </button>
+                  <Button variant="outline" size="icon" onClick={() => handleEdit(routine)} aria-label="Editar rutina">
+                    <Pencil className="h-4 w-4" />
+                  </Button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(routine.id!)}
-                    aria-label="Eliminar Rutina"
-                    className="w-12 h-12 flex items-center justify-center text-neutral-400 hover:text-red-400 bg-neutral-800/50 hover:bg-red-950/30 rounded-lg transition-colors shrink-0"
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => handleDelete(routine)}
+                    aria-label="Eliminar rutina"
+                    className="hover:border-flare-500/40 hover:text-flare-400"
                   >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
-              </div>
+              </article>
             );
           })}
         </div>
       )}
 
-      {/* FAB Flotante (Aparece si hay más de 3 rutinas) */}
       {routines.length > 3 && (
         <button
           type="button"
-          onClick={handleCreateNew}
-          aria-label="Nueva Rutina"
-          className="fixed bottom-20 right-4 w-14 h-14 bg-lime-400 hover:bg-lime-500 text-neutral-950 rounded-full shadow-xl shadow-lime-400/20 flex items-center justify-center z-40 active:scale-90 transition-transform"
+          onClick={openCreate}
+          aria-label="Nueva rutina"
+          className="fixed bottom-24 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-ember-500 text-ink-950 shadow-ember transition-transform active:scale-90 md:bottom-8"
         >
-          <Plus className="w-7 h-7 stroke-[2.5]" />
+          <Plus className="h-7 w-7 stroke-[2.5]" />
         </button>
       )}
 
-      {/* Full-Screen Form Workflow */}
       {isFormOpen && (
         <RoutineFormFullScreen
           isOpen={isFormOpen}
           onClose={() => setIsFormOpen(false)}
-          initialData={editingRoutineData}
+          initialData={editing}
         />
       )}
     </div>

@@ -1,293 +1,297 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
+import { ChevronDown, ImageOff, Loader2, Pencil, Plus, RefreshCw, Search, X } from 'lucide-react';
 import { useGymStore } from '../../../hooks/useGymStore';
 import { Input } from '../../../components/Input';
 import { Button } from '../../../components/Button';
-import { Search, Plus, ImageOff, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import { CreateExerciseModal } from './CreateExerciseModal';
-import { Card, CardContent } from '../../../components/Card';
+import { MUSCLE_BADGE, EQUIPMENT_BADGE, MUSCLE_GROUPS, EQUIPMENT_TYPES } from '../taxonomy';
 import { cn } from '../../../lib/utils';
+import type { Exercise } from '../../../types';
 
-const MUSCLE_GROUPS = ['Pecho', 'Espalda', 'Piernas', 'Hombros', 'Bíceps', 'Tríceps', 'Core', 'Cardio', 'Otro'];
-const EQUIPMENT = ['Mancuerna', 'Barra', 'Máquina', 'Polea', 'Peso Corporal'];
+const PAGE_SIZE = 12;
 
 export function ExerciseLibrary() {
-  const { exercises, init } = useGymStore();
+  const exercises = useGymStore((state) => state.exercises);
+  const isLoading = useGymStore((state) => state.isLoading);
+  const loadError = useGymStore((state) => state.loadError);
+  const refreshExercisesFromApi = useGymStore((state) => state.refreshExercisesFromApi);
+
   const [search, setSearch] = useState('');
-  const [selectedMuscle, setSelectedMuscle] = useState<string | null>(null);
-  const [selectedEquipment, setSelectedEquipment] = useState<string | null>(null);
+  const [muscle, setMuscle] = useState('Todos');
+  const [equipment, setEquipment] = useState('Todos');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [visibleCount, setVisibleCount] = useState<number>(10);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
-  useEffect(() => {
-    init();
-  }, [init]);
-
-  useEffect(() => {
-    setVisibleCount(10);
-  }, [search, selectedMuscle, selectedEquipment]);
-
-  // Restablece la página a 1 ante cualquier cambio en filtros o buscador
-  const handleSearchChange = (value: string) => {
-    setSearch(value);
-
+  // Cambiar un filtro vuelve a la primera página de resultados.
+  const applyFilter = (apply: () => void) => {
+    apply();
+    setVisibleCount(PAGE_SIZE);
   };
 
-  const handleMuscleSelect = (muscle: string | null) => {
-    setSelectedMuscle(muscle);
+  const filtered = useMemo(() => {
+    const query = search.toLowerCase().trim();
 
-  };
-
-  const handleEquipmentSelect = (equipment: string | null) => {
-    setSelectedEquipment(equipment);
-
-  };
-
-  // Filtrado general en memoria
-  const filteredExercises = exercises.filter((ex) => {
-    const matchesSearch = ex.name.toLowerCase().includes(search.toLowerCase());
-    const matchesMuscle = selectedMuscle ? ex.muscleGroup.toLowerCase() === selectedMuscle.toLowerCase() : true;
-    const matchesEq = selectedEquipment ? ex.equipment?.toLowerCase() === selectedEquipment.toLowerCase() : true;
-    return matchesSearch && matchesMuscle && matchesEq;
-  });
-
-  // Cálculo de paginado
-  const paginatedExercises = filteredExercises.slice(0, visibleCount);
+    return exercises.filter((exercise) => {
+      if (query && !exercise.name.toLowerCase().includes(query)) return false;
+      if (muscle !== 'Todos' && exercise.muscleGroup.toLowerCase() !== muscle.toLowerCase()) return false;
+      if (equipment !== 'Todos' && (exercise.equipment ?? '').toLowerCase() !== equipment.toLowerCase()) {
+        return false;
+      }
+      return true;
+    });
+  }, [exercises, search, muscle, equipment]);
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-20">
-      <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-heading font-bold text-neutral-100">Biblioteca</h2>
-        <Button onClick={() => setIsCreateModalOpen(true)} className="gap-2">
-          <Plus className="w-4 h-4" /> Nuevo
+    <div className="space-y-6 pb-24">
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-heading text-2xl font-bold tracking-tight text-ink-100 sm:text-3xl">Biblioteca</h1>
+          <p className="mt-1 text-sm text-ink-400">
+            {exercises.length.toLocaleString('es-AR')} ejercicios disponibles
+          </p>
+        </div>
+        <Button onClick={() => setIsCreateModalOpen(true)}>
+          <Plus className="h-4 w-4" />
+          <span className="hidden sm:inline">Nuevo</span>
         </Button>
-      </div>
+      </header>
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-500" />
           <Input
-            placeholder="Buscar ejercicio..."
             value={search}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            className="pl-10"
+            onChange={(event) => applyFilter(() => setSearch(event.target.value))}
+            placeholder="Buscar ejercicio..."
+            className="pl-11 pr-11"
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => applyFilter(() => setSearch(''))}
+              aria-label="Limpiar búsqueda"
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-ink-400 hover:text-ink-100"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
-        {/* Filtros Grupo Muscular */}
-        <div className="space-y-2">
-          <p className="text-xs text-neutral-500 font-bold uppercase">Grupo Muscular</p>
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            <Button
-              variant={selectedMuscle === null ? 'primary' : 'ghost'}
-              size="sm"
-              onClick={() => handleMuscleSelect(null)}
-              className={cn('whitespace-nowrap shrink-0 rounded-full', selectedMuscle === null ? '' : 'bg-neutral-800')}
-            >
-              Todos
-            </Button>
-            {MUSCLE_GROUPS.map((mg) => (
-              <Button
-                key={mg}
-                variant={selectedMuscle === mg ? 'primary' : 'ghost'}
-                size="sm"
-                onClick={() => handleMuscleSelect(mg === selectedMuscle ? null : mg)}
-                className={cn('whitespace-nowrap shrink-0 rounded-full', selectedMuscle === mg ? '' : 'bg-neutral-800')}
-              >
-                {mg}
-              </Button>
-            ))}
-          </div>
-        </div>
-
-        {/* Filtros Equipamiento */}
-        <div className="space-y-2">
-          <p className="text-xs text-neutral-500 font-bold uppercase">Equipamiento</p>
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            <Button
-              variant={selectedEquipment === null ? 'primary' : 'ghost'}
-              size="sm"
-              onClick={() => handleEquipmentSelect(null)}
-              className={cn('whitespace-nowrap shrink-0 rounded-full', selectedEquipment === null ? '' : 'bg-neutral-800')}
-            >
-              Todos
-            </Button>
-            {EQUIPMENT.map((eq) => (
-              <Button
-                key={eq}
-                variant={selectedEquipment === eq ? 'primary' : 'ghost'}
-                size="sm"
-                onClick={() => handleEquipmentSelect(eq === selectedEquipment ? null : eq)}
-                className={cn('whitespace-nowrap shrink-0 rounded-full', selectedEquipment === eq ? '' : 'bg-neutral-800')}
-              >
-                {eq}
-              </Button>
-            ))}
-          </div>
-        </div>
+        <FilterRow
+          label="Músculo"
+          options={MUSCLE_GROUPS}
+          value={muscle}
+          onChange={(value) => applyFilter(() => setMuscle(value))}
+        />
+        <FilterRow
+          label="Equipo"
+          options={EQUIPMENT_TYPES}
+          value={equipment}
+          onChange={(value) => applyFilter(() => setEquipment(value))}
+        />
       </div>
 
-      {/* Grid de Ejercicios Paginado */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {paginatedExercises.map((ex, idx) => (
-          <ExerciseCard key={ex.id || ex.apiId || idx} ex={ex} />
+      {isLoading && (
+        <div className="flex items-center justify-center gap-3 rounded-card border border-ink-800 bg-ink-900 py-10 text-sm text-ink-400">
+          <Loader2 className="h-5 w-5 animate-spin text-ember-400" />
+          Cargando catálogo...
+        </div>
+      )}
+
+      {loadError && !isLoading && (
+        <div className="flex flex-col gap-3 rounded-card border border-ember-500/30 bg-ember-500/8 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-ember-200">{loadError}</p>
+          <Button variant="outline" onClick={refreshExercisesFromApi} className="shrink-0">
+            <RefreshCw className="h-4 w-4" /> Reintentar
+          </Button>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {filtered.slice(0, visibleCount).map((exercise) => (
+          <ExerciseTile key={exercise.id ?? exercise.apiId ?? exercise.name} exercise={exercise} />
         ))}
-        {filteredExercises.length === 0 && (
-          <div className="col-span-full py-12 text-center text-neutral-500 border border-dashed border-neutral-800 rounded-xl">
-            No se encontraron ejercicios con esos filtros.
-          </div>
-        )}
       </div>
 
-      {/* Botón Ver más */}
-      {visibleCount < filteredExercises.length && (
+      {!isLoading && filtered.length === 0 && (
+        <div className="rounded-card border border-dashed border-ink-800 py-16 text-center">
+          <p className="text-sm text-ink-400">No hay ejercicios con esos filtros.</p>
+          <Button variant="outline" className="mt-4" onClick={() => setIsCreateModalOpen(true)}>
+            <Plus className="h-4 w-4" /> Crear ejercicio
+          </Button>
+        </div>
+      )}
+
+      {visibleCount < filtered.length && (
         <button
           type="button"
-          onClick={() => setVisibleCount((prev) => prev + 10)}
-          className="w-full py-3 mt-4 bg-neutral-900 border border-neutral-800 text-neutral-300 hover:bg-neutral-800 rounded-xl font-medium"
+          onClick={() => setVisibleCount((previous) => previous + PAGE_SIZE)}
+          className="h-12 w-full rounded-2xl border border-ink-800 bg-ink-900 text-sm font-semibold text-ink-300 transition-colors hover:bg-ink-850"
         >
-          Ver más
+          Ver más ({filtered.length - visibleCount} restantes)
         </button>
       )}
 
       <CreateExerciseModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        onExerciseCreated={() => {}}
+        onExerciseCreated={() => setIsCreateModalOpen(false)}
       />
     </div>
   );
 }
 
-/**
- * Tarjeta individual de ejercicio con acordeón desplegable para Fit Notes.
- */
-function ExerciseCard({ ex }: { ex: import('../../../types').Exercise }) {
-  const { updateExerciseFitNotes } = useGymStore();
-  const [editingNotesId, setEditingNotesId] = useState<number | null>(null);
-  const [notesValue, setNotesValue] = useState('');
-  const [isNotesOpen, setIsNotesOpen] = useState(false);
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const [imageError, setImageError] = useState(false);
+function FilterRow({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: readonly string[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="w-16 shrink-0 text-[10px] font-bold uppercase tracking-widest text-ink-500">{label}</span>
+      <div className="no-scrollbar flex flex-1 gap-2 overflow-x-auto">
+        {options.map((option) => (
+          <button
+            key={option}
+            type="button"
+            onClick={() => onChange(option)}
+            className={cn(
+              'h-9 shrink-0 rounded-full border px-4 text-xs font-semibold whitespace-nowrap transition-all',
+              value === option
+                ? 'border-ember-500 bg-ember-500 text-ink-950'
+                : 'border-ink-800 bg-ink-900 text-ink-400 hover:text-ink-100'
+            )}
+          >
+            {option}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-  const handleSaveNotes = async (id: number) => {
-    await updateExerciseFitNotes(id, notesValue);
-    setEditingNotesId(null);
-  };
+/** Tarjeta de la biblioteca con las notas de puesta a punto editables. */
+function ExerciseTile({ exercise }: { exercise: Exercise }) {
+  const updateExerciseFitNotes = useGymStore((state) => state.updateExerciseFitNotes);
 
-  const handleToggleNotes = () => {
-    if (!isNotesOpen) {
-      setNotesValue(ex.fitNotes || '');
-    }
-    setIsNotesOpen((prev) => !prev);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [notes, setNotes] = useState(exercise.fitNotes ?? '');
+  const [imageFailed, setImageFailed] = useState(false);
+
+  const handleSave = async () => {
+    if (typeof exercise.id !== 'number') return;
+    await updateExerciseFitNotes(exercise.id, notes.trim());
+    setIsEditing(false);
   };
 
   return (
-    <Card className="bg-neutral-900 border-neutral-800 overflow-hidden flex flex-col justify-between">
-      <div>
-        <div className="h-40 bg-neutral-800 flex items-center justify-center relative overflow-hidden">
-          {ex.gifUrl ? (
-            <>
-              {!imageLoaded && !imageError && (
-                <div className="absolute inset-0 flex items-center justify-center bg-neutral-800/80 animate-pulse">
-                  <div className="w-8 h-8 border-2 border-lime-500/50 border-t-lime-500 rounded-full animate-spin" />
-                </div>
-              )}
-              {imageError ? (
-                <div className="flex flex-col items-center justify-center text-neutral-600">
-                  <ImageOff className="w-8 h-8 mb-2" />
-                  <span className="text-xs">Imagen no disponible</span>
-                </div>
-              ) : (
-                <img
-                  src={ex.gifUrl}
-                  alt={ex.name}
-                  className={cn(
-                    'w-full h-full object-cover transition-opacity duration-300',
-                    imageLoaded ? 'opacity-100' : 'opacity-0'
-                  )}
-                  onLoad={() => setImageLoaded(true)}
-                  onError={() => setImageError(true)}
-                  loading="lazy"
-                />
-              )}
-            </>
-          ) : (
-            <span className="text-neutral-600 text-sm">Sin Imagen</span>
-          )}
-          <div className="absolute top-2 right-2 flex gap-1 z-10">
-            <span className="bg-neutral-950/80 backdrop-blur text-[10px] px-2 py-1 rounded text-neutral-300 border border-neutral-800 font-semibold">
-              {ex.muscleGroup}
-            </span>
-            {ex.equipment && (
-              <span className="bg-neutral-950/80 backdrop-blur text-[10px] px-2 py-1 rounded text-neutral-300 border border-neutral-800 font-semibold">
-                {ex.equipment}
-              </span>
-            )}
-          </div>
-        </div>
-
-        <CardContent className="p-4 space-y-3 relative z-10 bg-neutral-900">
-          <h3 className="font-bold text-lg text-white leading-tight">{ex.name}</h3>
-
-          {ex.instructions && ex.instructions.length > 0 && (
-            <div className="text-xs text-neutral-400 line-clamp-2">
-              {ex.instructions.join(' ')}
-            </div>
-          )}
-        </CardContent>
-      </div>
-
-      <div className="p-4 pt-0 bg-neutral-900 border-t border-neutral-800/50 mt-auto">
-        <button
-          type="button"
-          onClick={handleToggleNotes}
-          className="w-full flex items-center justify-between text-xs font-semibold text-neutral-400 hover:text-white py-2 px-3 rounded-lg bg-neutral-950/60 hover:bg-neutral-800 transition-colors border border-neutral-800"
-        >
-          <div className="flex items-center gap-2">
-            <FileText className="w-3.5 h-3.5 text-lime-500" />
-            <span>Fit Notes</span>
-            {ex.fitNotes && (
-              <span className="w-2 h-2 rounded-full bg-lime-500 inline-block" title="Tiene notas guardadas" />
-            )}
-          </div>
-          {isNotesOpen ? <ChevronUp className="w-4 h-4 text-neutral-400" /> : <ChevronDown className="w-4 h-4 text-neutral-400" />}
-        </button>
-
-        {isNotesOpen && (
-          <div className="mt-2 bg-neutral-950/80 rounded-lg p-3 border border-neutral-800 space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
-            {editingNotesId === ex.id ? (
-              <div className="space-y-2">
-                <textarea
-                  className="w-full bg-neutral-900 border border-neutral-700 rounded p-2 text-sm text-neutral-200 focus:outline-none focus:border-lime-500"
-                  rows={2}
-                  value={notesValue}
-                  onChange={(e) => setNotesValue(e.target.value)}
-                  placeholder="Ej. Asiento en 3, usar polea baja..."
-                  autoFocus
-                />
-                <div className="flex gap-2 justify-end">
-                  <Button size="sm" variant="ghost" onClick={() => setEditingNotesId(null)}>
-                    Cancelar
-                  </Button>
-                  <Button size="sm" variant="primary" onClick={() => handleSaveNotes(ex.id!)}>
-                    Guardar
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div
-                className="cursor-text text-sm text-neutral-300 min-h-9 whitespace-pre-wrap hover:text-white transition-colors"
-                onClick={() => {
-                  setEditingNotesId(ex.id!);
-                  setNotesValue(ex.fitNotes || '');
-                }}
-              >
-                {ex.fitNotes || <span className="text-neutral-600 italic">Tocar para añadir notas...</span>}
-              </div>
-            )}
+    <article className="flex flex-col overflow-hidden rounded-card border border-ink-800 bg-ink-900">
+      <div className="relative h-40 bg-ink-850">
+        {exercise.gifUrl && !imageFailed ? (
+          <img
+            src={exercise.gifUrl}
+            alt={exercise.name}
+            className="h-full w-full object-cover"
+            loading="lazy"
+            onError={() => setImageFailed(true)}
+          />
+        ) : (
+          <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-ink-600">
+            <ImageOff className="h-7 w-7" />
+            <span className="text-xs">Sin imagen</span>
           </div>
         )}
+
+        <div className="absolute left-2 top-2 flex flex-wrap gap-1">
+          <span
+            className={cn(
+              'rounded-md border px-2 py-0.5 text-[10px] font-bold backdrop-blur-sm',
+              MUSCLE_BADGE[exercise.muscleGroup.toLowerCase()] ?? MUSCLE_BADGE.otro
+            )}
+          >
+            {exercise.muscleGroup}
+          </span>
+          {exercise.equipment && (
+            <span
+              className={cn(
+                'rounded-md border px-2 py-0.5 text-[10px] font-bold backdrop-blur-sm',
+                EQUIPMENT_BADGE[exercise.equipment.toLowerCase()] ?? EQUIPMENT_BADGE.otro
+              )}
+            >
+              {exercise.equipment}
+            </span>
+          )}
+        </div>
       </div>
-    </Card>
+
+      <div className="flex flex-1 flex-col gap-3 p-4">
+        <h3 className="font-heading text-base font-bold leading-tight text-ink-100">{exercise.name}</h3>
+
+        {exercise.instructions && exercise.instructions.length > 0 && (
+          <p className="line-clamp-2 text-xs leading-relaxed text-ink-400">{exercise.instructions.join(' ')}</p>
+        )}
+
+        <div className="mt-auto">
+          <button
+            type="button"
+            onClick={() => {
+              setNotes(exercise.fitNotes ?? '');
+              setIsOpen((previous) => !previous);
+            }}
+            aria-expanded={isOpen}
+            className="flex h-10 w-full items-center justify-between rounded-xl border border-ink-800 bg-ink-950/60 px-3 text-xs font-semibold text-ink-300 transition-colors hover:text-ink-100"
+          >
+            <span className="flex items-center gap-2">
+              Puesta a punto
+              {exercise.fitNotes && <span className="h-2 w-2 rounded-full bg-ember-500" />}
+            </span>
+            <ChevronDown className={cn('h-4 w-4 transition-transform', isOpen && 'rotate-180')} />
+          </button>
+
+          {isOpen && (
+            <div className="animate-in fade-in slide-in-from-top-1 mt-2 space-y-2 rounded-xl border border-ink-800 bg-ink-950/60 p-3 duration-150">
+              {isEditing ? (
+                <>
+                  <textarea
+                    value={notes}
+                    onChange={(event) => setNotes(event.target.value)}
+                    rows={2}
+                    autoFocus
+                    placeholder="Ej. Asiento en 3, agarre ancho"
+                    className="w-full resize-none rounded-lg border border-ink-700 bg-ink-900 p-2 text-sm text-ink-100 placeholder:text-ink-600 focus:border-ember-500 focus:outline-none"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)}>
+                      Cancelar
+                    </Button>
+                    <Button size="sm" onClick={handleSave}>
+                      Guardar
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(true)}
+                  className="flex w-full items-start gap-2 text-left text-sm text-ink-300 hover:text-ink-100"
+                >
+                  <Pencil className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-500" />
+                  <span className="whitespace-pre-wrap">
+                    {exercise.fitNotes || <span className="italic text-ink-600">Agregar una nota...</span>}
+                  </span>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </article>
   );
 }

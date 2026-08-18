@@ -1,210 +1,431 @@
 import { create } from 'zustand';
 import Dexie from 'dexie';
-import { db } from '../lib/db';
+import { db, openDatabase } from '../lib/db';
 import { fetchExercises } from '../lib/exerciseApi';
-import type { Exercise, WorkoutSet, Routine, ActiveWorkoutDraft, ActiveExerciseData, ActiveSetInput } from '../types';
+import type {
+  Exercise,
+  WorkoutSet,
+  Routine,
+  ActiveWorkoutDraft,
+  ActiveExerciseData,
+  ActiveSetInput,
+  WorkoutSummary,
+} from '../types';
+
+const REST_PREFERENCE_KEY = 'carga:rest-seconds';
+const DEFAULT_REST_SECONDS = 90;
+
+function readRestPreference(): number {
+  if (typeof window === 'undefined') return DEFAULT_REST_SECONDS;
+  const stored = Number(window.localStorage.getItem(REST_PREFERENCE_KEY));
+  return Number.isFinite(stored) && stored > 0 ? stored : DEFAULT_REST_SECONDS;
+}
+
+/** Copia profunda de la lista de ejercicios activos: evita mutar el estado. */
+function cloneExercises(exercises: ActiveExerciseData[]): ActiveExerciseData[] {
+  return exercises.map((exercise) => ({
+    ...exercise,
+    sets: exercise.sets.map((set) => ({ ...set })),
+  }));
+}
+
+export interface PreviousSet {
+  weight: number;
+  reps: number;
+}
 
 interface GymState {
   isLoading: boolean;
+  loadError: string | null;
   exercises: Exercise[];
   routines: Routine[];
 
   isWorkoutActive: boolean;
   activeWorkoutId: number | null;
+  activeWorkoutName: string;
   activeWorkoutStartTime: Date | null;
   activeExercises: ActiveExerciseData[];
   currentExerciseIndex: number;
-  setCurrentExerciseIndex: (index: number) => void;
 
   restTimerTarget: number | null;
   restTimerDuration: number;
+  defaultRestSeconds: number;
+
+  /** Resumen de la última sesión cerrada, para mostrarlo al salir del modo entrenamiento. */
+  lastSummary: WorkoutSummary | null;
+  clearLastSummary: () => void;
 
   init: () => Promise<void>;
-  startWorkout: () => Promise<void>;
-  finishWorkout: () => Promise<void>;
-  cancelWorkout: () => Promise<void>;
-  saveActiveDraft: () => Promise<void>;
+  refreshExercisesFromApi: () => Promise<void>;
 
-  createRoutine: (name: string, exercises: { exerciseId: number; targetSets: number; targetReps: string; targetWeight?: string }[]) => Promise<void>;
-  updateRoutine: (id: number, name: string, exercises: { exerciseId: number; targetSets: number; targetReps: string; targetWeight?: string }[]) => Promise<void>;
+  startWorkout: (name?: string) => Promise<void>;
+  loadRoutineIntoWorkout: (routineId: number) => Promise<void>;
+  finishWorkout: () => Promise<WorkoutSummary | null>;
+  cancelWorkout: () => Promise<void>;
+  saveActiveDraft: () => void;
+
+  createRoutine: (name: string, exercises: RoutineExercisePayload[]) => Promise<void>;
+  updateRoutine: (id: number, name: string, exercises: RoutineExercisePayload[]) => Promise<void>;
   deleteRoutine: (id: number) => Promise<void>;
   getRoutines: () => Promise<void>;
-  loadRoutineIntoWorkout: (routineId: number) => Promise<void>;
 
-  addActiveExercise: (exercise: Exercise) => void;
-  swapActiveExercise: (exerciseIndex: number, newExercise: Exercise) => void;
-  addExercise: (name: string, muscleGroup: string, equipment?: string, fitNotes?: string, gifUrl?: string, instructions?: string[]) => Promise<Exercise | null>;
+  setCurrentExerciseIndex: (index: number) => void;
+  addActiveExercise: (exercise: Exercise) => Promise<void>;
+  removeActiveExercise: (exerciseIndex: number) => Promise<void>;
+  moveActiveExercise: (exerciseIndex: number, direction: -1 | 1) => void;
+  swapActiveExercise: (exerciseIndex: number, newExercise: Exercise) => Promise<void>;
+
+  addExercise: (data: {
+    name: string;
+    muscleGroup: string;
+    equipment?: string;
+    fitNotes?: string;
+    gifUrl?: string;
+    instructions?: string[];
+  }) => Promise<Exercise | null>;
   updateExerciseFitNotes: (exerciseId: number, fitNotes: string) => Promise<void>;
+
   updateSet: (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps', value: string) => void;
-  toggleSetComplete: (exerciseIndex: number, setIndex: number) => Promise<void>;
+  toggleSetComplete: (exerciseIndex: number, setIndex: number) => Promise<'completed' | 'undone' | 'invalid'>;
   addSet: (exerciseIndex: number) => void;
-  removeSet: (exerciseIndex: number, setIndex: number) => void;
+  removeSet: (exerciseIndex: number, setIndex: number) => Promise<void>;
 
   getHistory: (exerciseId: number) => Promise<WorkoutSet[]>;
-  getWorkoutsForMonth: (year: number, month: number) => Promise<number[]>;
-  calculate1RM: (weight: number, reps: number) => number;
+  getPreviousPerformance: (exerciseId: number, excludeWorkoutId?: number | null) => Promise<PreviousSet[]>;
+  getWorkoutsForMonth: (year: number, month: number) => Promise<{ day: number; workoutId: number }[]>;
 
   startRestTimer: (durationSeconds?: number) => void;
+  adjustRestTimer: (deltaSeconds: number) => void;
   stopRestTimer: () => void;
+  setDefaultRestSeconds: (seconds: number) => void;
 }
 
+export interface RoutineExercisePayload {
+  exerciseId: number;
+  targetSets: number;
+  targetReps: string;
+  targetWeight?: string;
+}
+
+/** Guardado del borrador con "debounce": escribir en cada tecla es innecesario. */
+let draftTimeout: ReturnType<typeof setTimeout> | null = null;
+
+export const calculate1RM = (weight: number, reps: number): number => {
+  if (!Number.isFinite(weight) || !Number.isFinite(reps) || reps <= 0) return 0;
+  if (reps === 1) return Math.round(weight);
+  return Math.round(weight * (1 + reps / 30));
+};
+
 export const useGymStore = create<GymState>((set, get) => ({
-
-  saveActiveDraft: async () => {
-    const state = get();
-    if (!state.isWorkoutActive || !state.activeWorkoutId || !state.activeWorkoutStartTime) {
-        await db.activeWorkoutDraft.clear();
-        return;
-    }
-
-    const draft: ActiveWorkoutDraft = {
-        id: 1,
-        workoutId: state.activeWorkoutId,
-        startTime: state.activeWorkoutStartTime,
-        activeExercises: state.activeExercises,
-        restTimerTarget: state.restTimerTarget,
-        restTimerDuration: state.restTimerDuration
-    };
-
-    try {
-        await db.activeWorkoutDraft.put(draft);
-    } catch (e) {
-        console.error('Failed to save active workout draft', e);
-    }
-  },
   isLoading: false,
+  loadError: null,
   exercises: [],
   routines: [],
 
   isWorkoutActive: false,
   activeWorkoutId: null,
+  activeWorkoutName: 'Entrenamiento libre',
   activeWorkoutStartTime: null,
   activeExercises: [],
   currentExerciseIndex: 0,
 
   restTimerTarget: null,
-  restTimerDuration: 90,
+  restTimerDuration: readRestPreference(),
+  defaultRestSeconds: readRestPreference(),
+  lastSummary: null,
 
-  /**
-   * Inicialización:
-   * 1. Elimina cualquier ejercicio en IndexedDB que no tenga apiId (hardcodeados / creados localmente).
-   * 2. Si no hay datos de API almacenados, consulta la API remota.
-   * 3. Garantiza que solo los datos provenientes de la API queden en el estado del store.
-   */
-  init: async () => {
-    set({ isLoading: true });
-    try {
-      try {
-        await db.open();
-      } catch (e) {
-        console.warn("Esperando DB en useGymStore...");
+  clearLastSummary: () => set({ lastSummary: null }),
+
+  saveActiveDraft: () => {
+    if (draftTimeout) clearTimeout(draftTimeout);
+
+    draftTimeout = setTimeout(async () => {
+      const state = get();
+
+      if (!state.isWorkoutActive || !state.activeWorkoutId || !state.activeWorkoutStartTime) {
+        await db.activeWorkoutDraft.clear().catch(() => {});
         return;
       }
-      // Restore active workout draft if exists
-      const drafts = await db.activeWorkoutDraft.toArray();
-      if (drafts.length > 0) {
-        const draft = drafts[0];
+
+      const draft: ActiveWorkoutDraft = {
+        id: 1,
+        workoutId: state.activeWorkoutId,
+        name: state.activeWorkoutName,
+        startTime: state.activeWorkoutStartTime,
+        activeExercises: state.activeExercises,
+        currentExerciseIndex: state.currentExerciseIndex,
+        restTimerTarget: state.restTimerTarget,
+        restTimerDuration: state.restTimerDuration,
+      };
+
+      try {
+        await db.activeWorkoutDraft.put(draft);
+      } catch (err) {
+        console.error('No se pudo guardar el borrador del entrenamiento', err);
+      }
+    }, 250);
+  },
+
+  /**
+   * Arranque de la app:
+   * 1. Restaura el entrenamiento en curso si la sesión se cortó.
+   * 2. Descarga el catálogo de ejercicios la primera vez y lo cachea local.
+   * Los ejercicios propios NUNCA se borran.
+   */
+  init: async () => {
+    if (get().isLoading) return;
+    set({ isLoading: true, loadError: null });
+
+    try {
+      await openDatabase();
+
+      const draft = (await db.activeWorkoutDraft.toArray())[0];
+      if (draft) {
         set({
-            isWorkoutActive: true,
-            activeWorkoutId: draft.workoutId,
-            activeWorkoutStartTime: draft.startTime,
-            activeExercises: draft.activeExercises,
-            restTimerTarget: draft.restTimerTarget,
-            restTimerDuration: draft.restTimerDuration,
-            currentExerciseIndex: 0
+          isWorkoutActive: true,
+          activeWorkoutId: draft.workoutId,
+          activeWorkoutName: draft.name || 'Entrenamiento libre',
+          activeWorkoutStartTime: new Date(draft.startTime),
+          activeExercises: draft.activeExercises ?? [],
+          currentExerciseIndex: draft.currentExerciseIndex ?? 0,
+          restTimerTarget: draft.restTimerTarget,
+          restTimerDuration: draft.restTimerDuration || readRestPreference(),
         });
       }
 
+      let stored = await db.exercises.toArray();
 
-      // 1. PURGA: Elimina cualquier ejercicio que no provenga de la API (sin apiId)
-      const currentExercises = await db.exercises.toArray();
-      const nonApiExerciseIds = currentExercises
-        .filter((ex) => !ex.apiId)
-        .map((ex) => ex.id!)
-        .filter(Boolean);
+      // Limpieza puntual de las semillas hardcodeadas antiguas: no venían de la
+      // API y tampoco las creó la persona usuaria.
+      const orphanIds = stored
+        .filter((exercise) => !exercise.apiId && !exercise.isCustom)
+        .map((exercise) => exercise.id)
+        .filter((id): id is number => typeof id === 'number');
 
-      if (nonApiExerciseIds.length > 0) {
-        await db.exercises.bulkDelete(nonApiExerciseIds);
+      if (orphanIds.length > 0) {
+        await db.exercises.bulkDelete(orphanIds);
+        stored = stored.filter((exercise) => !orphanIds.includes(exercise.id as number));
       }
 
-      // 2. CARGA/FETCH: Si no hay ejercicios de la API guardados, consultamos la API remota
-      let apiExercises = await db.exercises.toArray();
-      
-      if (apiExercises.length === 0) {
-        const remoteExercises = await fetchExercises();
+      if (stored.length === 0) {
+        const remote = await fetchExercises();
 
-        if (remoteExercises.length > 0) {
-          await db.transaction('rw', db.exercises, async () => {
-            // Deduplicación por apiId antes de guardar
-
-            const uniqueMap = new Map<string, Exercise>();
-            for (const remote of remoteExercises) {
-              if (remote.apiId && !uniqueMap.has(remote.apiId)) {
-                uniqueMap.set(remote.apiId, remote);
-              }
-            }
-            await db.exercises.bulkAdd(Array.from(uniqueMap.values()));
-          });
-
-          apiExercises = await db.exercises.toArray();
+        if (remote.length > 0) {
+          const unique = new Map<string, Exercise>();
+          for (const exercise of remote) {
+            if (exercise.apiId && !unique.has(exercise.apiId)) unique.set(exercise.apiId, exercise);
+          }
+          await db.exercises.bulkAdd(Array.from(unique.values()));
+          stored = await db.exercises.toArray();
         }
       }
 
-      // 3. FILTRADO ESTRICTO: Solo enviamos al estado los ejercicios que tienen apiId
-      const cleanApiExercises = apiExercises.filter((ex) => Boolean(ex.apiId));
       const routines = await db.routines.toArray();
 
-      set({ exercises: cleanApiExercises, routines, isLoading: false });
+      set({
+        exercises: stored,
+        routines,
+        isLoading: false,
+        loadError:
+          stored.length === 0
+            ? 'No pudimos descargar el catálogo de ejercicios. Revisá tu conexión o creá los tuyos.'
+            : null,
+      });
     } catch (error) {
-      console.error('Error al inicializar GymStore:', error);
-      set({ isLoading: false });
+      console.error('Error al inicializar Carga:', error);
+      set({ isLoading: false, loadError: 'No se pudo iniciar la base de datos local.' });
     }
   },
 
-  startWorkout: async () => {
+  refreshExercisesFromApi: async () => {
+    set({ isLoading: true, loadError: null });
+    try {
+      const remote = await fetchExercises();
+      if (remote.length === 0) {
+        set({ isLoading: false, loadError: 'El catálogo remoto no respondió. Intentá de nuevo más tarde.' });
+        return;
+      }
+
+      const stored = await db.exercises.toArray();
+      const knownApiIds = new Set(stored.map((exercise) => exercise.apiId).filter(Boolean));
+      const incoming = remote.filter((exercise) => exercise.apiId && !knownApiIds.has(exercise.apiId));
+
+      if (incoming.length > 0) await db.exercises.bulkAdd(incoming);
+
+      set({ exercises: await db.exercises.toArray(), isLoading: false });
+    } catch (error) {
+      console.error('No se pudo refrescar el catálogo', error);
+      set({ isLoading: false, loadError: 'No se pudo refrescar el catálogo de ejercicios.' });
+    }
+  },
+
+  startWorkout: async (name = 'Entrenamiento libre') => {
     const startTime = new Date();
     try {
-      const id = await db.workouts.add({
-        date: startTime,
-        name: 'Entrenamiento Libre',
-        durationSeconds: 0,
-      });
+      const id = await db.workouts.add({ date: startTime, name, durationSeconds: 0 });
 
       set({
         isWorkoutActive: true,
         activeWorkoutId: id as number,
+        activeWorkoutName: name,
         activeWorkoutStartTime: startTime,
         activeExercises: [],
-        currentExerciseIndex: 0
+        currentExerciseIndex: 0,
+        restTimerTarget: null,
       });
       get().saveActiveDraft();
     } catch (err) {
-      console.error('Failed to start workout', err);
+      console.error('No se pudo iniciar el entrenamiento', err);
     }
+  },
+
+  loadRoutineIntoWorkout: async (routineId) => {
+    try {
+      const routine = await db.routines.get(routineId);
+      if (!routine) return;
+
+      const routineExercises = await db.routineExercises.where('routineId').equals(routineId).sortBy('order');
+      const catalog = await db.exercises.toArray();
+
+      const startTime = new Date();
+      const workoutId = (await db.workouts.add({
+        date: startTime,
+        name: routine.name,
+        durationSeconds: 0,
+      })) as number;
+
+      const activeExercises: ActiveExerciseData[] = [];
+
+      for (const routineExercise of routineExercises) {
+        const definition = catalog.find((item) => item.id === routineExercise.exerciseId);
+        if (!definition) continue;
+
+        const sets: ActiveSetInput[] = Array.from({ length: Math.max(1, routineExercise.targetSets) }).map(() => ({
+          weight: routineExercise.targetWeight || '',
+          reps: routineExercise.targetReps || '',
+          completed: false,
+        }));
+
+        activeExercises.push({
+          exerciseId: routineExercise.exerciseId,
+          name: definition.name,
+          muscleGroup: definition.muscleGroup,
+          sets,
+          previous: await get().getPreviousPerformance(routineExercise.exerciseId, workoutId),
+        });
+      }
+
+      set({
+        isWorkoutActive: true,
+        activeWorkoutId: workoutId,
+        activeWorkoutName: routine.name,
+        activeWorkoutStartTime: startTime,
+        activeExercises,
+        currentExerciseIndex: 0,
+        restTimerTarget: null,
+      });
+      get().saveActiveDraft();
+    } catch (err) {
+      console.error('No se pudo cargar la rutina', err);
+    }
+  },
+
+  finishWorkout: async () => {
+    const { activeWorkoutId, activeWorkoutStartTime, activeWorkoutName, activeExercises } = get();
+    if (!activeWorkoutId || !activeWorkoutStartTime) return null;
+
+    const durationSeconds = Math.max(
+      0,
+      Math.round((Date.now() - new Date(activeWorkoutStartTime).getTime()) / 1000)
+    );
+
+    const completedSets = activeExercises.flatMap((exercise) =>
+      exercise.sets.filter((item) => item.completed)
+    );
+
+    const summary: WorkoutSummary = {
+      name: activeWorkoutName,
+      durationSeconds,
+      totalSets: completedSets.length,
+      totalReps: completedSets.reduce((total, item) => total + (parseFloat(item.reps) || 0), 0),
+      totalVolume: completedSets.reduce(
+        (total, item) => total + (parseFloat(item.weight) || 0) * (parseFloat(item.reps) || 0),
+        0
+      ),
+      exerciseCount: activeExercises.filter((exercise) => exercise.sets.some((item) => item.completed)).length,
+    };
+
+    try {
+      if (summary.totalSets === 0) {
+        // Sesión vacía: no ensuciamos el historial ni el calendario.
+        await db.workouts.delete(activeWorkoutId);
+      } else {
+        await db.workouts.update(activeWorkoutId, { durationSeconds });
+      }
+    } catch (err) {
+      console.error('No se pudo cerrar el entrenamiento', err);
+    }
+
+    set({
+      isWorkoutActive: false,
+      activeWorkoutId: null,
+      activeWorkoutStartTime: null,
+      activeWorkoutName: 'Entrenamiento libre',
+      activeExercises: [],
+      currentExerciseIndex: 0,
+      restTimerTarget: null,
+      lastSummary: summary,
+    });
+    await db.activeWorkoutDraft.clear().catch(() => {});
+
+    return summary;
+  },
+
+  cancelWorkout: async () => {
+    const { activeWorkoutId } = get();
+
+    if (activeWorkoutId) {
+      try {
+        await db.transaction('rw', db.workouts, db.sets, async () => {
+          await db.workouts.delete(activeWorkoutId);
+          await db.sets.where('workoutId').equals(activeWorkoutId).delete();
+        });
+      } catch (err) {
+        console.error('No se pudo descartar el entrenamiento', err);
+      }
+    }
+
+    set({
+      isWorkoutActive: false,
+      activeWorkoutId: null,
+      activeWorkoutStartTime: null,
+      activeWorkoutName: 'Entrenamiento libre',
+      activeExercises: [],
+      currentExerciseIndex: 0,
+      restTimerTarget: null,
+    });
+    await db.activeWorkoutDraft.clear().catch(() => {});
   },
 
   createRoutine: async (name, exercises) => {
     try {
       await db.transaction('rw', db.routines, db.routineExercises, async () => {
-        const routineId = await db.routines.add({
-          name,
-          created_at: new Date()
-        });
+        const routineId = (await db.routines.add({ name, created_at: new Date() })) as number;
 
-        const routineExercises = exercises.map((ex, index) => ({
-          routineId: routineId as number,
-          exerciseId: Number(ex.exerciseId),
-          order: index,
-          targetSets: ex.targetSets,
-          targetReps: ex.targetReps,
-          targetWeight: ex.targetWeight
-        }));
-
-        await db.routineExercises.bulkAdd(routineExercises);
+        await db.routineExercises.bulkAdd(
+          exercises.map((exercise, index) => ({
+            routineId,
+            exerciseId: Number(exercise.exerciseId),
+            order: index,
+            targetSets: exercise.targetSets,
+            targetReps: exercise.targetReps,
+            targetWeight: exercise.targetWeight,
+          }))
+        );
       });
-      get().getRoutines();
+      await get().getRoutines();
     } catch (err) {
-      console.error('Failed to create routine', err);
+      console.error('No se pudo crear la rutina', err);
     }
   },
 
@@ -214,20 +435,20 @@ export const useGymStore = create<GymState>((set, get) => ({
         await db.routines.update(id, { name });
         await db.routineExercises.where('routineId').equals(id).delete();
 
-        const routineExercises = exercises.map((ex, index) => ({
-          routineId: id,
-          exerciseId: Number(ex.exerciseId),
-          order: index,
-          targetSets: ex.targetSets,
-          targetReps: ex.targetReps,
-          targetWeight: ex.targetWeight
-        }));
-
-        await db.routineExercises.bulkAdd(routineExercises);
+        await db.routineExercises.bulkAdd(
+          exercises.map((exercise, index) => ({
+            routineId: id,
+            exerciseId: Number(exercise.exerciseId),
+            order: index,
+            targetSets: exercise.targetSets,
+            targetReps: exercise.targetReps,
+            targetWeight: exercise.targetWeight,
+          }))
+        );
       });
-      get().getRoutines();
+      await get().getRoutines();
     } catch (err) {
-      console.error('Failed to update routine', err);
+      console.error('No se pudo actualizar la rutina', err);
     }
   },
 
@@ -237,291 +458,332 @@ export const useGymStore = create<GymState>((set, get) => ({
         await db.routines.delete(id);
         await db.routineExercises.where('routineId').equals(id).delete();
       });
-      get().getRoutines();
+      await get().getRoutines();
     } catch (err) {
-      console.error('Failed to delete routine', err);
+      console.error('No se pudo eliminar la rutina', err);
     }
   },
 
   getRoutines: async () => {
     try {
-      const routines = await db.routines.toArray();
-      set({ routines });
+      set({ routines: await db.routines.toArray() });
     } catch (err) {
-      console.error('Failed to fetch routines', err);
+      console.error('No se pudieron leer las rutinas', err);
     }
   },
 
-  loadRoutineIntoWorkout: async (routineId) => {
-    const { exercises } = get();
-    try {
-      const routine = await db.routines.get(routineId);
-      if (!routine) return;
-
-      const routineExercises = await db.routineExercises
-        .where('routineId')
-        .equals(routineId)
-        .sortBy('order');
-
-      const startTime = new Date();
-      const workoutId = await db.workouts.add({
-        date: startTime,
-        name: routine.name,
-        durationSeconds: 0,
-      });
-
-      const activeExercises: ActiveExerciseData[] = routineExercises.map(rex => {
-        const exerciseDef = exercises.find(e => e.id === rex.exerciseId);
-        if (!exerciseDef) return null;
-
-        const sets: ActiveSetInput[] = Array.from({ length: rex.targetSets }).map(() => ({
-          weight: rex.targetWeight || '',
-          reps: rex.targetReps || '',
-          completed: false
-        }));
-
-        return {
-          exerciseId: rex.exerciseId,
-          name: exerciseDef.name,
-          muscleGroup: exerciseDef.muscleGroup,
-          sets
-        };
-      }).filter((e): e is ActiveExerciseData => e !== null);
-
-      set({
-        isWorkoutActive: true,
-        activeWorkoutId: workoutId as number,
-        activeWorkoutStartTime: startTime,
-        activeExercises,
-        currentExerciseIndex: 0
-      });
-      get().saveActiveDraft();
-
-    } catch (err) {
-      console.error('Failed to load routine', err);
-    }
-  },
-
-  finishWorkout: async () => {
-    const { activeWorkoutId, activeWorkoutStartTime } = get();
-    if (!activeWorkoutId || !activeWorkoutStartTime) return;
-
-    const endTime = new Date();
-    const durationSeconds = Math.round((endTime.getTime() - activeWorkoutStartTime.getTime()) / 1000);
-
-    try {
-      await db.workouts.update(activeWorkoutId, { durationSeconds });
-
-      set({
-        isWorkoutActive: false,
-        activeWorkoutId: null,
-        activeWorkoutStartTime: null,
-        activeExercises: [],
-        currentExerciseIndex: 0,
-        restTimerTarget: null
-      });
-      db.activeWorkoutDraft.clear();
-    } catch (err) {
-      console.error('Failed to finish workout', err);
-    }
-  },
-
-  setCurrentExerciseIndex: (index: number) => set({ currentExerciseIndex: index }),
-
-  cancelWorkout: async () => {
-    const { activeWorkoutId } = get();
-    if (activeWorkoutId) {
-      try {
-        await db.workouts.delete(activeWorkoutId);
-        const setsToDelete = await db.sets.where('workoutId').equals(activeWorkoutId).toArray();
-        await db.sets.bulkDelete(setsToDelete.map(s => s.id!));
-      } catch (err) {
-        console.error('Failed to delete workout', err);
-      }
-    }
-    set({
-      isWorkoutActive: false,
-      activeWorkoutId: null,
-      activeWorkoutStartTime: null,
-      activeExercises: [],
-      currentExerciseIndex: 0,
-      restTimerTarget: null
-    });
-    db.activeWorkoutDraft.clear();
-  },
-
-  addActiveExercise: (exercise: Exercise) => {
+  setCurrentExerciseIndex: (index) => {
     const { activeExercises } = get();
+    const clamped = Math.min(Math.max(0, index), Math.max(0, activeExercises.length - 1));
+    set({ currentExerciseIndex: clamped });
+    get().saveActiveDraft();
+  },
+
+  addActiveExercise: async (exercise) => {
+    if (typeof exercise.id !== 'number') return;
+
+    const { activeExercises, activeWorkoutId } = get();
+    const previous = await get().getPreviousPerformance(exercise.id, activeWorkoutId);
+
     set({
       activeExercises: [
-        ...activeExercises,
+        ...cloneExercises(activeExercises),
         {
-          exerciseId: exercise.id!,
+          exerciseId: exercise.id,
           name: exercise.name,
           muscleGroup: exercise.muscleGroup,
-          sets: [{ weight: '', reps: '', completed: false }]
-        }
-      ]
+          previous,
+          sets: [
+            {
+              weight: previous[0] ? String(previous[0].weight) : '',
+              reps: previous[0] ? String(previous[0].reps) : '',
+              completed: false,
+            },
+          ],
+        },
+      ],
+      // Si era la primera, el foco se posa ahí; si no, no interrumpimos la serie
+      // que la persona está haciendo ahora.
+      currentExerciseIndex: activeExercises.length === 0 ? 0 : get().currentExerciseIndex,
     });
     get().saveActiveDraft();
   },
 
-  swapActiveExercise: (exerciseIndex: number, newExercise: Exercise) => {
-    const { activeExercises } = get();
-    const newExercises = [...activeExercises];
-    newExercises[exerciseIndex] = {
-      ...newExercises[exerciseIndex],
-      exerciseId: newExercise.id!,
-      name: newExercise.name,
-      muscleGroup: newExercise.muscleGroup,
-    };
-    set({ activeExercises: newExercises });
+  removeActiveExercise: async (exerciseIndex) => {
+    const { activeExercises, currentExerciseIndex } = get();
+    const target = activeExercises[exerciseIndex];
+    if (!target) return;
+
+    // Las series ya registradas de ese ejercicio se dan de baja también.
+    const loggedIds = target.sets.map((item) => item.logId).filter((id): id is number => typeof id === 'number');
+    if (loggedIds.length > 0) await db.sets.bulkDelete(loggedIds).catch(() => {});
+
+    const next = cloneExercises(activeExercises).filter((_, index) => index !== exerciseIndex);
+
+    set({
+      activeExercises: next,
+      currentExerciseIndex: Math.min(currentExerciseIndex, Math.max(0, next.length - 1)),
+    });
     get().saveActiveDraft();
   },
 
-  updateExerciseFitNotes: async (exerciseId: number, fitNotes: string) => {
-    try {
-      await db.exercises.update(exerciseId, { fitNotes });
-      const updatedExercises = await db.exercises.toArray();
-      set({ exercises: updatedExercises });
-    } catch (err) {
-      console.error('Failed to update exercise fitNotes', err);
-    }
+  moveActiveExercise: (exerciseIndex, direction) => {
+    const next = cloneExercises(get().activeExercises);
+    const target = exerciseIndex + direction;
+    if (!next[exerciseIndex] || !next[target]) return;
+
+    [next[exerciseIndex], next[target]] = [next[target], next[exerciseIndex]];
+    set({ activeExercises: next, currentExerciseIndex: target });
+    get().saveActiveDraft();
   },
 
-  addExercise: async (name: string, muscleGroup: string, equipment?: string, fitNotes?: string, gifUrl?: string, instructions?: string[]) => {
+  swapActiveExercise: async (exerciseIndex, newExercise) => {
+    if (typeof newExercise.id !== 'number') return;
+
+    const { activeExercises, activeWorkoutId } = get();
+    const current = activeExercises[exerciseIndex];
+    if (!current) return;
+
+    // Las series ya registradas pertenecían al ejercicio anterior.
+    const loggedIds = current.sets.map((item) => item.logId).filter((id): id is number => typeof id === 'number');
+    if (loggedIds.length > 0) await db.sets.bulkDelete(loggedIds).catch(() => {});
+
+    const previous = await get().getPreviousPerformance(newExercise.id, activeWorkoutId);
+    const next = cloneExercises(activeExercises);
+
+    next[exerciseIndex] = {
+      exerciseId: newExercise.id,
+      name: newExercise.name,
+      muscleGroup: newExercise.muscleGroup,
+      previous,
+      sets: current.sets.map((_, index) => ({
+        weight: previous[index] ? String(previous[index].weight) : '',
+        reps: previous[index] ? String(previous[index].reps) : '',
+        completed: false,
+      })),
+    };
+
+    set({ activeExercises: next });
+    get().saveActiveDraft();
+  },
+
+  addExercise: async ({ name, muscleGroup, equipment, fitNotes, gifUrl, instructions }) => {
+    const trimmed = name.trim();
+    if (!trimmed) return null;
+
     try {
-      const { exercises } = get();
-
-      const existing = exercises.find(
-        e => e.name.toLowerCase() === name.trim().toLowerCase()
+      const existing = get().exercises.find(
+        (exercise) => exercise.name.toLowerCase() === trimmed.toLowerCase()
       );
+      if (existing) return existing;
 
-      if (existing) {
-        return existing;
-      }
-
-      const id = await db.exercises.add({
-        name: name.trim(),
+      const id = (await db.exercises.add({
+        name: trimmed,
         muscleGroup,
         equipment,
         fitNotes,
         gifUrl,
-        instructions
-      });
+        instructions,
+        isCustom: true,
+      })) as number;
 
-      const updatedExercises = await db.exercises.toArray();
-      set({ exercises: updatedExercises });
+      const exercises = await db.exercises.toArray();
+      set({ exercises });
 
-      return updatedExercises.find(e => e.id === id) || null;
-
+      return exercises.find((exercise) => exercise.id === id) ?? null;
     } catch (err) {
-      console.error('Failed to add exercise', err);
+      console.error('No se pudo crear el ejercicio', err);
       return null;
     }
   },
 
-  addSet: (exerciseIndex: number) => {
-    const { activeExercises } = get();
-    const newExercises = [...activeExercises];
-    const prevSet = newExercises[exerciseIndex].sets[newExercises[exerciseIndex].sets.length - 1];
-
-    newExercises[exerciseIndex].sets.push({
-      weight: prevSet ? prevSet.weight : '',
-      reps: prevSet ? prevSet.reps : '',
-      completed: false
-    });
-    set({ activeExercises: newExercises });
-    get().saveActiveDraft();
-  },
-
-  removeSet: (exerciseIndex: number, setIndex: number) => {
-    const { activeExercises } = get();
-    const newExercises = [...activeExercises];
-    newExercises[exerciseIndex].sets.splice(setIndex, 1);
-    set({ activeExercises: newExercises });
-    get().saveActiveDraft();
+  updateExerciseFitNotes: async (exerciseId, fitNotes) => {
+    try {
+      await db.exercises.update(exerciseId, { fitNotes });
+      set({
+        exercises: get().exercises.map((exercise) =>
+          exercise.id === exerciseId ? { ...exercise, fitNotes } : exercise
+        ),
+      });
+    } catch (err) {
+      console.error('No se pudieron guardar las notas', err);
+    }
   },
 
   updateSet: (exerciseIndex, setIndex, field, value) => {
-    const { activeExercises } = get();
-    const newExercises = [...activeExercises];
-    newExercises[exerciseIndex].sets[setIndex][field] = value;
-    set({ activeExercises: newExercises });
+    const next = cloneExercises(get().activeExercises);
+    const target = next[exerciseIndex]?.sets[setIndex];
+    if (!target) return;
+
+    target[field] = value;
+    set({ activeExercises: next });
+
+    // Si la serie ya estaba registrada, sincronizamos la fila persistida.
+    if (target.completed && typeof target.logId === 'number') {
+      const numeric = parseFloat(value);
+      if (Number.isFinite(numeric)) {
+        db.sets.update(target.logId, { [field]: numeric }).catch(() => {});
+      }
+    }
+
     get().saveActiveDraft();
   },
 
   toggleSetComplete: async (exerciseIndex, setIndex) => {
     const { activeExercises, activeWorkoutId, startRestTimer } = get();
     const exercise = activeExercises[exerciseIndex];
-    const setItem = exercise.sets[setIndex];
+    const current = exercise?.sets[setIndex];
+    if (!exercise || !current || !activeWorkoutId) return 'invalid';
 
-    const isCompleting = !setItem.completed;
-
-    const newExercises = [...activeExercises];
-    newExercises[exerciseIndex].sets[setIndex].completed = isCompleting;
-    set({ activeExercises: newExercises });
-    get().saveActiveDraft();
-
-    if (isCompleting && activeWorkoutId) {
-      const weight = parseFloat(setItem.weight);
-      const reps = parseFloat(setItem.reps);
-
-      if (!isNaN(weight) && !isNaN(reps)) {
-        try {
-          await db.sets.add({
-            workoutId: activeWorkoutId,
-            exerciseId: exercise.exerciseId,
-            weight,
-            reps,
-            date: new Date()
-          });
-
-          startRestTimer(90);
-        } catch (err) {
-          console.error('Failed to log set', err);
-        }
+    // Deshacer: se borra el registro persistido para no duplicar series.
+    if (current.completed) {
+      if (typeof current.logId === 'number') {
+        await db.sets.delete(current.logId).catch(() => {});
       }
+
+      const next = cloneExercises(activeExercises);
+      next[exerciseIndex].sets[setIndex] = { ...current, completed: false, logId: undefined };
+      set({ activeExercises: next });
+      get().saveActiveDraft();
+      return 'undone';
+    }
+
+    const weight = parseFloat(current.weight);
+    const reps = parseFloat(current.reps);
+
+    // Sin carga y repeticiones válidas no hay nada que registrar: mejor avisar
+    // que marcar una serie que después no aparece en el historial.
+    if (!Number.isFinite(weight) || !Number.isFinite(reps) || reps <= 0 || weight < 0) {
+      return 'invalid';
+    }
+
+    try {
+      const logId = (await db.sets.add({
+        workoutId: activeWorkoutId,
+        exerciseId: exercise.exerciseId,
+        weight,
+        reps,
+        date: new Date(),
+      })) as number;
+
+      const next = cloneExercises(get().activeExercises);
+      if (next[exerciseIndex]?.sets[setIndex]) {
+        next[exerciseIndex].sets[setIndex] = { ...next[exerciseIndex].sets[setIndex], completed: true, logId };
+        set({ activeExercises: next });
+      }
+
+      get().saveActiveDraft();
+      startRestTimer();
+      return 'completed';
+    } catch (err) {
+      console.error('No se pudo registrar la serie', err);
+      return 'invalid';
     }
   },
 
-  getHistory: async (exerciseId: number) => {
-    return await db.sets
+  addSet: (exerciseIndex) => {
+    const next = cloneExercises(get().activeExercises);
+    const exercise = next[exerciseIndex];
+    if (!exercise) return;
+
+    // La serie nueva arranca con los valores de la anterior (o los de la sesión
+    // pasada si es la primera): casi siempre es lo que se quiere repetir.
+    const last = exercise.sets[exercise.sets.length - 1];
+    const reference = exercise.previous?.[exercise.sets.length];
+
+    exercise.sets.push({
+      weight: last?.weight || (reference ? String(reference.weight) : ''),
+      reps: last?.reps || (reference ? String(reference.reps) : ''),
+      completed: false,
+    });
+
+    set({ activeExercises: next });
+    get().saveActiveDraft();
+  },
+
+  removeSet: async (exerciseIndex, setIndex) => {
+    const { activeExercises } = get();
+    const target = activeExercises[exerciseIndex]?.sets[setIndex];
+    if (!target) return;
+
+    if (typeof target.logId === 'number') await db.sets.delete(target.logId).catch(() => {});
+
+    const next = cloneExercises(activeExercises);
+    next[exerciseIndex].sets.splice(setIndex, 1);
+
+    set({ activeExercises: next });
+    get().saveActiveDraft();
+  },
+
+  getHistory: async (exerciseId) =>
+    db.sets
       .where('[exerciseId+date]')
       .between([exerciseId, Dexie.minKey], [exerciseId, Dexie.maxKey])
       .reverse()
-      .limit(5)
-      .toArray();
+      .limit(30)
+      .toArray(),
+
+  /** Series del último entrenamiento en el que se hizo ese ejercicio. */
+  getPreviousPerformance: async (exerciseId, excludeWorkoutId = null) => {
+    try {
+      const history = await db.sets
+        .where('[exerciseId+date]')
+        .between([exerciseId, Dexie.minKey], [exerciseId, Dexie.maxKey])
+        .reverse()
+        .limit(60)
+        .toArray();
+
+      const lastWorkoutId = history.find((item) => item.workoutId !== excludeWorkoutId)?.workoutId;
+      if (lastWorkoutId === undefined) return [];
+
+      return history
+        .filter((item) => item.workoutId === lastWorkoutId)
+        .sort((a, b) => (a.id ?? 0) - (b.id ?? 0))
+        .map((item) => ({ weight: item.weight, reps: item.reps }));
+    } catch (err) {
+      console.error('No se pudo leer el histórico del ejercicio', err);
+      return [];
+    }
   },
 
-  getWorkoutsForMonth: async (year: number, month: number) => {
+  getWorkoutsForMonth: async (year, month) => {
     const start = new Date(year, month, 1);
     const end = new Date(year, month + 1, 0, 23, 59, 59, 999);
 
-    const workouts = await db.workouts
-      .where('date')
-      .between(start, end)
-      .toArray();
+    const workouts = await db.workouts.where('date').between(start, end, true, true).toArray();
 
-    return workouts.map(w => w.date.getDate());
+    return workouts
+      .filter((workout) => typeof workout.id === 'number')
+      .map((workout) => ({ day: new Date(workout.date).getDate(), workoutId: workout.id as number }));
   },
 
-  calculate1RM: (weight: number, reps: number) => {
-    if (reps === 0) return 0;
-    if (reps === 1) return weight;
-    return Math.round(weight * (1 + reps / 30));
+  startRestTimer: (durationSeconds) => {
+    const duration = durationSeconds ?? get().defaultRestSeconds;
+    set({ restTimerDuration: duration, restTimerTarget: Date.now() + duration * 1000 });
+    get().saveActiveDraft();
   },
 
-  startRestTimer: (durationSeconds = 90) => {
+  adjustRestTimer: (deltaSeconds) => {
+    const { restTimerTarget, restTimerDuration } = get();
+    if (!restTimerTarget) return;
+
+    const target = Math.max(Date.now() + 1000, restTimerTarget + deltaSeconds * 1000);
     set({
-      restTimerDuration: durationSeconds,
-      restTimerTarget: Date.now() + durationSeconds * 1000
+      restTimerTarget: target,
+      restTimerDuration: Math.max(restTimerDuration + deltaSeconds, Math.ceil((target - Date.now()) / 1000)),
     });
     get().saveActiveDraft();
   },
 
   stopRestTimer: () => {
+    if (get().restTimerTarget === null) return;
     set({ restTimerTarget: null });
     get().saveActiveDraft();
-  }
+  },
+
+  setDefaultRestSeconds: (seconds) => {
+    const safe = Math.min(600, Math.max(15, Math.round(seconds)));
+    window.localStorage.setItem(REST_PREFERENCE_KEY, String(safe));
+    set({ defaultRestSeconds: safe });
+  },
 }));

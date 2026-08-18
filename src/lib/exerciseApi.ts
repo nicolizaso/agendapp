@@ -75,7 +75,7 @@ async function fetchWithFallback(): Promise<RemoteExercise[]> {
       if (response.ok) {
         return await response.json();
       }
-    } catch (error) {
+    } catch {
       console.warn(`[ExerciseAPI] Falló la conexión con ${url}`);
     }
   }

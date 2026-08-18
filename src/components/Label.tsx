@@ -5,12 +5,12 @@ const Label = forwardRef<HTMLLabelElement, LabelHTMLAttributes<HTMLLabelElement>
   <label
     ref={ref}
     className={cn(
-      "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-neutral-400",
+      'text-xs font-semibold uppercase tracking-wider text-ink-400 leading-none',
       className
     )}
     {...props}
   />
 ));
-Label.displayName = "Label";
+Label.displayName = 'Label';
 
 export { Label };

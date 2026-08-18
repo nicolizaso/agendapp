@@ -1,68 +1,99 @@
 import Dexie, { type Table } from 'dexie';
 import type {
   ActiveWorkoutDraft,
-  Task, Reward, RewardClaim, UserStats, Habit, HabitLog,
-  HabitClaim, DailyNote, Exercise, Workout, WorkoutSet,
-  Routine, RoutineExercise, Category, Location
+  Exercise,
+  Routine,
+  RoutineExercise,
+  Workout,
+  WorkoutSet,
 } from '../types';
 
-export class VectorLifeDB extends Dexie {
-  tasks!: Table<Task>;
-  rewards!: Table<Reward>;
-  rewardClaims!: Table<RewardClaim>;
-  userStats!: Table<UserStats>;
-  habits!: Table<Habit>;
-  habitLogs!: Table<HabitLog>;
-  habitClaims!: Table<HabitClaim>;
-  dailyNotes!: Table<DailyNote>;
+const LEGACY_DB_NAME = 'VectorLifeDB';
+
+/**
+ * Tablas que se conservan al migrar; el resto era de la agenda anterior.
+ * El borrador de sesión en curso no se migra a propósito: su formato cambió y
+ * las series ya marcadas viven en `sets`, así que no se pierde nada.
+ */
+const MIGRATED_TABLES = [
+  'exercises',
+  'workouts',
+  'sets',
+  'routines',
+  'routineExercises',
+] as const;
+
+/** Base local de Carga (IndexedDB vía Dexie). Sólo datos de entrenamiento. */
+export class CargaDB extends Dexie {
   exercises!: Table<Exercise>;
   workouts!: Table<Workout>;
   sets!: Table<WorkoutSet>;
   routines!: Table<Routine>;
   routineExercises!: Table<RoutineExercise>;
-  categories!: Table<Category>;
-  locations!: Table<Location>;
   activeWorkoutDraft!: Table<ActiveWorkoutDraft>;
 
   constructor() {
-    super('VectorLifeDB');
+    super('CargaDB');
 
-    this.version(23).stores({
-      activeWorkoutDraft: '++id, workoutId',
-      tasks: 'id, category, scheduledDate, status, recurringGroupId',
-      categories: 'id, label, icon, color, bg, border, ring',
-      locations: 'id, name',
-      rewards: 'id',
-      rewardClaims: 'id, categoryId',
-      habits: 'id, categoryId',
-      habitLogs: 'id, habitId, date',
-      habitClaims: 'id',
-      dailyNotes: 'date, content',
+    this.version(1).stores({
       exercises: '++id, apiId, name, muscleGroup, equipment',
       workouts: '++id, date, name, durationSeconds',
-      sets: '++id, workoutId, exerciseId, [exerciseId+date]',
+      sets: '++id, workoutId, exerciseId, [exerciseId+date], [workoutId+exerciseId]',
       routines: '++id, name, created_at',
       routineExercises: '++id, routineId, exerciseId, order',
-      userStats: '++id'
+      activeWorkoutDraft: '++id, workoutId',
     });
   }
 }
 
-export const db = new VectorLifeDB();
-
-export const resetDatabase = async () => {
-  console.warn("⚠️ Purgando base de datos...");
-  await db.delete();
-  window.location.reload();
-};
-
-db.open().catch((err) => {
-  console.error("🔥 Error crítico al abrir la Base de Datos:", err);
-});
+export const db = new CargaDB();
 
 /**
- * Seed desactivado: No inyectamos ningún ejercicio hardcodeado local.
+ * Migración única desde la base de la agenda que precedió a Carga.
+ *
+ * Se copia el historial de entrenamiento conservando los ids —las series
+ * referencian workouts y ejercicios por id— y recién después se borra la base
+ * vieja con todo lo que no era de entrenamiento. Si algo falla, la base
+ * original queda intacta y se reintenta en el próximo arranque.
  */
-export const seedDefaultExercises = async () => {
-  // Intencionalmente vacío para garantizar que solo existan datos de la API.
-};
+async function migrateFromLegacyDatabase(): Promise<void> {
+  // La existencia de la base vieja es la única señal que hace falta: cuando la
+  // migración termina, se borra y este chequeo no vuelve a dar positivo.
+  if (!(await Dexie.exists(LEGACY_DB_NAME))) return;
+
+  const legacy = new Dexie(LEGACY_DB_NAME);
+
+  try {
+    // Sin declarar versión, Dexie abre la base con el esquema que ya tiene.
+    await legacy.open();
+    const available = new Set(legacy.tables.map((table) => table.name));
+
+    for (const name of MIGRATED_TABLES) {
+      if (!available.has(name)) continue;
+
+      const rows = await legacy.table(name).toArray();
+      if (rows.length > 0) await db.table(name).bulkPut(rows);
+    }
+
+    legacy.close();
+    await Dexie.delete(LEGACY_DB_NAME);
+  } catch (err) {
+    console.error('No se pudo migrar la base anterior; se reintentará más adelante.', err);
+    legacy.close();
+  }
+}
+
+let openPromise: Promise<void> | null = null;
+
+/** Abre la base y ejecuta la migración pendiente una sola vez por sesión. */
+export function openDatabase(): Promise<void> {
+  openPromise ??= (async () => {
+    await db.open();
+    await migrateFromLegacyDatabase();
+  })().catch((err) => {
+    openPromise = null;
+    throw err;
+  });
+
+  return openPromise;
+}
