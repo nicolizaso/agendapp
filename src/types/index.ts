@@ -83,3 +83,51 @@ export interface WorkoutSummary {
   totalVolume: number;
   exerciseCount: number;
 }
+
+/** Cómo se carga el peso en el aparato: define de a cuánto se puede subir. */
+export type EquipmentType = 'Mancuerna' | 'Barra' | 'Máquina' | 'Polea' | 'Peso Corporal' | 'Otro';
+
+/** Sesión agendada: un día y horario para ir a entrenar. */
+export interface ScheduledSession {
+  id?: number;
+  /** Fecha del turno, a las 00:00 (la hora vive aparte, en `time`). */
+  date: Date;
+  /** "HH:MM", 24 horas. */
+  time: string;
+  /** Se agenda una rutina fija o una semana de un plan de entrenamiento (uno de los dos). */
+  routineId?: number;
+  planId?: number;
+  weekIndex?: number;
+  notes?: string;
+  createdAt: Date;
+}
+
+/** Plan de entrenamiento: progresión de peso semana a semana para un grupo de ejercicios. */
+export interface TrainingPlan {
+  id?: number;
+  name: string;
+  startDate: Date;
+  createdAt: Date;
+}
+
+export interface PlanExercise {
+  id?: number;
+  planId: number;
+  exerciseId: number;
+  order: number;
+  equipmentType: EquipmentType;
+  /** Peso inicial de la semana 0, en kg. */
+  initialWeight: number;
+  /** Si se define, reemplaza el incremento por defecto del tipo de equipamiento. */
+  incrementOverride?: number;
+}
+
+/** Objetivo calculado de un ejercicio del plan para una semana puntual. */
+export interface PlanWeekTarget {
+  weekIndex: number;
+  sets: number;
+  reps: number;
+  weight: number;
+  /** true en la primera semana de cada bloque de 3, cuando el peso subió respecto del bloque anterior. */
+  isWeightIncrease: boolean;
+}

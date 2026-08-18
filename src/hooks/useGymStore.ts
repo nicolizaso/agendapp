@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import Dexie from 'dexie';
 import { db, openDatabase } from '../lib/db';
 import { fetchExercises } from '../lib/exerciseApi';
+import { calculateWeekTarget } from '../lib/progression';
 import type {
   Exercise,
   WorkoutSet,
@@ -60,6 +61,7 @@ interface GymState {
 
   startWorkout: (name?: string) => Promise<void>;
   loadRoutineIntoWorkout: (routineId: number) => Promise<void>;
+  loadPlanWeekIntoWorkout: (planId: number, weekIndex: number) => Promise<void>;
   finishWorkout: () => Promise<WorkoutSummary | null>;
   cancelWorkout: () => Promise<void>;
   saveActiveDraft: () => void;
@@ -327,6 +329,66 @@ export const useGymStore = create<GymState>((set, get) => ({
       get().saveActiveDraft();
     } catch (err) {
       console.error('No se pudo cargar la rutina', err);
+    }
+  },
+
+  /** Arranca un entrenamiento con los sets/reps/peso que le tocan a esa semana del plan. */
+  loadPlanWeekIntoWorkout: async (planId, weekIndex) => {
+    try {
+      const plan = await db.trainingPlans.get(planId);
+      if (!plan) return;
+
+      const planExercises = await db.planExercises.where('planId').equals(planId).sortBy('order');
+      const catalog = await db.exercises.toArray();
+
+      const startTime = new Date();
+      const workoutName = `${plan.name} · Semana ${weekIndex + 1}`;
+      const workoutId = (await db.workouts.add({
+        date: startTime,
+        name: workoutName,
+        durationSeconds: 0,
+      })) as number;
+
+      const activeExercises: ActiveExerciseData[] = [];
+
+      for (const planExercise of planExercises) {
+        const definition = catalog.find((item) => item.id === planExercise.exerciseId);
+        if (!definition) continue;
+
+        const target = calculateWeekTarget(
+          planExercise.initialWeight,
+          planExercise.equipmentType,
+          weekIndex,
+          planExercise.incrementOverride
+        );
+
+        const sets: ActiveSetInput[] = Array.from({ length: target.sets }).map(() => ({
+          weight: String(target.weight),
+          reps: String(target.reps),
+          completed: false,
+        }));
+
+        activeExercises.push({
+          exerciseId: planExercise.exerciseId,
+          name: definition.name,
+          muscleGroup: definition.muscleGroup,
+          sets,
+          previous: await get().getPreviousPerformance(planExercise.exerciseId, workoutId),
+        });
+      }
+
+      set({
+        isWorkoutActive: true,
+        activeWorkoutId: workoutId,
+        activeWorkoutName: workoutName,
+        activeWorkoutStartTime: startTime,
+        activeExercises,
+        currentExerciseIndex: 0,
+        restTimerTarget: null,
+      });
+      get().saveActiveDraft();
+    } catch (err) {
+      console.error('No se pudo cargar la semana del plan', err);
     }
   },
 

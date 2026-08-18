@@ -2,8 +2,11 @@ import Dexie, { type Table } from 'dexie';
 import type {
   ActiveWorkoutDraft,
   Exercise,
+  PlanExercise,
   Routine,
   RoutineExercise,
+  ScheduledSession,
+  TrainingPlan,
   Workout,
   WorkoutSet,
 } from '../types';
@@ -31,6 +34,9 @@ export class CargaDB extends Dexie {
   routines!: Table<Routine>;
   routineExercises!: Table<RoutineExercise>;
   activeWorkoutDraft!: Table<ActiveWorkoutDraft>;
+  scheduledSessions!: Table<ScheduledSession>;
+  trainingPlans!: Table<TrainingPlan>;
+  planExercises!: Table<PlanExercise>;
 
   constructor() {
     super('CargaDB');
@@ -42,6 +48,19 @@ export class CargaDB extends Dexie {
       routines: '++id, name, created_at',
       routineExercises: '++id, routineId, exerciseId, order',
       activeWorkoutDraft: '++id, workoutId',
+    });
+
+    // Agenda de entrenamiento (turnos) y planes de progresión de peso.
+    this.version(2).stores({
+      exercises: '++id, apiId, name, muscleGroup, equipment',
+      workouts: '++id, date, name, durationSeconds',
+      sets: '++id, workoutId, exerciseId, [exerciseId+date], [workoutId+exerciseId]',
+      routines: '++id, name, created_at',
+      routineExercises: '++id, routineId, exerciseId, order',
+      activeWorkoutDraft: '++id, workoutId',
+      scheduledSessions: '++id, date, routineId, planId',
+      trainingPlans: '++id, name, startDate',
+      planExercises: '++id, planId, exerciseId, order',
     });
   }
 }
