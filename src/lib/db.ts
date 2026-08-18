@@ -6,7 +6,24 @@ import type {
   Routine, RoutineExercise, Category, Location
 } from '../types';
 
-export class VectorLifeDB extends Dexie {
+/**
+ * Base local de Carga (IndexedDB vía Dexie).
+ *
+ * Las tablas `tasks`, `rewards`, `habits`, ... provienen de la agenda anterior.
+ * Ya no se usan, pero se mantienen declaradas a propósito: eliminarlas de la
+ * versión del esquema borraría los datos históricos de quien ya tenía la app
+ * instalada.
+ */
+export class CargaDB extends Dexie {
+  // Entrenamiento
+  exercises!: Table<Exercise>;
+  workouts!: Table<Workout>;
+  sets!: Table<WorkoutSet>;
+  routines!: Table<Routine>;
+  routineExercises!: Table<RoutineExercise>;
+  activeWorkoutDraft!: Table<ActiveWorkoutDraft>;
+
+  // Heredadas (sin uso en la app actual)
   tasks!: Table<Task>;
   rewards!: Table<Reward>;
   rewardClaims!: Table<RewardClaim>;
@@ -15,14 +32,8 @@ export class VectorLifeDB extends Dexie {
   habitLogs!: Table<HabitLog>;
   habitClaims!: Table<HabitClaim>;
   dailyNotes!: Table<DailyNote>;
-  exercises!: Table<Exercise>;
-  workouts!: Table<Workout>;
-  sets!: Table<WorkoutSet>;
-  routines!: Table<Routine>;
-  routineExercises!: Table<RoutineExercise>;
   categories!: Table<Category>;
   locations!: Table<Location>;
-  activeWorkoutDraft!: Table<ActiveWorkoutDraft>;
 
   constructor() {
     super('VectorLifeDB');
@@ -45,24 +56,22 @@ export class VectorLifeDB extends Dexie {
       routineExercises: '++id, routineId, exerciseId, order',
       userStats: '++id'
     });
+
+    // v24: índice por workout+ejercicio para resolver "lo que hiciste la vez
+    // pasada" sin recorrer toda la tabla de series.
+    this.version(24).stores({
+      sets: '++id, workoutId, exerciseId, [exerciseId+date], [workoutId+exerciseId]',
+    });
   }
 }
 
-export const db = new VectorLifeDB();
+export const db = new CargaDB();
 
 export const resetDatabase = async () => {
-  console.warn("⚠️ Purgando base de datos...");
   await db.delete();
   window.location.reload();
 };
 
 db.open().catch((err) => {
-  console.error("🔥 Error crítico al abrir la Base de Datos:", err);
+  console.error('No se pudo abrir la base de datos local:', err);
 });
-
-/**
- * Seed desactivado: No inyectamos ningún ejercicio hardcodeado local.
- */
-export const seedDefaultExercises = async () => {
-  // Intencionalmente vacío para garantizar que solo existan datos de la API.
-};

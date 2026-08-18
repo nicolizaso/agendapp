@@ -1,87 +1,58 @@
 import { create } from 'zustand';
-import type { Task } from '../types';
+
+type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline' | 'success';
+
+interface ConfirmDialogState {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  variant: 'default' | 'danger';
+  confirmLabel: string;
+  cancelLabel: string;
+  onConfirm: () => void;
+  actions?: { label: string; onClick: () => void; variant?: ButtonVariant }[];
+}
 
 interface UIState {
-  // Dashboard State
-  selectedDashboardDate: Date;
-  setSelectedDashboardDate: (date: Date) => void;
-
-  // Create Task Modal
-  isCreateModalOpen: boolean;
-  createModalData: {
-    initialDate?: Date;
-    taskToEdit?: Task;
-  };
-  openCreateModal: (data?: { initialDate?: Date; taskToEdit?: Task }) => void;
-  closeCreateModal: () => void;
-
-  // Settings Modal
-  isSettingsModalOpen: boolean;
-  openSettingsModal: () => void;
-  closeSettingsModal: () => void;
-
-  // Agenda Modal
-  isAgendaModalOpen: boolean;
-  setAgendaModalOpen: (isOpen: boolean) => void;
-
-  // Confirm Dialog
-  confirmDialog: {
-    isOpen: boolean;
-    title: string;
-    message: string;
-    variant: 'default' | 'danger';
-    onConfirm: () => void;
-    actions?: { label: string; onClick: () => void; variant?: 'primary' | 'secondary' | 'danger' | 'ghost' }[];
-  };
+  confirmDialog: ConfirmDialogState;
   openConfirmDialog: (data: {
     title: string;
     message: string;
     variant?: 'default' | 'danger';
+    confirmLabel?: string;
+    cancelLabel?: string;
     onConfirm?: () => void;
-    actions?: { label: string; onClick: () => void; variant?: 'primary' | 'secondary' | 'danger' | 'ghost' }[];
+    actions?: { label: string; onClick: () => void; variant?: ButtonVariant }[];
   }) => void;
   closeConfirmDialog: () => void;
 }
 
+const closedDialog: ConfirmDialogState = {
+  isOpen: false,
+  title: '',
+  message: '',
+  variant: 'default',
+  confirmLabel: 'Confirmar',
+  cancelLabel: 'Cancelar',
+  onConfirm: () => {},
+};
+
 export const useUIStore = create<UIState>((set) => ({
-  // Dashboard State
-  selectedDashboardDate: new Date(),
-  setSelectedDashboardDate: (date) => set({ selectedDashboardDate: date }),
+  confirmDialog: closedDialog,
 
-  // Create Modal
-  isCreateModalOpen: false,
-  createModalData: {},
-  openCreateModal: (data = {}) => set({ isCreateModalOpen: true, createModalData: data }),
-  closeCreateModal: () => set({ isCreateModalOpen: false, createModalData: {} }),
+  openConfirmDialog: (data) =>
+    set({
+      confirmDialog: {
+        isOpen: true,
+        title: data.title,
+        message: data.message,
+        variant: data.variant || 'default',
+        confirmLabel: data.confirmLabel || 'Confirmar',
+        cancelLabel: data.cancelLabel || 'Cancelar',
+        onConfirm: data.onConfirm || (() => {}),
+        actions: data.actions,
+      },
+    }),
 
-  // Settings Modal
-  isSettingsModalOpen: false,
-  openSettingsModal: () => set({ isSettingsModalOpen: true }),
-  closeSettingsModal: () => set({ isSettingsModalOpen: false }),
-
-  // Agenda Modal
-  isAgendaModalOpen: false,
-  setAgendaModalOpen: (isOpen) => set({ isAgendaModalOpen: isOpen }),
-
-  // Confirm Dialog
-  confirmDialog: {
-    isOpen: false,
-    title: '',
-    message: '',
-    variant: 'default',
-    onConfirm: () => {},
-  },
-  openConfirmDialog: (data) => set({
-    confirmDialog: {
-      isOpen: true,
-      title: data.title,
-      message: data.message,
-      variant: data.variant || 'default',
-      onConfirm: data.onConfirm || (() => {}),
-      actions: data.actions
-    }
-  }),
-  closeConfirmDialog: () => set((state) => ({
-    confirmDialog: { ...state.confirmDialog, isOpen: false }
-  })),
+  closeConfirmDialog: () => set((state) => ({ confirmDialog: { ...state.confirmDialog, isOpen: false } })),
 }));

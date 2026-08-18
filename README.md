@@ -1,73 +1,57 @@
-# React + TypeScript + Vite
+# Carga
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**Carga** es una app de registro de entrenamiento en el gimnasio: armás tus rutinas,
+las ejecutás serie por serie y mirás tu progreso. Funciona 100% offline —todo se
+guarda en el dispositivo (IndexedDB)— y se puede instalar como PWA.
 
-Currently, two official plugins are available:
+El nombre viene del peso que levantás y de lo que hace la app: cargar cada serie.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Qué hace
 
-## React Compiler
+- **Modo entrenamiento**: un ejercicio por vez, con las series editables en línea,
+  el peso y las reps de la sesión anterior a la vista, cronómetro de descanso,
+  cambio de ejercicio si la máquina está ocupada y recuperación automática de la
+  sesión si se cierra el navegador.
+- **Rutinas**: planes reutilizables con series, repeticiones y peso base por
+  ejercicio.
+- **Biblioteca**: catálogo remoto de ejercicios (con imágenes) más los propios,
+  con notas de puesta a punto de cada máquina.
+- **Historial**: calendario de asistencia, resumen de cada sesión y 1RM estimado.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Stack
 
-## Expanding the ESLint configuration
+React 19 · TypeScript · Vite 7 · Tailwind CSS 4 · Zustand · Dexie (IndexedDB) · Sonner
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Desarrollo
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev      # servidor de desarrollo
+npm run build    # typecheck + build de producción
+npm run lint     # ESLint
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Estructura
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
 ```
+src/
+  components/            primitivos de UI (Button, Card, Modal, Logo...)
+  features/gym/
+    components/          dashboard, rutinas, biblioteca, formularios
+    session/             modo entrenamiento (WorkoutSession y sus piezas)
+    taxonomy.ts          grupos musculares y equipamiento
+  hooks/useGymStore.ts   estado del entrenamiento y acceso a la base
+  lib/db.ts              esquema de IndexedDB
+  lib/exerciseApi.ts     catálogo remoto de ejercicios
+```
+
+## Datos
+
+La base local se llama `VectorLifeDB` por razones históricas y conserva tablas de
+una agenda anterior que la app ya no usa; se mantienen declaradas para no borrar
+datos de instalaciones viejas.
+
+El catálogo de ejercicios se descarga una sola vez desde
+[free-exercise-db](https://github.com/yuhonas/free-exercise-db) (con varios CDN de
+respaldo) y queda cacheado. Si la descarga falla, la app lo avisa y ofrece
+reintentar o crear ejercicios propios.

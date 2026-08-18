@@ -1,194 +1,386 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  CalendarDays,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Flame,
+  History,
+  Play,
+} from 'lucide-react';
 import { useGymStore } from '../../../hooks/useGymStore';
 import { Button } from '../../../components/Button';
-import { Dumbbell, Calendar as CalendarIcon, ChevronDown, Check } from 'lucide-react';
 import { db } from '../../../lib/db';
-import type { Routine } from '../../../types';
+import { formatDurationLong } from '../../../lib/format';
+import { cn } from '../../../lib/utils';
 import { WorkoutDetailModal } from './WorkoutDetailModal';
+import type { Routine, Workout } from '../../../types';
+
+const LAST_ROUTINE_KEY = 'carga:last-routine';
+const WEEKDAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+
+/** "agosto de 2026" -> "Agosto 2026" (sin el "de" que ensucia el título). */
+function monthLabel(date: Date) {
+  const month = date.toLocaleString('es-AR', { month: 'long' });
+  return `${month.charAt(0).toUpperCase()}${month.slice(1)} ${date.getFullYear()}`;
+}
+
+function greeting() {
+  const hour = new Date().getHours();
+  if (hour < 6) return 'Buenas noches';
+  if (hour < 13) return 'Buen día';
+  if (hour < 20) return 'Buenas tardes';
+  return 'Buenas noches';
+}
 
 export function GymDashboard() {
-  const { startWorkout, routines, getRoutines, loadRoutineIntoWorkout, getWorkoutsForMonth } = useGymStore();
-  const [suggestedRoutine, setSuggestedRoutine] = useState<Routine | null>(null);
-  const [trainedDays, setTrainedDays] = useState<number[]>([]);
-  const [currentMonth] = useState(new Date());
+  const routines = useGymStore((state) => state.routines);
+  const getRoutines = useGymStore((state) => state.getRoutines);
+  const startWorkout = useGymStore((state) => state.startWorkout);
+  const loadRoutineIntoWorkout = useGymStore((state) => state.loadRoutineIntoWorkout);
+  const getWorkoutsForMonth = useGymStore((state) => state.getWorkoutsForMonth);
 
-  const [selectedWorkoutId, setSelectedWorkoutId] = useState<number | null>(null);
-
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  // `null` = todavía no eligió nada en esta sesión; ahí manda la última usada.
+  const [choice, setChoice] = useState<{ routineId: number | null } | null>(null);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [monthCursor, setMonthCursor] = useState(() => new Date());
+  const [monthWorkouts, setMonthWorkouts] = useState<{ day: number; workoutId: number }[]>([]);
+  const [recentWorkouts, setRecentWorkouts] = useState<Workout[]>([]);
+  const [openWorkoutId, setOpenWorkoutId] = useState<number | null>(null);
 
   useEffect(() => {
     getRoutines();
   }, [getRoutines]);
 
+  // Días entrenados del mes visible.
   useEffect(() => {
-    if (routines.length > 0) {
-      // Pick a random routine for "Entrenamiento a 1 Clic"
-      const randomIndex = Math.floor(Math.random() * routines.length);
-      setSuggestedRoutine(routines[randomIndex]);
-    } else {
-      setSuggestedRoutine(null);
-    }
-  }, [routines]);
+    let cancelled = false;
 
-  useEffect(() => {
-    const fetchTrainedDays = async () => {
-      const days = await getWorkoutsForMonth(currentMonth.getFullYear(), currentMonth.getMonth());
-      setTrainedDays(days);
+    (async () => {
+      const days = await getWorkoutsForMonth(monthCursor.getFullYear(), monthCursor.getMonth());
+      if (!cancelled) setMonthWorkouts(days);
+    })();
+
+    return () => {
+      cancelled = true;
     };
-    fetchTrainedDays();
-  }, [currentMonth, getWorkoutsForMonth]);
+  }, [getWorkoutsForMonth, monthCursor]);
 
-  const handleStartSuggested = () => {
-    if (suggestedRoutine && suggestedRoutine.id) {
-      loadRoutineIntoWorkout(suggestedRoutine.id);
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const workouts = await db.workouts.orderBy('date').reverse().limit(5).toArray();
+        if (!cancelled) setRecentWorkouts(workouts);
+      } catch {
+        if (!cancelled) setRecentWorkouts([]);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // La rutina propuesta es la última que entrenaste, no una al azar.
+  const selectedRoutine: Routine | null = useMemo(() => {
+    if (choice) return routines.find((routine) => routine.id === choice.routineId) ?? null;
+
+    const stored = Number(window.localStorage.getItem(LAST_ROUTINE_KEY));
+    return routines.find((routine) => routine.id === stored) ?? routines[0] ?? null;
+  }, [choice, routines]);
+
+  const stats = useMemo(() => {
+    const now = new Date();
+    const isCurrentMonth =
+      monthCursor.getFullYear() === now.getFullYear() && monthCursor.getMonth() === now.getMonth();
+
+    const uniqueDays = new Set(monthWorkouts.map((item) => item.day));
+
+    return {
+      sessions: uniqueDays.size,
+      isCurrentMonth,
+      lastSession: recentWorkouts[0] ?? null,
+    };
+  }, [monthWorkouts, monthCursor, recentWorkouts]);
+
+  const handleStart = () => {
+    if (selectedRoutine?.id) {
+      window.localStorage.setItem(LAST_ROUTINE_KEY, String(selectedRoutine.id));
+      loadRoutineIntoWorkout(selectedRoutine.id);
     } else {
+      window.localStorage.removeItem(LAST_ROUTINE_KEY);
       startWorkout();
     }
   };
 
-  const renderCalendar = () => {
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
+  const calendarCells = useMemo(() => {
+    const year = monthCursor.getFullYear();
+    const month = monthCursor.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const firstDayIndex = new Date(year, month, 1).getDay();
+    const firstWeekday = new Date(year, month, 1).getDay();
+    const leading = firstWeekday === 0 ? 6 : firstWeekday - 1;
 
-    // Adjust for Monday start (0=Monday, 6=Sunday)
-    const startDay = firstDayIndex === 0 ? 6 : firstDayIndex - 1;
+    const trainedDays = new Map(monthWorkouts.map((item) => [item.day, item.workoutId]));
+    const today = new Date();
 
-    const days = [];
-    for (let i = 0; i < startDay; i++) {
-        days.push(<div key={`empty-${i}`} className="h-8"></div>);
-    }
-
-    for (let i = 1; i <= daysInMonth; i++) {
-        const isTrained = trainedDays.includes(i);
-        days.push(
-            <div
-                key={i}
-                onClick={async () => {
-                    if (isTrained) {
-                        // Find the workout for this day
-                        const startOfDay = new Date(year, month, i);
-                        const endOfDay = new Date(year, month, i, 23, 59, 59);
-                        const workouts = await db.workouts.where('date').between(startOfDay, endOfDay).toArray();
-                        if (workouts.length > 0 && workouts[0].id) {
-                            setSelectedWorkoutId(workouts[0].id);
-                        }
-                    }
-                }}
-                className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${isTrained ? 'bg-lime-500 text-neutral-950 cursor-pointer shadow-[0_0_10px_rgba(132,204,22,0.4)]' : 'text-neutral-500'}`}
-            >
-                {i}
-            </div>
-        );
-    }
-
-    return (
-        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold text-neutral-200 flex items-center gap-2">
-                    <CalendarIcon className="w-4 h-4 text-lime-500" />
-                    Asistencia
-                </h3>
-                <span className="text-sm font-medium text-neutral-400 capitalize">
-                    {currentMonth.toLocaleString('es', { month: 'long', year: 'numeric' })}
-                </span>
-            </div>
-            <div className="grid grid-cols-7 gap-1 text-center mb-2">
-                {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(d => (
-                    <div key={d} className="text-xs font-bold text-neutral-600">{d}</div>
-                ))}
-            </div>
-            <div className="grid grid-cols-7 gap-y-2 gap-x-1 justify-items-center">
-                {days}
-            </div>
-        </div>
-    );
-  };
+    return [
+      ...Array.from({ length: leading }, (_, index) => ({ key: `empty-${index}`, day: null } as const)),
+      ...Array.from({ length: daysInMonth }, (_, index) => {
+        const day = index + 1;
+        return {
+          key: `day-${day}`,
+          day,
+          workoutId: trainedDays.get(day) ?? null,
+          isToday:
+            day === today.getDate() &&
+            month === today.getMonth() &&
+            year === today.getFullYear(),
+        };
+      }),
+    ];
+  }, [monthCursor, monthWorkouts]);
 
   return (
-    <div className="space-y-6 pb-20 animate-in fade-in duration-500">
+    <div className="mx-auto max-w-3xl space-y-6 pb-24">
+      {/* Punto de partida de la sesión */}
+      <section className="relative overflow-hidden rounded-card border border-ink-800 bg-ink-900 p-5">
+        <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-ember-500/12 blur-3xl" />
 
-      {/* Hero Section */}
-      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 relative">
-        <div className="relative z-10">
-            <h2 className="text-3xl font-heading font-bold text-white mb-2">Gym Tracker</h2>
+        <div className="relative space-y-4">
+          <p className="text-sm text-ink-400">{greeting()}. ¿Qué entrenás hoy?</p>
 
-            <div className="mt-6 mb-4 relative" ref={dropdownRef}>
-                <p className="text-sm text-neutral-400 font-medium uppercase tracking-wider mb-1">Hoy toca:</p>
-                <div
-                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                    className="group flex items-center justify-between cursor-pointer hover:opacity-80 transition-opacity"
-                >
-                    <h3 className="text-2xl font-bold text-lime-400 drop-shadow-md">
-                        {suggestedRoutine ? suggestedRoutine.name : 'Entrenamiento Libre'}
-                    </h3>
-                    <ChevronDown className={`w-6 h-6 text-lime-400 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
-                </div>
-
-                {isDropdownOpen && (
-                    <div className="absolute top-full left-0 w-full z-30 mt-2 bg-neutral-900 border border-neutral-800 rounded-xl shadow-2xl max-h-56 overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
-                        <div
-                            className={`p-4 flex items-center justify-between cursor-pointer hover:bg-neutral-800 border-b border-neutral-800 ${!suggestedRoutine ? 'text-lime-400' : 'text-neutral-200'}`}
-                            onClick={() => {
-                                setSuggestedRoutine(null);
-                                setIsDropdownOpen(false);
-                            }}
-                        >
-                            <span className="font-medium">Entrenamiento Libre</span>
-                            {!suggestedRoutine && <Check className="w-5 h-5" />}
-                        </div>
-                        {routines.map((routine) => (
-                            <div
-                                key={routine.id}
-                                className={`p-4 flex items-center justify-between cursor-pointer hover:bg-neutral-800 border-b border-neutral-800 last:border-0 ${suggestedRoutine?.id === routine.id ? 'text-lime-400' : 'text-neutral-200'}`}
-                                onClick={() => {
-                                    setSuggestedRoutine(routine);
-                                    setIsDropdownOpen(false);
-                                }}
-                            >
-                                <span className="font-medium">{routine.name}</span>
-                                {suggestedRoutine?.id === routine.id && <Check className="w-5 h-5" />}
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            <Button
-                onClick={handleStartSuggested}
-                className="w-full bg-lime-500 hover:bg-lime-600 text-neutral-950 font-bold text-lg py-6 shadow-[0_0_20px_rgba(132,204,22,0.3)] min-h-[64px]"
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsPickerOpen((previous) => !previous)}
+              aria-expanded={isPickerOpen}
+              className="flex w-full items-center justify-between gap-3 rounded-2xl border border-ink-700 bg-ink-850 px-4 py-3 text-left transition-colors hover:border-ember-500/40"
             >
-                <Dumbbell className="w-6 h-6 mr-3" />
-                INICIAR ENTRENAMIENTO
-            </Button>
+              <span className="min-w-0">
+                <span className="block text-[10px] font-bold uppercase tracking-widest text-ink-500">
+                  Plan de hoy
+                </span>
+                <span className="mt-0.5 block truncate font-heading text-lg font-bold text-ink-100">
+                  {selectedRoutine ? selectedRoutine.name : 'Entrenamiento libre'}
+                </span>
+              </span>
+              <ChevronDown
+                className={cn('h-5 w-5 shrink-0 text-ink-400 transition-transform', isPickerOpen && 'rotate-180')}
+              />
+            </button>
+
+            {isPickerOpen && (
+              <>
+                <div className="fixed inset-0 z-20" onClick={() => setIsPickerOpen(false)} role="presentation" />
+                <div className="absolute inset-x-0 top-full z-30 mt-2 max-h-64 overflow-y-auto rounded-2xl border border-ink-700 bg-ink-850 shadow-lift animate-in fade-in zoom-in-95 duration-150">
+                  <PickerRow
+                    label="Entrenamiento libre"
+                    hint="Agregás los ejercicios sobre la marcha"
+                    isSelected={!selectedRoutine}
+                    onClick={() => {
+                      setChoice({ routineId: null });
+                      setIsPickerOpen(false);
+                    }}
+                  />
+                  {routines.map((routine) => (
+                    <PickerRow
+                      key={routine.id}
+                      label={routine.name}
+                      isSelected={selectedRoutine?.id === routine.id}
+                      onClick={() => {
+                        setChoice({ routineId: routine.id ?? null });
+                        setIsPickerOpen(false);
+                      }}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          <Button size="xl" className="w-full text-base" onClick={handleStart}>
+            <Play className="h-5 w-5 fill-current" /> Empezar a entrenar
+          </Button>
         </div>
+      </section>
 
-        {/* Decorative BG */}
-        <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-lime-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-        </div>
-      </div>
-
-      {renderCalendar()}
-
-      {selectedWorkoutId && (
-        <WorkoutDetailModal
-            workoutId={selectedWorkoutId}
-            onClose={() => setSelectedWorkoutId(null)}
+      <section className="grid grid-cols-2 gap-3">
+        <StatCard
+          icon={Flame}
+          label={stats.isCurrentMonth ? 'Este mes' : 'Ese mes'}
+          value={`${stats.sessions}`}
+          hint={stats.sessions === 1 ? 'sesión' : 'sesiones'}
         />
+        <StatCard
+          icon={History}
+          label="Última sesión"
+          value={stats.lastSession ? formatDurationLong(stats.lastSession.durationSeconds) : '—'}
+          hint={
+            stats.lastSession
+              ? new Date(stats.lastSession.date).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
+              : 'Sin registros'
+          }
+        />
+      </section>
+
+      {/* Asistencia */}
+      <section className="rounded-card border border-ink-800 bg-ink-900 p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="flex items-center gap-2 font-heading text-base font-bold text-ink-100">
+            <CalendarDays className="h-4 w-4 text-ember-400" />
+            Asistencia
+          </h2>
+
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              aria-label="Mes anterior"
+              onClick={() =>
+                setMonthCursor((previous) => new Date(previous.getFullYear(), previous.getMonth() - 1, 1))
+              }
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-400 transition-colors hover:bg-ink-850 hover:text-ink-100"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="min-w-[7.5rem] text-center text-sm font-medium text-ink-300">
+              {monthLabel(monthCursor)}
+            </span>
+            <button
+              type="button"
+              aria-label="Mes siguiente"
+              onClick={() =>
+                setMonthCursor((previous) => new Date(previous.getFullYear(), previous.getMonth() + 1, 1))
+              }
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-400 transition-colors hover:bg-ink-850 hover:text-ink-100"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        <div className="mb-2 grid grid-cols-7 gap-1 text-center">
+          {WEEKDAYS.map((weekday, index) => (
+            <span key={index} className="text-[10px] font-bold uppercase text-ink-600">
+              {weekday}
+            </span>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-7 justify-items-center gap-y-1.5">
+          {calendarCells.map((cell) =>
+            cell.day === null ? (
+              <span key={cell.key} className="h-9 w-9" />
+            ) : (
+              <button
+                key={cell.key}
+                type="button"
+                disabled={!cell.workoutId}
+                onClick={() => cell.workoutId && setOpenWorkoutId(cell.workoutId)}
+                className={cn(
+                  'flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold transition-colors',
+                  cell.workoutId
+                    ? 'bg-ember-500 text-ink-950 hover:bg-ember-400'
+                    : cell.isToday
+                      ? 'border border-ink-600 text-ink-200'
+                      : 'text-ink-600'
+                )}
+              >
+                {cell.day}
+              </button>
+            )
+          )}
+        </div>
+      </section>
+
+      {recentWorkouts.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="font-heading text-base font-bold text-ink-100">Últimas sesiones</h2>
+          <ul className="space-y-2">
+            {recentWorkouts.map((workout) => (
+              <li key={workout.id}>
+                <button
+                  type="button"
+                  onClick={() => workout.id && setOpenWorkoutId(workout.id)}
+                  className="flex w-full items-center justify-between gap-3 rounded-2xl border border-ink-800 bg-ink-900 p-4 text-left transition-colors hover:border-ink-700"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate font-semibold text-ink-100">{workout.name}</span>
+                    <span className="mt-0.5 block text-xs capitalize text-ink-500">
+                      {new Date(workout.date).toLocaleDateString('es-AR', {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'long',
+                      })}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-sm font-semibold tabular-nums text-ink-400">
+                    {formatDurationLong(workout.durationSeconds)}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
+
+      {openWorkoutId !== null && (
+        <WorkoutDetailModal workoutId={openWorkoutId} onClose={() => setOpenWorkoutId(null)} />
+      )}
+    </div>
+  );
+}
+
+function PickerRow({
+  label,
+  hint,
+  isSelected,
+  onClick,
+}: {
+  label: string;
+  hint?: string;
+  isSelected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex w-full items-center justify-between gap-3 border-b border-ink-800 p-4 text-left transition-colors last:border-0 hover:bg-ink-800',
+        isSelected ? 'text-ember-300' : 'text-ink-200'
+      )}
+    >
+      <span className="min-w-0">
+        <span className="block truncate font-semibold">{label}</span>
+        {hint && <span className="mt-0.5 block text-xs text-ink-500">{hint}</span>}
+      </span>
+      {isSelected && <Check className="h-4 w-4 shrink-0" />}
+    </button>
+  );
+}
+
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  hint,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  hint: string;
+}) {
+  return (
+    <div className="rounded-card border border-ink-800 bg-ink-900 p-4">
+      <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-ink-500">
+        <Icon className="h-3.5 w-3.5 text-ember-400" />
+        {label}
+      </span>
+      <p className="mt-2 font-heading text-2xl font-bold tabular-nums text-ink-100">{value}</p>
+      <p className="text-xs text-ink-500">{hint}</p>
     </div>
   );
 }

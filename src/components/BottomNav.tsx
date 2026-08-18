@@ -1,5 +1,11 @@
 import { Dumbbell, ClipboardList, Library } from 'lucide-react';
-import { clsx } from 'clsx';
+import { cn } from '../lib/utils';
+
+export const NAV_ITEMS = [
+  { id: 'gym', icon: Dumbbell, label: 'Entrenar' },
+  { id: 'routines', icon: ClipboardList, label: 'Rutinas' },
+  { id: 'exercises', icon: Library, label: 'Ejercicios' },
+] as const;
 
 interface BottomNavProps {
   activeTab: string;
@@ -7,34 +13,44 @@ interface BottomNavProps {
 }
 
 export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
-  const items = [
-    { id: 'gym', icon: Dumbbell, label: 'Gym' },
-    { id: 'routines', icon: ClipboardList, label: 'Rutinas' },
-    { id: 'exercises', icon: Library, label: 'Ejercicios' },
-  ];
-
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 bg-neutral-950/90 backdrop-blur-lg border-t border-neutral-800 pb-safe md:hidden">
-      <div className="flex items-center justify-between px-2 h-16">
-        {items.map((item) => {
+    <nav
+      aria-label="Navegación principal"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-ink-800 bg-ink-950/95 pb-safe backdrop-blur-xl md:hidden"
+    >
+      <div className="flex items-stretch justify-around px-2 pt-1">
+        {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
-
           const isActive = activeTab === item.id;
+
           return (
             <button
               key={item.id}
+              type="button"
               onClick={() => onTabChange(item.id)}
-              className={clsx(
-                "flex flex-col items-center justify-center w-full h-full gap-1 transition-colors",
-                isActive ? "text-lime-500" : "text-neutral-500 hover:text-neutral-400"
-              )}
+              aria-current={isActive ? 'page' : undefined}
+              className="group relative flex h-14 w-full flex-col items-center justify-center gap-1"
             >
-              <Icon className={clsx("w-5 h-5", isActive && "fill-current/20")} />
-              <span className="text-[10px] font-medium">{item.label}</span>
+              <span
+                className={cn(
+                  'flex h-8 w-14 items-center justify-center rounded-full transition-all duration-200',
+                  isActive ? 'bg-ember-500/15 text-ember-400' : 'text-ink-500 group-hover:text-ink-300'
+                )}
+              >
+                <Icon className="h-5 w-5" strokeWidth={isActive ? 2.4 : 2} />
+              </span>
+              <span
+                className={cn(
+                  'text-[10px] font-semibold tracking-wide transition-colors',
+                  isActive ? 'text-ember-400' : 'text-ink-500'
+                )}
+              >
+                {item.label}
+              </span>
             </button>
           );
         })}
       </div>
-    </div>
+    </nav>
   );
 }

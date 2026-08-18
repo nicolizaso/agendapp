@@ -1,27 +1,20 @@
-import { useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
 import { useGymStore } from '../../hooks/useGymStore';
 import { GymDashboard } from './components/GymDashboard';
-import { ActiveWorkout } from './components/ActiveWorkout';
-import { Loader2 } from 'lucide-react';
 
 export function GymPage() {
-  const { init, isLoading, isWorkoutActive } = useGymStore();
+  const isLoading = useGymStore((state) => state.isLoading);
+  const exercises = useGymStore((state) => state.exercises);
 
-  useEffect(() => {
-    init();
-  }, [init]);
-
-  if (isLoading) {
+  // Sólo bloqueamos la pantalla en la primera carga, cuando no hay nada que mostrar.
+  if (isLoading && exercises.length === 0) {
     return (
-        <div className="h-full flex items-center justify-center text-lime-400">
-            <Loader2 className="w-8 h-8 animate-spin" />
-        </div>
+      <div className="flex flex-col items-center justify-center gap-3 py-24 text-ink-400">
+        <Loader2 className="h-7 w-7 animate-spin text-ember-400" />
+        <p className="text-sm">Preparando tu catálogo de ejercicios...</p>
+      </div>
     );
   }
 
-  return (
-    <div className="max-w-3xl mx-auto h-full">
-      {isWorkoutActive ? <ActiveWorkout /> : <GymDashboard />}
-    </div>
-  );
+  return <GymDashboard />;
 }

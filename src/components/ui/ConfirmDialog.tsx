@@ -3,8 +3,9 @@ import { Modal } from '../Modal';
 import { Button } from '../Button';
 
 export function ConfirmDialog() {
-  const { confirmDialog, closeConfirmDialog } = useUIStore();
-  const { isOpen, title, message, variant, onConfirm } = confirmDialog;
+  const confirmDialog = useUIStore((state) => state.confirmDialog);
+  const closeConfirmDialog = useUIStore((state) => state.closeConfirmDialog);
+  const { isOpen, title, message, variant, confirmLabel, cancelLabel, onConfirm, actions } = confirmDialog;
 
   const handleConfirm = () => {
     onConfirm();
@@ -12,15 +13,18 @@ export function ConfirmDialog() {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={closeConfirmDialog} title={title}>
-      <div className="space-y-4">
-        <p className="text-stone-300 font-body">{message}</p>
-        <div className="flex justify-end gap-3 pt-2">
-          {confirmDialog.actions ? (
-            confirmDialog.actions.map((action, index) => (
+    <Modal isOpen={isOpen} onClose={closeConfirmDialog} title={title} size="sm">
+      <div className="space-y-6">
+        <p className="text-sm leading-relaxed text-ink-300">{message}</p>
+
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          {actions ? (
+            actions.map((action, index) => (
               <Button
                 key={index}
                 variant={action.variant || 'primary'}
+                size="lg"
+                className="sm:w-auto"
                 onClick={() => {
                   action.onClick();
                   closeConfirmDialog();
@@ -31,14 +35,15 @@ export function ConfirmDialog() {
             ))
           ) : (
             <>
-              <Button variant="ghost" onClick={closeConfirmDialog}>
-                Cancelar
+              <Button variant="outline" size="lg" onClick={closeConfirmDialog}>
+                {cancelLabel}
               </Button>
               <Button
-                variant={variant === 'default' ? 'primary' : variant}
+                variant={variant === 'danger' ? 'danger' : 'primary'}
+                size="lg"
                 onClick={handleConfirm}
               >
-                Confirmar
+                {confirmLabel}
               </Button>
             </>
           )}

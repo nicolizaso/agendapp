@@ -6,10 +6,8 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-200 font-sans selection:bg-lime-600/30">
-      <main className="container mx-auto px-4 py-8 max-w-5xl">
-        {children}
-      </main>
+    <div className="min-h-dvh bg-ink-950 text-ink-200 selection:bg-ember-500/30 selection:text-ink-100">
+      <main className="container mx-auto max-w-5xl px-4 pt-safe pb-8">{children}</main>
     </div>
   );
 }
