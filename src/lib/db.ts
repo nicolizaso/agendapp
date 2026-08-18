@@ -1,4 +1,5 @@
 import Dexie, { type Table } from 'dexie';
+import { weekdayLabel } from './weekdays';
 import type {
   ActiveWorkoutDraft,
   Exercise,
@@ -216,6 +217,66 @@ export class CargaDB extends Dexie {
           .modify((plan) => {
             delete plan.routineId;
           });
+      });
+
+    // Cada día del plan pasa a ser un día de la semana concreto (con su horario) en vez de
+    // una etiqueta libre tipo "Día A": con eso el plan arma su propia agenda sin que haya
+    // que agendar los turnos a mano. A los días que ya existían se les toma el día y la
+    // hora del turno que ya los agendaba; si no tenían ninguno, se reparten a partir del
+    // lunes. Cada día del plan queda con exactamente un turno agendado.
+    this.version(7)
+      .stores({
+        exercises: '++id, apiId, name, muscleGroup, equipment',
+        workouts: '++id, date, name, durationSeconds',
+        sets: '++id, workoutId, exerciseId, [exerciseId+date], [workoutId+exerciseId]',
+        routines: '++id, name, created_at',
+        routineExercises: '++id, routineId, exerciseId, order',
+        activeWorkoutDraft: '++id, workoutId',
+        scheduledSessions: '++id, dayOfWeek, routineId, planId, planDayId',
+        trainingPlans: '++id, name, startDate, endDate',
+        planDays: '++id, planId, routineId, order, dayOfWeek',
+        planExercises: '++id, planDayId, exerciseId',
+      })
+      .upgrade(async (tx) => {
+        const planDays = await tx.table('planDays').toArray();
+        const sessions = await tx.table('scheduledSessions').toArray();
+
+        // Orden de reparto para los días que no tenían turno: lunes, martes, ...
+        const FALLBACK_ORDER = [1, 2, 3, 4, 5, 6, 0];
+        const usedByPlan = new Map<number, Set<number>>();
+
+        for (const day of planDays) {
+          const daySessions = sessions.filter((session) => session.planDayId === day.id);
+          const used = usedByPlan.get(day.planId) ?? new Set<number>();
+
+          const fromSession = daySessions[0];
+          const dayOfWeek =
+            fromSession?.dayOfWeek ??
+            FALLBACK_ORDER.find((candidate) => !used.has(candidate)) ??
+            1;
+          const time = fromSession?.time ?? '18:00';
+
+          used.add(dayOfWeek);
+          usedByPlan.set(day.planId, used);
+
+          await tx.table('planDays').update(day.id, { dayOfWeek, time, label: weekdayLabel(dayOfWeek) });
+
+          // Un solo turno por día del plan: los repetidos se descartan y, si no había
+          // ninguno, se crea el que corresponde para que el plan quede agendado.
+          for (const extra of daySessions.slice(1)) {
+            await tx.table('scheduledSessions').delete(extra.id);
+          }
+
+          if (daySessions.length === 0) {
+            await tx.table('scheduledSessions').add({
+              dayOfWeek,
+              time,
+              planId: day.planId,
+              planDayId: day.id,
+              createdAt: new Date(),
+            });
+          }
+        }
       });
   }
 }

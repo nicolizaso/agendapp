@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { db } from '../lib/db';
+import { weekdayLabel } from '../lib/weekdays';
 import type { EquipmentType, PlanDay, PlanExercise, ScheduledSession, TrainingPlan } from '../types';
 
 export interface PlanExercisePayload {
@@ -14,7 +15,10 @@ export interface PlanExercisePayload {
  *  agenda que ya lo referencian). */
 export interface PlanDayPayload {
   id?: number;
-  label: string;
+  /** Día de la semana que se entrena, 0 = domingo ... 6 = sábado. */
+  dayOfWeek: number;
+  /** "HH:MM", 24 horas. */
+  time: string;
   routineId: number;
   exercises: PlanExercisePayload[];
 }
@@ -53,10 +57,54 @@ interface AgendaState {
   deletePlan: (id: number) => Promise<void>;
 }
 
+/** Los días del plan se muestran y numeran en orden de la semana, arrancando el lunes. */
+function sortedByWeekday(days: PlanDayPayload[]): PlanDayPayload[] {
+  const weekOrder = (dayOfWeek: number) => (dayOfWeek === 0 ? 7 : dayOfWeek);
+  return [...days].sort((a, b) => weekOrder(a.dayOfWeek) - weekOrder(b.dayOfWeek));
+}
+
 async function deletePlanDayCascade(planDayId: number): Promise<void> {
   await db.planExercises.where('planDayId').equals(planDayId).delete();
   await db.scheduledSessions.where('planDayId').equals(planDayId).delete();
   await db.planDays.delete(planDayId);
+}
+
+/**
+ * La agenda de un plan no se carga a mano: cada día del plan tiene siempre un turno
+ * semanal que refleja su día y su horario. Al guardar el plan se crea el que falta y se
+ * actualizan los que ya estaban (así los turnos viejos no quedan en otro día).
+ */
+async function syncPlanDaySession(
+  planId: number,
+  planDayId: number,
+  dayOfWeek: number,
+  time: string
+): Promise<void> {
+  const existing = await db.scheduledSessions.where('planDayId').equals(planDayId).toArray();
+
+  if (existing.length === 0) {
+    await db.scheduledSessions.add({ dayOfWeek, time, planId, planDayId, createdAt: new Date() });
+    return;
+  }
+
+  await db.scheduledSessions.update(existing[0].id as number, { dayOfWeek, time, planId, planDayId });
+  for (const duplicate of existing.slice(1)) {
+    await db.scheduledSessions.delete(duplicate.id as number);
+  }
+}
+
+/** Escribe los ejercicios configurados de un día, reemplazando los que hubiera. */
+async function writePlanDayExercises(planDayId: number, exercises: PlanExercisePayload[]): Promise<void> {
+  await db.planExercises.where('planDayId').equals(planDayId).delete();
+  await db.planExercises.bulkAdd(
+    exercises.map((exercise) => ({
+      planDayId,
+      exerciseId: exercise.exerciseId,
+      equipmentType: exercise.equipmentType,
+      initialWeight: exercise.initialWeight,
+      incrementOverride: exercise.incrementOverride,
+    }))
+  );
 }
 
 export const useAgendaStore = create<AgendaState>((set, get) => ({
@@ -141,31 +189,34 @@ export const useAgendaStore = create<AgendaState>((set, get) => ({
     try {
       let planId: number | null = null;
 
-      await db.transaction('rw', db.trainingPlans, db.planDays, db.planExercises, async () => {
-        const id = (await db.trainingPlans.add({ name, startDate, endDate, createdAt: new Date() })) as number;
-        planId = id;
+      await db.transaction(
+        'rw',
+        db.trainingPlans,
+        db.planDays,
+        db.planExercises,
+        db.scheduledSessions,
+        async () => {
+          const id = (await db.trainingPlans.add({ name, startDate, endDate, createdAt: new Date() })) as number;
+          planId = id;
 
-        for (const [index, day] of days.entries()) {
-          const planDayId = (await db.planDays.add({
-            planId: id,
-            routineId: day.routineId,
-            label: day.label,
-            order: index,
-          })) as number;
+          for (const [index, day] of sortedByWeekday(days).entries()) {
+            const planDayId = (await db.planDays.add({
+              planId: id,
+              routineId: day.routineId,
+              dayOfWeek: day.dayOfWeek,
+              time: day.time,
+              label: weekdayLabel(day.dayOfWeek),
+              order: index,
+            })) as number;
 
-          await db.planExercises.bulkAdd(
-            day.exercises.map((exercise) => ({
-              planDayId,
-              exerciseId: exercise.exerciseId,
-              equipmentType: exercise.equipmentType,
-              initialWeight: exercise.initialWeight,
-              incrementOverride: exercise.incrementOverride,
-            }))
-          );
+            await writePlanDayExercises(planDayId, day.exercises);
+            await syncPlanDaySession(id, planDayId, day.dayOfWeek, day.time);
+          }
         }
-      });
+      );
 
       await get().getPlans();
+      await get().getSessions();
       return planId;
     } catch (err) {
       console.error('No se pudo crear el plan de entrenamiento', err);
@@ -196,30 +247,26 @@ export const useAgendaStore = create<AgendaState>((set, get) => ({
             }
           }
 
-          for (const [index, day] of days.entries()) {
-            const planDayId =
-              day.id ??
-              ((await db.planDays.add({ planId: id, routineId: day.routineId, label: day.label, order: index })) as number);
+          for (const [index, day] of sortedByWeekday(days).entries()) {
+            const fields = {
+              routineId: day.routineId,
+              dayOfWeek: day.dayOfWeek,
+              time: day.time,
+              label: weekdayLabel(day.dayOfWeek),
+              order: index,
+            };
 
-            if (day.id) {
-              await db.planDays.update(day.id, { routineId: day.routineId, label: day.label, order: index });
-            }
+            const planDayId = day.id ?? ((await db.planDays.add({ planId: id, ...fields })) as number);
+            if (day.id) await db.planDays.update(day.id, fields);
 
-            await db.planExercises.where('planDayId').equals(planDayId).delete();
-            await db.planExercises.bulkAdd(
-              day.exercises.map((exercise) => ({
-                planDayId,
-                exerciseId: exercise.exerciseId,
-                equipmentType: exercise.equipmentType,
-                initialWeight: exercise.initialWeight,
-                incrementOverride: exercise.incrementOverride,
-              }))
-            );
+            await writePlanDayExercises(planDayId, day.exercises);
+            await syncPlanDaySession(id, planDayId, day.dayOfWeek, day.time);
           }
         }
       );
 
       await get().getPlans();
+      await get().getSessions();
     } catch (err) {
       console.error('No se pudo actualizar el plan de entrenamiento', err);
     }

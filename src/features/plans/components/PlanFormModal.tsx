@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { CalendarCheck, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Modal } from '../../../components/Modal';
 import { Button } from '../../../components/Button';
@@ -7,10 +7,11 @@ import { Input } from '../../../components/Input';
 import { Label } from '../../../components/Label';
 import { useAgendaStore, type PlanDayPayload, type PlanExercisePayload } from '../../../hooks/useAgendaStore';
 import { useGymStore } from '../../../hooks/useGymStore';
+import { WEEKDAYS } from '../../../lib/weekdays';
 import { PlanDayCard, type PlanDayCardHandle, type PlanDayInitial } from './PlanDayCard';
 import type { TrainingPlan } from '../../../types';
 
-const DAY_LETTERS = 'ABCDEFGHIJ';
+const DEFAULT_TIME = '18:00';
 
 /** "2026-08-18" a partir de un Date, sin corrimientos de huso horario. */
 function toDateInputValue(date: Date): string {
@@ -20,9 +21,9 @@ function toDateInputValue(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-function nextDayLabel(count: number): string {
-  const letter = DAY_LETTERS[count % DAY_LETTERS.length] ?? String(count + 1);
-  return `Día ${letter}`;
+/** Primer día de la semana libre, arrancando el lunes. */
+function firstFreeWeekday(taken: number[]): number {
+  return WEEKDAYS.find((day) => !taken.includes(day.value))?.value ?? 1;
 }
 
 let keySeed = 0;
@@ -33,9 +34,17 @@ function newKey(): string {
 
 export interface PlanFormDayInitial {
   id?: number;
-  label: string;
+  dayOfWeek: number;
+  time: string;
   routineId: number;
   exerciseConfig: Record<number, PlanExercisePayload>;
+}
+
+interface FormDay {
+  key: string;
+  dayOfWeek: number;
+  time: string;
+  initial: PlanDayInitial;
 }
 
 interface PlanFormModalProps {
@@ -55,30 +64,42 @@ export function PlanFormModal({ isOpen, onClose, editing }: PlanFormModalProps) 
   const [endDate, setEndDate] = useState(editing?.plan.endDate ? toDateInputValue(editing.plan.endDate) : '');
   const [isSaving, setIsSaving] = useState(false);
 
-  const [days, setDays] = useState<{ key: string; initial: PlanDayInitial }[]>(() => {
+  const [days, setDays] = useState<FormDay[]>(() => {
     if (editing && editing.days.length > 0) {
       return editing.days.map((day) => ({
         key: day.id ? `existing-${day.id}` : newKey(),
+        dayOfWeek: day.dayOfWeek,
+        time: day.time,
         initial: {
           id: day.id,
-          label: day.label,
           routineId: String(day.routineId),
           exerciseConfig: day.exerciseConfig,
         },
       }));
     }
 
-    return [{ key: newKey(), initial: { label: nextDayLabel(0), routineId: '', exerciseConfig: {} } }];
+    return [{ key: newKey(), dayOfWeek: 1, time: DEFAULT_TIME, initial: { routineId: '', exerciseConfig: {} } }];
   });
 
   const [validity, setValidity] = useState<Record<string, boolean>>({});
   const handlesRef = useRef<Record<string, PlanDayCardHandle | null>>({});
 
+  const takenDays = days.map((day) => day.dayOfWeek);
+
   const addDay = () => {
     setDays((previous) => [
       ...previous,
-      { key: newKey(), initial: { label: nextDayLabel(previous.length), routineId: '', exerciseConfig: {} } },
+      {
+        key: newKey(),
+        dayOfWeek: firstFreeWeekday(previous.map((day) => day.dayOfWeek)),
+        time: previous[previous.length - 1]?.time ?? DEFAULT_TIME,
+        initial: { routineId: '', exerciseConfig: {} },
+      },
     ]);
+  };
+
+  const patchDay = (key: string, patch: Partial<Pick<FormDay, 'dayOfWeek' | 'time'>>) => {
+    setDays((previous) => previous.map((day) => (day.key === key ? { ...day, ...patch } : day)));
   };
 
   const removeDay = (key: string) => {
@@ -93,6 +114,7 @@ export function PlanFormModal({ isOpen, onClose, editing }: PlanFormModalProps) 
 
   const isDateRangeValid = Boolean(startDate) && Boolean(endDate) && endDate > startDate;
   const allDaysValid = days.length > 0 && days.every((day) => validity[day.key]);
+  const hasFreeWeekday = days.length < WEEKDAYS.length;
   const isSaveDisabled = !name.trim() || !isDateRangeValid || !allDaysValid || isSaving;
 
   const handleSave = async () => {
@@ -114,10 +136,10 @@ export function PlanFormModal({ isOpen, onClose, editing }: PlanFormModalProps) 
 
     if (editing?.plan.id) {
       await updatePlan(editing.plan.id, name.trim(), parsedStartDate, parsedEndDate, payload);
-      toast.success('Plan actualizado');
+      toast.success('Plan actualizado y agenda al día');
     } else {
       await createPlan(name.trim(), parsedStartDate, parsedEndDate, payload);
-      toast.success('Plan creado');
+      toast.success('Plan creado: ya quedó agendado en el calendario');
     }
 
     setIsSaving(false);
@@ -131,7 +153,7 @@ export function PlanFormModal({ isOpen, onClose, editing }: PlanFormModalProps) 
       isOpen={isOpen}
       onClose={onClose}
       title={editing ? 'Editar plan' : 'Nuevo plan de entrenamiento'}
-      description="Armá uno o más días (Día A, Día B...), cada uno con su rutina: Carga les sube el peso solo, cada 3 turnos entrenados de ese día."
+      description="Elegí qué días de la semana entrenás y con qué rutina: el calendario se llena solo entre la fecha de inicio y la de fin."
       size="lg"
     >
       <div className="space-y-5">
@@ -148,7 +170,7 @@ export function PlanFormModal({ isOpen, onClose, editing }: PlanFormModalProps) 
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="plan-start">Semana 0 arranca el</Label>
+            <Label htmlFor="plan-start">Arranca el</Label>
             <Input id="plan-start" type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
           </div>
           <div className="space-y-2">
@@ -169,15 +191,21 @@ export function PlanFormModal({ isOpen, onClose, editing }: PlanFormModalProps) 
           </div>
         </div>
 
+        <p className="flex items-start gap-2 rounded-card border border-ember-500/25 bg-ember-500/5 px-4 py-3 text-xs leading-relaxed text-ember-200">
+          <CalendarCheck className="mt-0.5 h-4 w-4 shrink-0 text-ember-400" />
+          Cada día que agregues se repite todas las semanas entre esas dos fechas y queda cargado solo en el
+          calendario, con el peso que corresponda a esa semana.
+        </p>
+
         <section className="space-y-3">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <Label>Días del plan</Label>
+              <Label>Días de entrenamiento</Label>
               <span className="rounded-full border border-ink-700 bg-ink-850 px-2 py-0.5 text-[11px] font-bold text-ember-400">
                 {days.length}
               </span>
             </div>
-            <Button type="button" variant="outline" size="sm" onClick={addDay}>
+            <Button type="button" variant="outline" size="sm" onClick={addDay} disabled={!hasFreeWeekday}>
               <Plus className="h-4 w-4" /> Agregar día
             </Button>
           </div>
@@ -190,6 +218,11 @@ export function PlanFormModal({ isOpen, onClose, editing }: PlanFormModalProps) 
                   handlesRef.current[day.key] = handle;
                 }}
                 initial={day.initial}
+                dayOfWeek={day.dayOfWeek}
+                time={day.time}
+                takenDays={takenDays}
+                onDayOfWeekChange={(dayOfWeek) => patchDay(day.key, { dayOfWeek })}
+                onTimeChange={(time) => patchDay(day.key, { time })}
                 routines={routinesSorted}
                 catalog={catalog}
                 canRemove={days.length > 1}
@@ -201,7 +234,7 @@ export function PlanFormModal({ isOpen, onClose, editing }: PlanFormModalProps) 
         </section>
 
         <Button size="lg" className="w-full" disabled={isSaveDisabled} onClick={handleSave}>
-          {editing ? 'Guardar cambios' : 'Crear plan'}
+          {editing ? 'Guardar cambios' : 'Crear plan y agendar'}
         </Button>
       </div>
     </Modal>

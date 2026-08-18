@@ -7,6 +7,7 @@
  * todavía no tenga esos ejercicios cargados.
  */
 import { db } from './db';
+import { weekdayLabel } from './weekdays';
 import type { Exercise, PlanDay, PlanExercise, RoutineExercise, TrainingPlan, WorkoutSet } from '../types';
 
 export const BUNDLE_APP_ID = 'carga';
@@ -24,6 +25,10 @@ export interface ExportedPlanDay {
    *  exportados sepan a qué día apuntar al remapearse en la importación. */
   originalId: number;
   label: string;
+  /** Día de la semana y horario en que se entrena. Opcionales sólo por los archivos
+   *  exportados antes de que el día del plan fuera un día de la semana concreto. */
+  dayOfWeek?: number;
+  time?: string;
   /** Id original de la rutina en el dispositivo de origen, para remapearla al importar.
    *  El día siempre depende de una rutina, así que se exporta junto con él aunque no esté
    *  tildada en la selección de rutinas. */
@@ -60,10 +65,11 @@ export interface ExportedAgendaSession {
   dayOfWeek: number;
   time: string;
   notes?: string;
-  /** Id original de la rutina/plan en el dispositivo de origen, para poder remapearlo al importar. */
+  /** Id original de la rutina en el dispositivo de origen, para poder remapearla al importar. */
   originalRoutineId?: number;
+  /** Sólo en archivos exportados por versiones anteriores, cuando los turnos de un plan
+   *  también viajaban acá: hoy los agenda el propio plan, así que se ignoran al importar. */
   originalPlanId?: number;
-  /** Id original del día del plan (dentro de `ExportedPlanDay.originalId`), si el turno agenda un plan. */
   originalPlanDayId?: number;
 }
 
@@ -187,6 +193,8 @@ export async function buildExportBundle(selection: ExportSelection): Promise<Dat
         exportedDays.push({
           originalId: day.id,
           label: day.label,
+          dayOfWeek: day.dayOfWeek,
+          time: day.time,
           originalRoutineId: day.routineId,
           exercises: exercises.map(({ exerciseId, equipmentType, initialWeight, incrementOverride }) => ({
             exerciseId,
@@ -241,14 +249,16 @@ export async function buildExportBundle(selection: ExportSelection): Promise<Dat
   if (selection.agenda) {
     const sessions = await db.scheduledSessions.toArray();
 
-    bundle.agenda = sessions.map((session) => ({
-      dayOfWeek: session.dayOfWeek,
-      time: session.time,
-      notes: session.notes,
-      originalRoutineId: session.routineId,
-      originalPlanId: session.planId,
-      originalPlanDayId: session.planDayId,
-    }));
+    // Sólo los turnos sueltos: los de un plan los reconstruye el propio plan al importarse,
+    // porque el día y la hora ya viajan en cada día del plan.
+    bundle.agenda = sessions
+      .filter((session) => Boolean(session.routineId))
+      .map((session) => ({
+        dayOfWeek: session.dayOfWeek,
+        time: session.time,
+        notes: session.notes,
+        originalRoutineId: session.routineId,
+      }));
   }
 
   if (referenced.size > 0) {
@@ -394,8 +404,6 @@ export async function importBundle(bundle: DataBundle, selection: ImportSelectio
   result.exercisesImported = exerciseMap.size;
 
   const routineIdMap = new Map<number, number>();
-  const planIdMap = new Map<number, number>();
-  const planDayIdMap = new Map<number, number>();
 
   const importRoutine = async (routine: ExportedRoutine): Promise<number> => {
     const newRoutineId = (await db.routines.add({
@@ -451,17 +459,29 @@ export async function importBundle(bundle: DataBundle, selection: ImportSelectio
         createdAt: new Date(plan.createdAt),
       })) as number;
 
-      planIdMap.set(plan.id, newPlanId);
-
       for (const [index, { day, routineId }] of resolvedDays.entries()) {
+        // Los archivos viejos no traían el día de la semana: se reparten a partir del lunes
+        // para que el plan importado quede igual de agendable que uno creado a mano.
+        const dayOfWeek = day.dayOfWeek ?? ((index % 7) + 1) % 7;
+        const time = day.time ?? '18:00';
+
         const newPlanDayId = (await db.planDays.add({
           planId: newPlanId,
           routineId,
-          label: day.label,
+          dayOfWeek,
+          time,
+          label: weekdayLabel(dayOfWeek),
           order: index,
         })) as number;
 
-        planDayIdMap.set(day.originalId, newPlanDayId);
+        // El plan agenda sus días solo, igual que al crearlo desde la app.
+        await db.scheduledSessions.add({
+          dayOfWeek,
+          time,
+          planId: newPlanId,
+          planDayId: newPlanDayId,
+          createdAt: new Date(),
+        });
 
         const exercises = day.exercises
           .map((exercise) => {
@@ -502,13 +522,15 @@ export async function importBundle(bundle: DataBundle, selection: ImportSelectio
 
   if (selection.agenda) {
     for (const session of bundle.agenda ?? []) {
-      const routineId = session.originalRoutineId ? routineIdMap.get(session.originalRoutineId) : undefined;
-      const planId = session.originalPlanId ? planIdMap.get(session.originalPlanId) : undefined;
-      const planDayId = session.originalPlanDayId ? planDayIdMap.get(session.originalPlanDayId) : undefined;
+      // Los turnos de un plan ya quedaron agendados al importar sus días: el plan es el
+      // que manda el día y la hora, así que no se vuelven a crear.
+      if (session.originalPlanId) continue;
 
-      // El turno agendaba una rutina o un día de plan que no se importó junto: sin ese
-      // dato no hay nada válido a lo que apuntar, así que se omite en vez de dejarlo colgado.
-      if ((session.originalRoutineId && !routineId) || (session.originalPlanId && !planDayId)) {
+      const routineId = session.originalRoutineId ? routineIdMap.get(session.originalRoutineId) : undefined;
+
+      // El turno agendaba una rutina que no se importó junto: sin ese dato no hay nada
+      // válido a lo que apuntar, así que se omite en vez de dejarlo colgado.
+      if (!routineId) {
         result.agendaSkipped += 1;
         continue;
       }
@@ -518,8 +540,6 @@ export async function importBundle(bundle: DataBundle, selection: ImportSelectio
         time: session.time,
         notes: session.notes,
         routineId,
-        planId,
-        planDayId,
         createdAt: new Date(),
       });
       result.agendaImported += 1;
