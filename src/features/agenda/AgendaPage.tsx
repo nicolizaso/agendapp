@@ -107,7 +107,8 @@ function SessionsView() {
       loadRoutineIntoWorkout(session.routineId);
     } else if (session.planId) {
       const plan = plans.find((item) => item.id === session.planId);
-      if (!plan || isPlanFinished(plan)) return;
+      const routineExists = plan ? routines.some((item) => item.id === plan.routineId) : false;
+      if (!plan || !routineExists || isPlanFinished(plan)) return;
       // La semana de progresión que toca se planifica sola: se calcula contando los
       // turnos agendados de este plan que ya transcurrieron, no hace falta guardarla.
       const weekIndex = weekIndexForPlan(plan, sessions);
@@ -123,6 +124,9 @@ function SessionsView() {
     if (session.planId) {
       const plan = plans.find((item) => item.id === session.planId);
       if (!plan) return { label: 'Plan eliminado', canStart: false };
+
+      const routineExists = routines.some((item) => item.id === plan.routineId);
+      if (!routineExists) return { label: `${plan.name} · Rutina eliminada`, canStart: false };
 
       const finished = isPlanFinished(plan);
       const weekIndex = weekIndexForPlan(plan, sessions);

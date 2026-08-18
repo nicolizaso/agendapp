@@ -102,10 +102,16 @@ export interface ScheduledSession {
   createdAt: Date;
 }
 
-/** Plan de entrenamiento: progresión de peso semana a semana para un grupo de ejercicios. */
+/**
+ * Plan de entrenamiento: progresión de peso semana a semana sobre los ejercicios de una
+ * rutina. El plan no tiene su propia lista de ejercicios: usa siempre la de `routineId`,
+ * en el mismo orden. Si la rutina cambia (se agrega, saca o reordena un ejercicio), el
+ * plan lo refleja al toque.
+ */
 export interface TrainingPlan {
   id?: number;
   name: string;
+  routineId: number;
   startDate: Date;
   /** Fecha en la que termina el plan; a partir de ahí se considera finalizado.
    *  Opcional sólo por planes creados antes de que este campo existiera: hay que
@@ -114,11 +120,11 @@ export interface TrainingPlan {
   createdAt: Date;
 }
 
+/** Progresión configurada para un ejercicio de la rutina del plan (qué ejercicio es lo define la rutina). */
 export interface PlanExercise {
   id?: number;
   planId: number;
   exerciseId: number;
-  order: number;
   equipmentType: EquipmentType;
   /** Peso inicial de la semana 0, en kg. */
   initialWeight: number;

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { CalendarPlus, TrendingUp } from 'lucide-react';
 import { Modal } from '../../../components/Modal';
 import { Button } from '../../../components/Button';
+import { db } from '../../../lib/db';
 import { useAgendaStore } from '../../../hooks/useAgendaStore';
 import { useGymStore } from '../../../hooks/useGymStore';
 import { buildProgressionTable, isPlanFinished, weekIndexForPlan, WEEKS_PER_BLOCK } from '../../../lib/progression';
@@ -24,32 +25,60 @@ export function PlanDetailModal({ isOpen, onClose, plan }: PlanDetailModalProps)
     useAgendaStore((state) => state.planExercisesByPlan[plan.id as number]) ?? EMPTY_PLAN_EXERCISES;
   const sessions = useAgendaStore((state) => state.sessions);
   const catalog = useGymStore((state) => state.exercises);
+  const routines = useGymStore((state) => state.routines);
+  const getRoutines = useGymStore((state) => state.getRoutines);
 
   const [isScheduling, setIsScheduling] = useState(false);
+  // Orden real de los ejercicios de la rutina (el plan no guarda orden propio).
+  const [routineExerciseIds, setRoutineExerciseIds] = useState<number[]>([]);
+
   const finished = isPlanFinished(plan);
+  const routine = routines.find((item) => item.id === plan.routineId);
   const currentWeekIndex = weekIndexForPlan(plan, sessions);
 
   useEffect(() => {
     if (isOpen && typeof plan.id === 'number') getPlanExercises(plan.id);
-  }, [isOpen, plan.id, getPlanExercises]);
+    getRoutines();
+  }, [isOpen, plan.id, getPlanExercises, getRoutines]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      const routineExercises =
+        isOpen && plan.routineId
+          ? await db.routineExercises.where('routineId').equals(plan.routineId).sortBy('order')
+          : [];
+      if (!cancelled) setRoutineExerciseIds(routineExercises.map((item) => item.exerciseId));
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, plan.routineId]);
 
   const columns = useMemo(
     () =>
-      exercises.map((planExercise) => {
-        const definition = catalog.find((item) => item.id === planExercise.exerciseId);
-        return {
-          key: planExercise.id ?? planExercise.exerciseId,
-          name: definition?.name ?? 'Ejercicio no disponible',
-          targets: buildProgressionTable(
-            planExercise.initialWeight,
-            planExercise.equipmentType,
-            WEEKS_TO_SHOW,
-            planExercise.incrementOverride
-          ),
-        };
-      }),
-    [exercises, catalog]
+      routineExerciseIds
+        .map((exerciseId) => exercises.find((item) => item.exerciseId === exerciseId))
+        .filter((item): item is PlanExercise => Boolean(item))
+        .map((planExercise) => {
+          const definition = catalog.find((item) => item.id === planExercise.exerciseId);
+          return {
+            key: planExercise.id ?? planExercise.exerciseId,
+            name: definition?.name ?? 'Ejercicio no disponible',
+            targets: buildProgressionTable(
+              planExercise.initialWeight,
+              planExercise.equipmentType,
+              WEEKS_TO_SHOW,
+              planExercise.incrementOverride
+            ),
+          };
+        }),
+    [routineExerciseIds, exercises, catalog]
   );
+
+  const unconfiguredCount = routineExerciseIds.length - columns.length;
 
   return (
     <>
@@ -57,16 +86,34 @@ export function PlanDetailModal({ isOpen, onClose, plan }: PlanDetailModalProps)
         isOpen={isOpen}
         onClose={onClose}
         title={plan.name}
-        description="Progresión de peso semana a semana. La semana en curso se calcula sola según los turnos agendados que ya pasaron."
+        description={
+          routine
+            ? `Basado en "${routine.name}". La semana en curso se calcula sola según los turnos agendados que ya pasaron.`
+            : 'Progresión de peso semana a semana.'
+        }
         size="xl"
       >
-        {columns.length === 0 ? (
-          <p className="py-8 text-center text-sm text-ink-500">Este plan todavía no tiene ejercicios.</p>
+        {!routine ? (
+          <p className="py-8 text-center text-sm text-flare-400">
+            La rutina de este plan fue eliminada, así que no tiene ejercicios para mostrar.
+          </p>
+        ) : columns.length === 0 ? (
+          <p className="py-8 text-center text-sm text-ink-500">
+            {routineExerciseIds.length === 0
+              ? 'Esta rutina todavía no tiene ejercicios.'
+              : 'Editá el plan para configurar el peso inicial de los ejercicios de la rutina.'}
+          </p>
         ) : (
           <div className="space-y-4">
             {finished && (
               <p className="rounded-card border border-ink-800 bg-ink-900/40 px-4 py-3 text-sm text-ink-400">
                 Este plan ya terminó ({new Date(plan.endDate as Date).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })}). No se pueden agendar turnos nuevos con él.
+              </p>
+            )}
+            {unconfiguredCount > 0 && (
+              <p className="rounded-card border border-ember-500/30 bg-ember-500/5 px-4 py-3 text-sm text-ember-300">
+                Hay {unconfiguredCount} ejercicio{unconfiguredCount > 1 ? 's' : ''} de la rutina sin peso inicial
+                configurado. Editá el plan para sumarlo{unconfiguredCount > 1 ? 's' : ''} a la progresión.
               </p>
             )}
             {typeof plan.id === 'number' && !finished && (

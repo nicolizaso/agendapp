@@ -102,6 +102,61 @@ export class CargaDB extends Dexie {
       trainingPlans: '++id, name, startDate, endDate',
       planExercises: '++id, planId, exerciseId, order',
     });
+
+    // El plan deja de tener su propia lista de ejercicios: pasa a usar siempre la de una
+    // rutina (routineId), en el mismo orden. Los planes viejos no apuntaban a ninguna
+    // rutina, así que a cada uno se le crea una rutina nueva con los ejercicios que ya
+    // tenía cargados, para no perder nada.
+    this.version(5)
+      .stores({
+        exercises: '++id, apiId, name, muscleGroup, equipment',
+        workouts: '++id, date, name, durationSeconds',
+        sets: '++id, workoutId, exerciseId, [exerciseId+date], [workoutId+exerciseId]',
+        routines: '++id, name, created_at',
+        routineExercises: '++id, routineId, exerciseId, order',
+        activeWorkoutDraft: '++id, workoutId',
+        scheduledSessions: '++id, dayOfWeek, routineId, planId',
+        trainingPlans: '++id, name, routineId, startDate, endDate',
+        planExercises: '++id, planId, exerciseId',
+      })
+      .upgrade(async (tx) => {
+        const plans = await tx.table('trainingPlans').toArray();
+
+        for (const plan of plans) {
+          const planExercises = await tx
+            .table('planExercises')
+            .where('planId')
+            .equals(plan.id)
+            .sortBy('order');
+
+          const routineId = await tx.table('routines').add({
+            name: `${plan.name} (rutina)`,
+            created_at: new Date(),
+          });
+
+          if (planExercises.length > 0) {
+            await tx.table('routineExercises').bulkAdd(
+              planExercises.map((exercise, index) => ({
+                routineId,
+                exerciseId: exercise.exerciseId,
+                order: index,
+                targetSets: 4,
+                targetReps: '8-12',
+                targetWeight: String(exercise.initialWeight),
+              }))
+            );
+          }
+
+          await tx.table('trainingPlans').update(plan.id, { routineId });
+        }
+
+        await tx
+          .table('planExercises')
+          .toCollection()
+          .modify((exercise) => {
+            delete exercise.order;
+          });
+      });
   }
 }
 

@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Dumbbell, Pencil, Plus, Trash2, TrendingUp } from 'lucide-react';
 import { Button } from '../../components/Button';
-import { useAgendaStore } from '../../hooks/useAgendaStore';
+import { db } from '../../lib/db';
+import { useAgendaStore, type PlanExercisePayload } from '../../hooks/useAgendaStore';
 import { useGymStore } from '../../hooks/useGymStore';
 import { useUIStore } from '../../hooks/useUIStore';
 import { PlanFormModal } from './components/PlanFormModal';
 import { PlanDetailModal } from './components/PlanDetailModal';
 import { isPlanFinished } from '../../lib/progression';
-import type { EquipmentType, TrainingPlan } from '../../types';
+import type { TrainingPlan } from '../../types';
 
 export function PlansPage() {
   const plans = useAgendaStore((state) => state.plans);
@@ -15,13 +16,14 @@ export function PlansPage() {
   const getSessions = useAgendaStore((state) => state.getSessions);
   const getPlanExercises = useAgendaStore((state) => state.getPlanExercises);
   const deletePlan = useAgendaStore((state) => state.deletePlan);
-  const catalog = useGymStore((state) => state.exercises);
+  const routines = useGymStore((state) => state.routines);
+  const getRoutines = useGymStore((state) => state.getRoutines);
   const openConfirmDialog = useUIStore((state) => state.openConfirmDialog);
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editing, setEditing] = useState<{
     plan: TrainingPlan;
-    exercises: { exerciseId: number; name: string; equipmentType: EquipmentType; initialWeight: number; incrementOverride?: number }[];
+    exerciseConfig: Record<number, PlanExercisePayload>;
   } | null>(null);
   const [detailPlan, setDetailPlan] = useState<TrainingPlan | null>(null);
   const [exerciseCounts, setExerciseCounts] = useState<Record<number, number>>({});
@@ -29,17 +31,19 @@ export function PlansPage() {
   useEffect(() => {
     getPlans();
     getSessions();
-  }, [getPlans, getSessions]);
+    getRoutines();
+  }, [getPlans, getSessions, getRoutines]);
 
+  // Cantidad de ejercicios de la rutina de cada plan (no de la configuración del plan: la
+  // rutina puede haber sumado ejercicios sin progresión configurada todavía).
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
       const counts: Record<number, number> = {};
       for (const plan of plans) {
-        if (typeof plan.id !== 'number') continue;
-        const items = await getPlanExercises(plan.id);
-        counts[plan.id] = items.length;
+        if (typeof plan.id !== 'number' || !plan.routineId) continue;
+        counts[plan.id] = await db.routineExercises.where('routineId').equals(plan.routineId).count();
       }
       if (!cancelled) setExerciseCounts(counts);
     })();
@@ -47,7 +51,6 @@ export function PlansPage() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plans]);
 
   const openCreate = () => {
@@ -59,19 +62,17 @@ export function PlansPage() {
     if (typeof plan.id !== 'number') return;
     const items = await getPlanExercises(plan.id);
 
-    setEditing({
-      plan,
-      exercises: items.map((item) => {
-        const definition = catalog.find((exercise) => exercise.id === item.exerciseId);
-        return {
-          exerciseId: item.exerciseId,
-          name: definition?.name ?? 'Ejercicio no disponible',
-          equipmentType: item.equipmentType,
-          initialWeight: item.initialWeight,
-          incrementOverride: item.incrementOverride,
-        };
-      }),
-    });
+    const exerciseConfig: Record<number, PlanExercisePayload> = {};
+    for (const item of items) {
+      exerciseConfig[item.exerciseId] = {
+        exerciseId: item.exerciseId,
+        equipmentType: item.equipmentType,
+        initialWeight: item.initialWeight,
+        incrementOverride: item.incrementOverride,
+      };
+    }
+
+    setEditing({ plan, exerciseConfig });
     setIsFormOpen(true);
   };
 
@@ -111,7 +112,7 @@ export function PlansPage() {
           </span>
           <h2 className="font-heading text-xl font-bold text-ink-100">Todavía no armaste ningún plan</h2>
           <p className="mt-2 max-w-xs text-sm leading-relaxed text-ink-400">
-            Elegí los ejercicios y el peso inicial: Carga calcula sola cuánto subir cada 3 semanas.
+            Elegí una rutina y el peso inicial de cada ejercicio: Carga calcula sola cuánto subir cada 3 turnos.
           </p>
           <Button size="lg" className="mt-6 w-full max-w-xs" onClick={openCreate}>
             Crear mi primer plan
@@ -121,6 +122,7 @@ export function PlansPage() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {plans.map((plan) => {
             const finished = isPlanFinished(plan);
+            const routine = routines.find((item) => item.id === plan.routineId);
             return (
             <article
               key={plan.id}
@@ -145,10 +147,15 @@ export function PlansPage() {
                 {!plan.endDate && (
                   <p className="mt-1 text-xs text-ember-400">Completá la fecha de fin editando el plan.</p>
                 )}
-                <span className="mt-3 flex w-fit items-center gap-1.5 rounded-md border border-ink-700 bg-ink-850 px-2 py-1 text-xs font-medium text-ink-300">
-                  <Dumbbell className="h-3.5 w-3.5 text-ink-500" />
-                  {exerciseCounts[plan.id as number] ?? 0} ejercicios
-                </span>
+                {!routine && (
+                  <p className="mt-1 text-xs text-flare-400">La rutina de este plan fue eliminada.</p>
+                )}
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <span className="flex w-fit items-center gap-1.5 rounded-md border border-ink-700 bg-ink-850 px-2 py-1 text-xs font-medium text-ink-300">
+                    <Dumbbell className="h-3.5 w-3.5 text-ink-500" />
+                    {routine ? routine.name : 'Sin rutina'} · {exerciseCounts[plan.id as number] ?? 0} ejercicios
+                  </span>
+                </div>
               </div>
 
               <div className="flex items-center gap-2 border-t border-ink-800 pt-4">
