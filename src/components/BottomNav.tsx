@@ -1,4 +1,4 @@
-import { Dumbbell, ClipboardList, Library, CalendarDays } from 'lucide-react';
+import { Dumbbell, ClipboardList, Library, CalendarDays, Database } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export const NAV_ITEMS = [
@@ -6,6 +6,7 @@ export const NAV_ITEMS = [
   { id: 'agenda', icon: CalendarDays, label: 'Agenda' },
   { id: 'routines', icon: ClipboardList, label: 'Rutinas' },
   { id: 'exercises', icon: Library, label: 'Ejercicios' },
+  { id: 'data', icon: Database, label: 'Datos' },
 ] as const;
 
 interface BottomNavProps {

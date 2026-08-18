@@ -8,6 +8,7 @@ import { GymPage } from './features/gym/GymPage';
 import { RoutinesManager } from './features/gym/RoutinesManager';
 import { ExerciseLibrary } from './features/gym/components/ExerciseLibrary';
 import { AgendaPage } from './features/agenda/AgendaPage';
+import { DataPage } from './features/data/DataPage';
 import { WorkoutSession } from './features/gym/session/WorkoutSession';
 import { WorkoutSummarySheet } from './features/gym/session/WorkoutSummarySheet';
 import { useGymStore } from './hooks/useGymStore';
@@ -62,6 +63,7 @@ export default function App() {
         {activeTab === 'agenda' && <AgendaPage />}
         {activeTab === 'routines' && <RoutinesManager />}
         {activeTab === 'exercises' && <ExerciseLibrary />}
+        {activeTab === 'data' && <DataPage />}
       </div>
 
       <ConfirmDialog />

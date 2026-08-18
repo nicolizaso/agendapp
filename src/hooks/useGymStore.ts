@@ -71,6 +71,9 @@ interface GymState {
   deleteRoutine: (id: number) => Promise<void>;
   getRoutines: () => Promise<void>;
 
+  /** Relee el catálogo de ejercicios sin tocar el resto del estado (ej. tras importar datos). */
+  refreshExercises: () => Promise<void>;
+
   setCurrentExerciseIndex: (index: number) => void;
   addActiveExercise: (exercise: Exercise) => Promise<void>;
   removeActiveExercise: (exerciseIndex: number) => Promise<void>;
@@ -531,6 +534,14 @@ export const useGymStore = create<GymState>((set, get) => ({
       set({ routines: await db.routines.toArray() });
     } catch (err) {
       console.error('No se pudieron leer las rutinas', err);
+    }
+  },
+
+  refreshExercises: async () => {
+    try {
+      set({ exercises: await db.exercises.toArray() });
+    } catch (err) {
+      console.error('No se pudo releer el catálogo de ejercicios', err);
     }
   },
 
