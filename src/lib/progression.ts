@@ -103,19 +103,20 @@ function occurrencesOfWeekday(dayOfWeek: number, start: Date, end: Date): number
 }
 
 /**
- * Semana de progresión (0-indexed) en la que está un plan, calculada con los turnos
- * agendados que lo usan: no es una cuenta de días de calendario, sino de cuántas veces
- * ya pasó cada turno semanal (día + hora) que entrena ese plan. Si hay más de un turno
- * agendado para el mismo plan (p. ej. lunes y jueves), cada uno que transcurre suma a
- * la misma semana, así que el plan avanza más rápido que si se entrenara una vez por
- * semana.
+ * Semana de progresión (0-indexed) en la que está un día de un plan, calculada con los
+ * turnos agendados que lo usan: no es una cuenta de días de calendario, sino de cuántas
+ * veces ya pasó cada turno semanal (día + hora) que entrena ESE día puntual del plan. Cada
+ * día progresa por su cuenta: si "Día B" se agenda dos veces por semana y "Día A" una sola,
+ * B sube de peso más rápido. Si faltaste a los turnos de un día, ese día se queda atrás
+ * aunque los demás del mismo plan sigan avanzando.
  */
-export function weekIndexForPlan(
+export function weekIndexForPlanDay(
   plan: TrainingPlan,
+  planDayId: number,
   sessions: ScheduledSession[],
   today: Date = new Date()
 ): number {
-  const planSessions = sessions.filter((session) => session.planId === plan.id);
+  const planSessions = sessions.filter((session) => session.planDayId === planDayId);
   if (planSessions.length === 0) return 0;
 
   const start = atMidnight(new Date(plan.startDate));

@@ -28,7 +28,8 @@ import { formatDuration } from '../../../lib/format';
 import { cn } from '../../../lib/utils';
 import type { Exercise } from '../../../types';
 
-const REST_PRESETS = [45, 60, 90, 120, 180];
+const REST_BETWEEN_SETS_PRESETS = [15, 30, 45, 60, 90];
+const REST_BETWEEN_EXERCISES_PRESETS = [60, 90, 120, 150, 180];
 
 /**
  * Modo entrenamiento.
@@ -43,13 +44,15 @@ export function WorkoutSession() {
   const activeWorkoutStartTime = useGymStore((state) => state.activeWorkoutStartTime);
   const currentExerciseIndex = useGymStore((state) => state.currentExerciseIndex);
   const catalog = useGymStore((state) => state.exercises);
-  const defaultRestSeconds = useGymStore((state) => state.defaultRestSeconds);
+  const restBetweenSetsSeconds = useGymStore((state) => state.restBetweenSetsSeconds);
+  const restBetweenExercisesSeconds = useGymStore((state) => state.restBetweenExercisesSeconds);
 
   const setCurrentExerciseIndex = useGymStore((state) => state.setCurrentExerciseIndex);
   const addActiveExercise = useGymStore((state) => state.addActiveExercise);
   const removeActiveExercise = useGymStore((state) => state.removeActiveExercise);
   const moveActiveExercise = useGymStore((state) => state.moveActiveExercise);
-  const setDefaultRestSeconds = useGymStore((state) => state.setDefaultRestSeconds);
+  const setRestBetweenSetsSeconds = useGymStore((state) => state.setRestBetweenSetsSeconds);
+  const setRestBetweenExercisesSeconds = useGymStore((state) => state.setRestBetweenExercisesSeconds);
   const startRestTimer = useGymStore((state) => state.startRestTimer);
   const finishWorkout = useGymStore((state) => state.finishWorkout);
   const cancelWorkout = useGymStore((state) => state.cancelWorkout);
@@ -337,10 +340,10 @@ export function WorkoutSession() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => startRestTimer()}
+                  onClick={() => startRestTimer(restBetweenSetsSeconds)}
                   className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-ink-800 bg-ink-900 text-sm font-semibold text-ink-300 transition-colors hover:border-ember-500/40 hover:text-ink-100"
                 >
-                  <Timer className="h-4 w-4" /> Descansar {defaultRestSeconds}s
+                  <Timer className="h-4 w-4" /> Descansar {restBetweenSetsSeconds}s
                 </button>
               </div>
 
@@ -451,17 +454,40 @@ export function WorkoutSession() {
         <div className="space-y-6">
           <div>
             <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-ink-500">
-              Descanso entre series
+              Descanso entre series (mismo ejercicio)
             </p>
             <div className="grid grid-cols-5 gap-1.5">
-              {REST_PRESETS.map((seconds) => (
+              {REST_BETWEEN_SETS_PRESETS.map((seconds) => (
                 <button
                   key={seconds}
                   type="button"
-                  onClick={() => setDefaultRestSeconds(seconds)}
+                  onClick={() => setRestBetweenSetsSeconds(seconds)}
                   className={cn(
                     'h-11 rounded-xl border text-sm font-bold tabular-nums transition-colors',
-                    defaultRestSeconds === seconds
+                    restBetweenSetsSeconds === seconds
+                      ? 'border-ember-500 bg-ember-500/15 text-ember-300'
+                      : 'border-ink-800 bg-ink-850 text-ink-300'
+                  )}
+                >
+                  {seconds}s
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-ink-500">
+              Descanso al cambiar de ejercicio
+            </p>
+            <div className="grid grid-cols-5 gap-1.5">
+              {REST_BETWEEN_EXERCISES_PRESETS.map((seconds) => (
+                <button
+                  key={seconds}
+                  type="button"
+                  onClick={() => setRestBetweenExercisesSeconds(seconds)}
+                  className={cn(
+                    'h-11 rounded-xl border text-sm font-bold tabular-nums transition-colors',
+                    restBetweenExercisesSeconds === seconds
                       ? 'border-ember-500 bg-ember-500/15 text-ember-300'
                       : 'border-ink-800 bg-ink-850 text-ink-300'
                   )}

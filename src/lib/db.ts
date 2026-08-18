@@ -2,6 +2,7 @@ import Dexie, { type Table } from 'dexie';
 import type {
   ActiveWorkoutDraft,
   Exercise,
+  PlanDay,
   PlanExercise,
   Routine,
   RoutineExercise,
@@ -36,6 +37,7 @@ export class CargaDB extends Dexie {
   activeWorkoutDraft!: Table<ActiveWorkoutDraft>;
   scheduledSessions!: Table<ScheduledSession>;
   trainingPlans!: Table<TrainingPlan>;
+  planDays!: Table<PlanDay>;
   planExercises!: Table<PlanExercise>;
 
   constructor() {
@@ -155,6 +157,64 @@ export class CargaDB extends Dexie {
           .toCollection()
           .modify((exercise) => {
             delete exercise.order;
+          });
+      });
+
+    // El plan pasa a poder tener varios "días" (Día A/B/C), cada uno con su propia rutina
+    // y progresión, en vez de una única rutina por plan. Cada plan existente (1 rutina) se
+    // convierte en un plan con un solo día, que hereda su rutina y sus ejercicios; los
+    // turnos agendados que ya apuntaban a ese plan pasan a apuntar también a ese día.
+    this.version(6)
+      .stores({
+        exercises: '++id, apiId, name, muscleGroup, equipment',
+        workouts: '++id, date, name, durationSeconds',
+        sets: '++id, workoutId, exerciseId, [exerciseId+date], [workoutId+exerciseId]',
+        routines: '++id, name, created_at',
+        routineExercises: '++id, routineId, exerciseId, order',
+        activeWorkoutDraft: '++id, workoutId',
+        scheduledSessions: '++id, dayOfWeek, routineId, planId, planDayId',
+        trainingPlans: '++id, name, startDate, endDate',
+        planDays: '++id, planId, routineId, order',
+        planExercises: '++id, planDayId, exerciseId',
+      })
+      .upgrade(async (tx) => {
+        const plans = await tx.table('trainingPlans').toArray();
+
+        for (const plan of plans) {
+          if (typeof plan.routineId !== 'number') continue;
+
+          const planDayId = await tx.table('planDays').add({
+            planId: plan.id,
+            routineId: plan.routineId,
+            label: 'Día único',
+            order: 0,
+          });
+
+          // `planId` deja de estar indexado en el esquema nuevo de `planExercises` (pasa a
+          // `planDayId`), así que se recorre la tabla entera en vez de usar `.where()`.
+          await tx
+            .table('planExercises')
+            .toCollection()
+            .filter((exercise) => exercise.planId === plan.id)
+            .modify((exercise) => {
+              exercise.planDayId = planDayId;
+              delete exercise.planId;
+            });
+
+          await tx
+            .table('scheduledSessions')
+            .where('planId')
+            .equals(plan.id)
+            .modify((session) => {
+              session.planDayId = planDayId;
+            });
+        }
+
+        await tx
+          .table('trainingPlans')
+          .toCollection()
+          .modify((plan) => {
+            delete plan.routineId;
           });
       });
   }

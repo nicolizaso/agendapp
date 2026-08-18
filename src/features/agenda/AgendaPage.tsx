@@ -4,7 +4,7 @@ import { Button } from '../../components/Button';
 import { useAgendaStore } from '../../hooks/useAgendaStore';
 import { useGymStore } from '../../hooks/useGymStore';
 import { useUIStore } from '../../hooks/useUIStore';
-import { isPlanFinished, weekIndexForPlan } from '../../lib/progression';
+import { isPlanFinished, weekIndexForPlanDay } from '../../lib/progression';
 import { cn } from '../../lib/utils';
 import { WEEKDAYS } from '../../lib/weekdays';
 import { ScheduleSessionModal } from './components/ScheduleSessionModal';
@@ -67,11 +67,12 @@ function SessionsView() {
   const getSessions = useAgendaStore((state) => state.getSessions);
   const deleteSession = useAgendaStore((state) => state.deleteSession);
   const plans = useAgendaStore((state) => state.plans);
+  const planDays = useAgendaStore((state) => state.planDays);
   const getPlans = useAgendaStore((state) => state.getPlans);
   const routines = useGymStore((state) => state.routines);
   const getRoutines = useGymStore((state) => state.getRoutines);
   const loadRoutineIntoWorkout = useGymStore((state) => state.loadRoutineIntoWorkout);
-  const loadPlanWeekIntoWorkout = useGymStore((state) => state.loadPlanWeekIntoWorkout);
+  const loadPlanDayIntoWorkout = useGymStore((state) => state.loadPlanDayIntoWorkout);
   const openConfirmDialog = useUIStore((state) => state.openConfirmDialog);
 
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -105,14 +106,15 @@ function SessionsView() {
   const handleStart = (session: ScheduledSession) => {
     if (session.routineId) {
       loadRoutineIntoWorkout(session.routineId);
-    } else if (session.planId) {
+    } else if (session.planId && session.planDayId) {
       const plan = plans.find((item) => item.id === session.planId);
-      const routineExists = plan ? routines.some((item) => item.id === plan.routineId) : false;
-      if (!plan || !routineExists || isPlanFinished(plan)) return;
+      const planDay = planDays.find((item) => item.id === session.planDayId);
+      const routineExists = planDay ? routines.some((item) => item.id === planDay.routineId) : false;
+      if (!plan || !planDay || !routineExists || isPlanFinished(plan)) return;
       // La semana de progresión que toca se planifica sola: se calcula contando los
-      // turnos agendados de este plan que ya transcurrieron, no hace falta guardarla.
-      const weekIndex = weekIndexForPlan(plan, sessions);
-      loadPlanWeekIntoWorkout(session.planId, weekIndex);
+      // turnos agendados de este día que ya transcurrieron, no hace falta guardarla.
+      const weekIndex = weekIndexForPlanDay(plan, planDay.id as number, sessions);
+      loadPlanDayIntoWorkout(session.planDayId, weekIndex);
     }
   };
 
@@ -121,17 +123,20 @@ function SessionsView() {
       const routine = routines.find((item) => item.id === session.routineId);
       return { label: routine?.name ?? 'Rutina eliminada', canStart: Boolean(routine) };
     }
-    if (session.planId) {
+    if (session.planId && session.planDayId) {
       const plan = plans.find((item) => item.id === session.planId);
-      if (!plan) return { label: 'Plan eliminado', canStart: false };
+      const planDay = planDays.find((item) => item.id === session.planDayId);
+      if (!plan || !planDay) return { label: 'Plan eliminado', canStart: false };
 
-      const routineExists = routines.some((item) => item.id === plan.routineId);
-      if (!routineExists) return { label: `${plan.name} · Rutina eliminada`, canStart: false };
+      const routineExists = routines.some((item) => item.id === planDay.routineId);
+      if (!routineExists) return { label: `${plan.name} · ${planDay.label} · Rutina eliminada`, canStart: false };
 
       const finished = isPlanFinished(plan);
-      const weekIndex = weekIndexForPlan(plan, sessions);
+      const weekIndex = weekIndexForPlanDay(plan, planDay.id as number, sessions);
       return {
-        label: finished ? `${plan.name} · Finalizado` : `${plan.name} · Semana ${weekIndex + 1}`,
+        label: finished
+          ? `${plan.name} · ${planDay.label} · Finalizado`
+          : `${plan.name} · ${planDay.label} · Semana ${weekIndex + 1}`,
         canStart: !finished,
       };
     }

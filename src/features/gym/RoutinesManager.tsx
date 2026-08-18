@@ -21,6 +21,7 @@ export function RoutinesManager() {
   const deleteRoutine = useGymStore((state) => state.deleteRoutine);
   const loadRoutineIntoWorkout = useGymStore((state) => state.loadRoutineIntoWorkout);
   const plans = useAgendaStore((state) => state.plans);
+  const planDays = useAgendaStore((state) => state.planDays);
   const getPlans = useAgendaStore((state) => state.getPlans);
   const openConfirmDialog = useUIStore((state) => state.openConfirmDialog);
 
@@ -89,12 +90,15 @@ export function RoutinesManager() {
   const handleDelete = (routine: Routine) => {
     if (typeof routine.id !== 'number') return;
 
-    const dependentPlans = plans.filter((plan) => plan.routineId === routine.id);
+    const dependentPlanIds = new Set(
+      planDays.filter((day) => day.routineId === routine.id).map((day) => day.planId)
+    );
+    const dependentPlans = plans.filter((plan) => typeof plan.id === 'number' && dependentPlanIds.has(plan.id));
     const warning =
       dependentPlans.length > 0
-        ? ` La usa${dependentPlans.length > 1 ? 'n' : ''} el plan${dependentPlans.length > 1 ? 'es' : ''} "${dependentPlans
+        ? ` La usa un día del plan${dependentPlans.length > 1 ? 'es' : ''} "${dependentPlans
             .map((plan) => plan.name)
-            .join('", "')}", que se va${dependentPlans.length > 1 ? 'n' : ''} a quedar sin ejercicios.`
+            .join('", "')}", que se va a quedar sin ejercicios.`
         : '';
 
     openConfirmDialog({

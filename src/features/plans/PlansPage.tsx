@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react';
 import { Dumbbell, Pencil, Plus, Trash2, TrendingUp } from 'lucide-react';
 import { Button } from '../../components/Button';
-import { db } from '../../lib/db';
 import { useAgendaStore, type PlanExercisePayload } from '../../hooks/useAgendaStore';
 import { useGymStore } from '../../hooks/useGymStore';
 import { useUIStore } from '../../hooks/useUIStore';
-import { PlanFormModal } from './components/PlanFormModal';
+import { PlanFormModal, type PlanFormDayInitial } from './components/PlanFormModal';
 import { PlanDetailModal } from './components/PlanDetailModal';
 import { isPlanFinished } from '../../lib/progression';
 import type { TrainingPlan } from '../../types';
 
 export function PlansPage() {
   const plans = useAgendaStore((state) => state.plans);
+  const planDays = useAgendaStore((state) => state.planDays);
   const getPlans = useAgendaStore((state) => state.getPlans);
   const getSessions = useAgendaStore((state) => state.getSessions);
   const getPlanExercises = useAgendaStore((state) => state.getPlanExercises);
@@ -21,12 +21,8 @@ export function PlansPage() {
   const openConfirmDialog = useUIStore((state) => state.openConfirmDialog);
 
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editing, setEditing] = useState<{
-    plan: TrainingPlan;
-    exerciseConfig: Record<number, PlanExercisePayload>;
-  } | null>(null);
+  const [editing, setEditing] = useState<{ plan: TrainingPlan; days: PlanFormDayInitial[] } | null>(null);
   const [detailPlan, setDetailPlan] = useState<TrainingPlan | null>(null);
-  const [exerciseCounts, setExerciseCounts] = useState<Record<number, number>>({});
 
   useEffect(() => {
     getPlans();
@@ -34,24 +30,7 @@ export function PlansPage() {
     getRoutines();
   }, [getPlans, getSessions, getRoutines]);
 
-  // Cantidad de ejercicios de la rutina de cada plan (no de la configuración del plan: la
-  // rutina puede haber sumado ejercicios sin progresión configurada todavía).
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      const counts: Record<number, number> = {};
-      for (const plan of plans) {
-        if (typeof plan.id !== 'number' || !plan.routineId) continue;
-        counts[plan.id] = await db.routineExercises.where('routineId').equals(plan.routineId).count();
-      }
-      if (!cancelled) setExerciseCounts(counts);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [plans]);
+  const daysByPlan = (planId: number) => planDays.filter((day) => day.planId === planId);
 
   const openCreate = () => {
     setEditing(null);
@@ -60,19 +39,27 @@ export function PlansPage() {
 
   const openEdit = async (plan: TrainingPlan) => {
     if (typeof plan.id !== 'number') return;
-    const items = await getPlanExercises(plan.id);
+    const days = daysByPlan(plan.id);
 
-    const exerciseConfig: Record<number, PlanExercisePayload> = {};
-    for (const item of items) {
-      exerciseConfig[item.exerciseId] = {
-        exerciseId: item.exerciseId,
-        equipmentType: item.equipmentType,
-        initialWeight: item.initialWeight,
-        incrementOverride: item.incrementOverride,
-      };
+    const dayInitials: PlanFormDayInitial[] = [];
+    for (const day of days) {
+      if (typeof day.id !== 'number') continue;
+      const items = await getPlanExercises(day.id);
+
+      const exerciseConfig: Record<number, PlanExercisePayload> = {};
+      for (const item of items) {
+        exerciseConfig[item.exerciseId] = {
+          exerciseId: item.exerciseId,
+          equipmentType: item.equipmentType,
+          initialWeight: item.initialWeight,
+          incrementOverride: item.incrementOverride,
+        };
+      }
+
+      dayInitials.push({ id: day.id, label: day.label, routineId: day.routineId, exerciseConfig });
     }
 
-    setEditing({ plan, exerciseConfig });
+    setEditing({ plan, days: dayInitials });
     setIsFormOpen(true);
   };
 
@@ -112,7 +99,7 @@ export function PlansPage() {
           </span>
           <h2 className="font-heading text-xl font-bold text-ink-100">Todavía no armaste ningún plan</h2>
           <p className="mt-2 max-w-xs text-sm leading-relaxed text-ink-400">
-            Elegí una rutina y el peso inicial de cada ejercicio: Carga calcula sola cuánto subir cada 3 turnos.
+            Armá uno o más días con su rutina y peso inicial: Carga calcula sola cuánto subir cada 3 turnos de cada día.
           </p>
           <Button size="lg" className="mt-6 w-full max-w-xs" onClick={openCreate}>
             Crear mi primer plan
@@ -122,7 +109,8 @@ export function PlansPage() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {plans.map((plan) => {
             const finished = isPlanFinished(plan);
-            const routine = routines.find((item) => item.id === plan.routineId);
+            const days = typeof plan.id === 'number' ? daysByPlan(plan.id) : [];
+            const missingRoutine = days.some((day) => !routines.some((routine) => routine.id === day.routineId));
             return (
             <article
               key={plan.id}
@@ -147,14 +135,24 @@ export function PlansPage() {
                 {!plan.endDate && (
                   <p className="mt-1 text-xs text-ember-400">Completá la fecha de fin editando el plan.</p>
                 )}
-                {!routine && (
-                  <p className="mt-1 text-xs text-flare-400">La rutina de este plan fue eliminada.</p>
-                )}
+                {days.length === 0 ? (
+                  <p className="mt-1 text-xs text-flare-400">Este plan todavía no tiene días configurados.</p>
+                ) : missingRoutine ? (
+                  <p className="mt-1 text-xs text-flare-400">Algún día de este plan quedó sin rutina (fue eliminada).</p>
+                ) : null}
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <span className="flex w-fit items-center gap-1.5 rounded-md border border-ink-700 bg-ink-850 px-2 py-1 text-xs font-medium text-ink-300">
-                    <Dumbbell className="h-3.5 w-3.5 text-ink-500" />
-                    {routine ? routine.name : 'Sin rutina'} · {exerciseCounts[plan.id as number] ?? 0} ejercicios
-                  </span>
+                  {days.map((day) => {
+                    const routine = routines.find((item) => item.id === day.routineId);
+                    return (
+                      <span
+                        key={day.id}
+                        className="flex w-fit items-center gap-1.5 rounded-md border border-ink-700 bg-ink-850 px-2 py-1 text-xs font-medium text-ink-300"
+                      >
+                        <Dumbbell className="h-3.5 w-3.5 text-ink-500" />
+                        {day.label} · {routine ? routine.name : 'Rutina eliminada'}
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
 
