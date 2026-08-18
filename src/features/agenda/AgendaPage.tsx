@@ -1,31 +1,34 @@
 import { useEffect, useState } from 'react';
-import { CalendarClock, CalendarPlus, Pencil, Play, Trash2, TrendingUp } from 'lucide-react';
+import { CalendarClock, CalendarPlus, Pencil, Play, Trash2 } from 'lucide-react';
 import { Button } from '../../components/Button';
 import { useAgendaStore } from '../../hooks/useAgendaStore';
 import { useGymStore } from '../../hooks/useGymStore';
 import { useUIStore } from '../../hooks/useUIStore';
-import { isPlanFinished, weekIndexForPlanDay } from '../../lib/progression';
 import { cn } from '../../lib/utils';
 import { WEEKDAYS } from '../../lib/weekdays';
+import { AgendaCalendar } from './components/AgendaCalendar';
 import { ScheduleSessionModal } from './components/ScheduleSessionModal';
 import { PlansPage } from '../plans/PlansPage';
 import type { ScheduledSession } from '../../types';
 
-type SubTab = 'sessions' | 'plans';
+type SubTab = 'calendar' | 'sessions' | 'plans';
 
 export function AgendaPage() {
-  const [subTab, setSubTab] = useState<SubTab>('sessions');
+  const [subTab, setSubTab] = useState<SubTab>('calendar');
 
   return (
     <div className="space-y-6 pb-24">
       <header>
         <h1 className="font-heading text-2xl font-bold tracking-tight text-ink-100 sm:text-3xl">Agenda</h1>
         <p className="mt-1 text-sm text-ink-400">
-          Elegí qué día de la semana entrenás cada rutina o plan, y planificá la progresión.
+          Tus planes llenan el calendario solos: tocá un día para ver la rutina y los pesos que te tocan.
         </p>
       </header>
 
-      <div className="flex w-fit items-center gap-1 rounded-2xl border border-ink-800 bg-ink-900 p-1">
+      <div className="flex w-full items-center gap-1 rounded-2xl border border-ink-800 bg-ink-900 p-1 sm:w-fit">
+        <SubTabButton active={subTab === 'calendar'} onClick={() => setSubTab('calendar')}>
+          Calendario
+        </SubTabButton>
         <SubTabButton active={subTab === 'sessions'} onClick={() => setSubTab('sessions')}>
           Turnos
         </SubTabButton>
@@ -34,7 +37,9 @@ export function AgendaPage() {
         </SubTabButton>
       </div>
 
-      {subTab === 'sessions' ? <SessionsView /> : <PlansPage />}
+      {subTab === 'calendar' && <AgendaCalendar />}
+      {subTab === 'sessions' && <SessionsView />}
+      {subTab === 'plans' && <PlansPage />}
     </div>
   );
 }
@@ -53,7 +58,7 @@ function SubTabButton({
       type="button"
       onClick={onClick}
       className={cn(
-        'h-10 rounded-xl px-4 text-sm font-semibold transition-colors',
+        'h-10 flex-1 rounded-xl px-4 text-sm font-semibold transition-colors sm:flex-none',
         active ? 'bg-ember-500 text-ink-950' : 'text-ink-400 hover:text-ink-100'
       )}
     >
@@ -62,17 +67,18 @@ function SubTabButton({
   );
 }
 
+/**
+ * Turnos sueltos: los que agendan una rutina sin plan detrás. Los días de un plan no se
+ * listan acá porque los arma y los edita el propio plan.
+ */
 function SessionsView() {
   const sessions = useAgendaStore((state) => state.sessions);
   const getSessions = useAgendaStore((state) => state.getSessions);
   const deleteSession = useAgendaStore((state) => state.deleteSession);
-  const plans = useAgendaStore((state) => state.plans);
-  const planDays = useAgendaStore((state) => state.planDays);
   const getPlans = useAgendaStore((state) => state.getPlans);
   const routines = useGymStore((state) => state.routines);
   const getRoutines = useGymStore((state) => state.getRoutines);
   const loadRoutineIntoWorkout = useGymStore((state) => state.loadRoutineIntoWorkout);
-  const loadPlanDayIntoWorkout = useGymStore((state) => state.loadPlanDayIntoWorkout);
   const openConfirmDialog = useUIStore((state) => state.openConfirmDialog);
 
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -85,6 +91,7 @@ function SessionsView() {
   }, [getSessions, getRoutines, getPlans]);
 
   const today = new Date().getDay();
+  const looseSessions = sessions.filter((session) => Boolean(session.routineId));
 
   const openCreate = () => {
     setEditing(null);
@@ -103,68 +110,31 @@ function SessionsView() {
     });
   };
 
-  const handleStart = (session: ScheduledSession) => {
-    if (session.routineId) {
-      loadRoutineIntoWorkout(session.routineId);
-    } else if (session.planId && session.planDayId) {
-      const plan = plans.find((item) => item.id === session.planId);
-      const planDay = planDays.find((item) => item.id === session.planDayId);
-      const routineExists = planDay ? routines.some((item) => item.id === planDay.routineId) : false;
-      if (!plan || !planDay || !routineExists || isPlanFinished(plan)) return;
-      // La semana de progresión que toca se planifica sola: se calcula contando los
-      // turnos agendados de este día que ya transcurrieron, no hace falta guardarla.
-      const weekIndex = weekIndexForPlanDay(plan, planDay.id as number, sessions);
-      loadPlanDayIntoWorkout(session.planDayId, weekIndex);
-    }
-  };
-
-  const describe = (session: ScheduledSession) => {
-    if (session.routineId) {
-      const routine = routines.find((item) => item.id === session.routineId);
-      return { label: routine?.name ?? 'Rutina eliminada', canStart: Boolean(routine) };
-    }
-    if (session.planId && session.planDayId) {
-      const plan = plans.find((item) => item.id === session.planId);
-      const planDay = planDays.find((item) => item.id === session.planDayId);
-      if (!plan || !planDay) return { label: 'Plan eliminado', canStart: false };
-
-      const routineExists = routines.some((item) => item.id === planDay.routineId);
-      if (!routineExists) return { label: `${plan.name} · ${planDay.label} · Rutina eliminada`, canStart: false };
-
-      const finished = isPlanFinished(plan);
-      const weekIndex = weekIndexForPlanDay(plan, planDay.id as number, sessions);
-      return {
-        label: finished
-          ? `${plan.name} · ${planDay.label} · Finalizado`
-          : `${plan.name} · ${planDay.label} · Semana ${weekIndex + 1}`,
-        canStart: !finished,
-      };
-    }
-    return { label: 'Entrenamiento libre', canStart: false };
-  };
-
-  const hasSessions = sessions.length > 0;
-
   return (
     <div className="space-y-6">
-      <Button size="lg" className="w-full sm:w-auto" onClick={openCreate}>
-        <CalendarPlus className="h-4 w-4" /> Agendar turno
-      </Button>
+      <div className="space-y-2">
+        <Button size="lg" className="w-full sm:w-auto" onClick={openCreate}>
+          <CalendarPlus className="h-4 w-4" /> Agendar turno suelto
+        </Button>
+        <p className="text-xs text-ink-500">
+          Los días de un plan se agendan solos al crearlo: se editan desde la pestaña Planes.
+        </p>
+      </div>
 
-      {!hasSessions ? (
+      {looseSessions.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-card border border-ink-800 bg-ink-900/40 px-6 py-16 text-center">
           <span className="mb-5 flex h-20 w-20 items-center justify-center rounded-full border border-ink-800 bg-ink-900 text-ember-400">
             <CalendarClock className="h-9 w-9" />
           </span>
-          <h2 className="font-heading text-xl font-bold text-ink-100">No tenés turnos agendados</h2>
+          <h2 className="font-heading text-xl font-bold text-ink-100">No tenés turnos sueltos</h2>
           <p className="mt-2 max-w-xs text-sm leading-relaxed text-ink-400">
-            Elegí un día de la semana, un horario y qué rutina o plan vas a entrenar.
+            Sirven para una rutina que entrenás siempre el mismo día pero que no forma parte de ningún plan.
           </p>
         </div>
       ) : (
         <ul className="space-y-4">
           {WEEKDAYS.map((day) => {
-            const daySessions = sessions
+            const daySessions = looseSessions
               .filter((session) => session.dayOfWeek === day.value)
               .sort((a, b) => a.time.localeCompare(b.time));
 
@@ -190,7 +160,7 @@ function SessionsView() {
 
                 <ul className="space-y-3">
                   {daySessions.map((session) => {
-                    const info = describe(session);
+                    const routine = routines.find((item) => item.id === session.routineId);
 
                     return (
                       <li
@@ -203,9 +173,8 @@ function SessionsView() {
                         </div>
 
                         <div className="min-w-0 flex-1">
-                          <p className="flex items-center gap-2 truncate font-semibold text-ink-100">
-                            {info.label}
-                            {session.planId && <TrendingUp className="h-3.5 w-3.5 shrink-0 text-ember-400" />}
+                          <p className="truncate font-semibold text-ink-100">
+                            {routine?.name ?? 'Rutina eliminada'}
                           </p>
                           <p className="text-xs text-ink-500">
                             {session.time}
@@ -217,8 +186,8 @@ function SessionsView() {
                           <Button
                             variant="outline"
                             size="icon"
-                            disabled={!info.canStart}
-                            onClick={() => handleStart(session)}
+                            disabled={!routine}
+                            onClick={() => session.routineId && loadRoutineIntoWorkout(session.routineId)}
                             aria-label="Empezar"
                           >
                             <Play className="h-4 w-4 fill-current" />

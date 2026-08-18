@@ -122,15 +122,21 @@ export interface TrainingPlan {
 }
 
 /**
- * Un día de entrenamiento dentro de un plan (p. ej. "Día A · Empuje"). Usa siempre los
- * ejercicios de `routineId`, en el mismo orden; si la rutina cambia, el día lo refleja
- * al toque. Cada día progresa de forma independiente: su semana se calcula contando
- * sólo los turnos agendados que apuntan a este día puntual.
+ * Un día de entrenamiento dentro de un plan: un día de la semana fijo con la rutina que
+ * toca entrenar ese día. Usa siempre los ejercicios de `routineId`, en el mismo orden; si
+ * la rutina cambia, el día lo refleja al toque. Cada día progresa de forma independiente:
+ * su semana se cuenta por cuántas veces ya cayó su día de la semana desde que arrancó el
+ * plan, así que si el plan tiene lunes y jueves, cada uno avanza por su cuenta.
  */
 export interface PlanDay {
   id?: number;
   planId: number;
   routineId: number;
+  /** Día de la semana en que se entrena, 0 = domingo ... 6 = sábado (igual que `Date.getDay()`). */
+  dayOfWeek: number;
+  /** "HH:MM", 24 horas. */
+  time: string;
+  /** Nombre visible del día; se deriva del día de la semana ("Lunes"). */
   label: string;
   /** Orden de presentación dentro del plan. */
   order: number;

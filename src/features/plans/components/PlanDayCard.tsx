@@ -1,9 +1,11 @@
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
-import { GripVertical, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { Input } from '../../../components/Input';
 import { Label } from '../../../components/Label';
 import { Select } from '../../../components/Select';
 import { db } from '../../../lib/db';
+import { cn } from '../../../lib/utils';
+import { WEEKDAYS, weekdayLabel } from '../../../lib/weekdays';
 import type { PlanDayPayload, PlanExercisePayload } from '../../../hooks/useAgendaStore';
 import { EQUIPMENT_OPTIONS } from '../../gym/taxonomy';
 import { getDefaultIncrement } from '../../../lib/progression';
@@ -15,7 +17,6 @@ interface PlanExerciseRow extends PlanExercisePayload {
 
 export interface PlanDayInitial {
   id?: number;
-  label: string;
   routineId: string;
   /** Progresión ya cargada de este día, por exerciseId (sólo se usa la primera vez que se
    *  resuelve cada rutina; si el usuario cambia de rutina y vuelve, se vuelve a aplicar). */
@@ -29,6 +30,13 @@ export interface PlanDayCardHandle {
 
 interface PlanDayCardProps {
   initial: PlanDayInitial;
+  /** Día de la semana y horario los maneja el formulario, que es quien evita repetidos. */
+  dayOfWeek: number;
+  time: string;
+  onDayOfWeekChange: (dayOfWeek: number) => void;
+  onTimeChange: (time: string) => void;
+  /** Días de la semana ya usados por los otros días del plan. */
+  takenDays: number[];
   routines: Routine[];
   catalog: Exercise[];
   onRemove: () => void;
@@ -37,10 +45,21 @@ interface PlanDayCardProps {
 }
 
 export const PlanDayCard = forwardRef<PlanDayCardHandle, PlanDayCardProps>(function PlanDayCard(
-  { initial, routines, catalog, onRemove, onValidityChange, canRemove },
+  {
+    initial,
+    dayOfWeek,
+    time,
+    onDayOfWeekChange,
+    onTimeChange,
+    takenDays,
+    routines,
+    catalog,
+    onRemove,
+    onValidityChange,
+    canRemove,
+  },
   ref
 ) {
-  const [label, setLabel] = useState(initial.label);
   const [routineId, setRoutineId] = useState(initial.routineId);
   const [rows, setRows] = useState<PlanExerciseRow[]>([]);
   const [isLoadingRoutine, setIsLoadingRoutine] = useState(false);
@@ -87,7 +106,12 @@ export const PlanDayCard = forwardRef<PlanDayCardHandle, PlanDayCardProps>(funct
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routineId, catalog]);
 
-  const isValid = Boolean(label.trim()) && Boolean(routineId) && rows.length > 0 && !isLoadingRoutine && rows.every((row) => row.initialWeight >= 0);
+  const isValid =
+    Boolean(routineId) &&
+    Boolean(time) &&
+    rows.length > 0 &&
+    !isLoadingRoutine &&
+    rows.every((row) => row.initialWeight >= 0);
 
   useEffect(() => {
     onValidityChange(isValid);
@@ -99,7 +123,8 @@ export const PlanDayCard = forwardRef<PlanDayCardHandle, PlanDayCardProps>(funct
       if (!isValid) return null;
       return {
         id: initial.id,
-        label: label.trim(),
+        dayOfWeek,
+        time,
         routineId: Number(routineId),
         exercises: rows.map((row) => ({
           exerciseId: row.exerciseId,
@@ -117,40 +142,75 @@ export const PlanDayCard = forwardRef<PlanDayCardHandle, PlanDayCardProps>(funct
 
   return (
     <li className="space-y-4 rounded-card border border-ink-800 bg-ink-900 p-4">
-      <div className="flex items-start gap-2">
-        <GripVertical className="mt-2.5 h-4 w-4 shrink-0 text-ink-600" aria-hidden />
-        <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label>Nombre del día</Label>
-            <Input value={label} onChange={(event) => setLabel(event.target.value)} placeholder="Ej. Día A · Empuje" />
-          </div>
-          <div className="space-y-2">
-            <Label>Rutina de este día</Label>
-            {routines.length === 0 ? (
-              <p className="text-sm text-ink-500">Todavía no tenés rutinas creadas.</p>
-            ) : (
-              <Select value={routineId} onChange={(event) => setRoutineId(event.target.value)}>
-                <option value="" disabled>
-                  Elegí una rutina
-                </option>
-                {routines.map((routine) => (
-                  <option key={routine.id} value={routine.id}>
-                    {routine.name}
-                  </option>
-                ))}
-              </Select>
-            )}
-          </div>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="font-heading text-base font-bold text-ink-100">{weekdayLabel(dayOfWeek)}</p>
+          <p className="text-xs text-ink-500">Se repite todas las semanas del plan</p>
         </div>
         <button
           type="button"
           onClick={onRemove}
           disabled={!canRemove}
           aria-label="Quitar día"
-          className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-ink-500 transition-colors hover:bg-flare-500/15 hover:text-flare-400 disabled:pointer-events-none disabled:opacity-30"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-ink-500 transition-colors hover:bg-flare-500/15 hover:text-flare-400 disabled:pointer-events-none disabled:opacity-30"
         >
           <Trash2 className="h-4 w-4" />
         </button>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Día de la semana</Label>
+        <div className="grid grid-cols-7 gap-1.5">
+          {WEEKDAYS.map((day) => {
+            const isTaken = takenDays.includes(day.value) && day.value !== dayOfWeek;
+            const isSelected = day.value === dayOfWeek;
+
+            return (
+              <button
+                key={day.value}
+                type="button"
+                disabled={isTaken}
+                aria-pressed={isSelected}
+                aria-label={day.label}
+                onClick={() => onDayOfWeekChange(day.value)}
+                className={cn(
+                  'flex h-11 items-center justify-center rounded-xl border text-sm font-bold transition-colors',
+                  isSelected
+                    ? 'border-ember-500 bg-ember-500 text-ink-950'
+                    : isTaken
+                      ? 'border-ink-850 bg-ink-900 text-ink-700'
+                      : 'border-ink-800 bg-ink-900 text-ink-400 hover:border-ink-700 hover:text-ink-100'
+                )}
+              >
+                {day.letter}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_8rem]">
+        <div className="space-y-2">
+          <Label>Rutina de este día</Label>
+          {routines.length === 0 ? (
+            <p className="text-sm text-ink-500">Todavía no tenés rutinas creadas.</p>
+          ) : (
+            <Select value={routineId} onChange={(event) => setRoutineId(event.target.value)}>
+              <option value="" disabled>
+                Elegí una rutina
+              </option>
+              {routines.map((routine) => (
+                <option key={routine.id} value={routine.id}>
+                  {routine.name}
+                </option>
+              ))}
+            </Select>
+          )}
+        </div>
+        <div className="space-y-2">
+          <Label>Horario</Label>
+          <Input type="time" value={time} onChange={(event) => onTimeChange(event.target.value)} />
+        </div>
       </div>
 
       {!routineId ? (

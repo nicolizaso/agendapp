@@ -15,7 +15,7 @@
  * lo mismo "un salto" en una máquina de placas apiladas que en un par de
  * mancuernas.
  */
-import type { EquipmentType, PlanWeekTarget, ScheduledSession, TrainingPlan } from '../types';
+import type { EquipmentType, PlanWeekTarget, TrainingPlan } from '../types';
 
 export const TARGET_SETS = 4;
 export const REPS_BY_PHASE = [8, 10, 12] as const;
@@ -85,52 +85,72 @@ export function buildProgressionTable(
   );
 }
 
-function atMidnight(date: Date): Date {
+export function atMidnight(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
 /** Cuántas veces cayó `dayOfWeek` entre `start` y `end`, ambos inclusive. */
-function occurrencesOfWeekday(dayOfWeek: number, start: Date, end: Date): number {
+export function occurrencesOfWeekday(dayOfWeek: number, start: Date, end: Date): number {
   if (end < start) return 0;
 
-  const diffToFirst = (dayOfWeek - start.getDay() + 7) % 7;
-  const firstOccurrence = new Date(start);
-  firstOccurrence.setDate(firstOccurrence.getDate() + diffToFirst);
-  if (firstOccurrence > end) return 0;
+  const first = firstOccurrenceOnOrAfter(dayOfWeek, start);
+  if (first > end) return 0;
 
-  const diffDays = Math.round((end.getTime() - firstOccurrence.getTime()) / 86_400_000);
+  const diffDays = Math.round((end.getTime() - first.getTime()) / 86_400_000);
   return Math.floor(diffDays / 7) + 1;
 }
 
+/** Primera fecha, desde `start` inclusive, que cae en `dayOfWeek`. */
+export function firstOccurrenceOnOrAfter(dayOfWeek: number, start: Date): Date {
+  const result = atMidnight(start);
+  result.setDate(result.getDate() + ((dayOfWeek - result.getDay() + 7) % 7));
+  return result;
+}
+
+/** Fecha real en la que se entrena la semana `weekIndex` de un día del plan. */
+export function dateForPlanWeek(plan: TrainingPlan, dayOfWeek: number, weekIndex: number): Date {
+  const first = firstOccurrenceOnOrAfter(dayOfWeek, new Date(plan.startDate));
+  first.setDate(first.getDate() + weekIndex * 7);
+  return first;
+}
+
+/** Cuántas sesiones (semanas de progresión) tiene un día del plan de punta a punta. */
+export function totalWeeksForPlanDay(plan: TrainingPlan, dayOfWeek: number): number {
+  if (!plan.endDate) return 12;
+  return occurrencesOfWeekday(
+    dayOfWeek,
+    atMidnight(new Date(plan.startDate)),
+    atMidnight(new Date(plan.endDate))
+  );
+}
+
+/** true si `date` cae dentro del rango del plan (los planes sin fecha de fin no se cierran nunca). */
+export function isDateWithinPlan(plan: TrainingPlan, date: Date): boolean {
+  const day = atMidnight(date);
+  if (day < atMidnight(new Date(plan.startDate))) return false;
+  if (plan.endDate && day > atMidnight(new Date(plan.endDate))) return false;
+  return true;
+}
+
 /**
- * Semana de progresión (0-indexed) en la que está un día de un plan, calculada con los
- * turnos agendados que lo usan: no es una cuenta de días de calendario, sino de cuántas
- * veces ya pasó cada turno semanal (día + hora) que entrena ESE día puntual del plan. Cada
- * día progresa por su cuenta: si "Día B" se agenda dos veces por semana y "Día A" una sola,
- * B sube de peso más rápido. Si faltaste a los turnos de un día, ese día se queda atrás
- * aunque los demás del mismo plan sigan avanzando.
+ * Semana de progresión (0-indexed) en la que está un día de un plan en una fecha dada:
+ * cuántas veces ya cayó su día de la semana desde que arrancó el plan, menos la que está
+ * en curso. Cada día progresa por su cuenta —si el plan entrena lunes y jueves, cada uno
+ * lleva su propia cuenta— y después de la fecha de fin la semana queda congelada en la
+ * última que se entrenó.
  */
 export function weekIndexForPlanDay(
   plan: TrainingPlan,
-  planDayId: number,
-  sessions: ScheduledSession[],
+  dayOfWeek: number,
   today: Date = new Date()
 ): number {
-  const planSessions = sessions.filter((session) => session.planDayId === planDayId);
-  if (planSessions.length === 0) return 0;
-
   const start = atMidnight(new Date(plan.startDate));
-  const todayMidnight = atMidnight(today);
-  const end = plan.endDate && atMidnight(new Date(plan.endDate)) < todayMidnight
+  const target = atMidnight(today);
+  const end = plan.endDate && atMidnight(new Date(plan.endDate)) < target
     ? atMidnight(new Date(plan.endDate))
-    : todayMidnight;
+    : target;
 
-  const elapsed = planSessions.reduce(
-    (total, session) => total + occurrencesOfWeekday(session.dayOfWeek, start, end),
-    0
-  );
-
-  return Math.max(0, elapsed - 1);
+  return Math.max(0, occurrencesOfWeekday(dayOfWeek, start, end) - 1);
 }
 
 /** true si ya pasó la fecha de fin del plan (los planes sin fecha de fin nunca se dan por terminados). */

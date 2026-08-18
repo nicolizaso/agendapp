@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Dumbbell, Pencil, Plus, Trash2, TrendingUp } from 'lucide-react';
+import { Pencil, Plus, Trash2, TrendingUp } from 'lucide-react';
 import { Button } from '../../components/Button';
 import { useAgendaStore, type PlanExercisePayload } from '../../hooks/useAgendaStore';
 import { useGymStore } from '../../hooks/useGymStore';
@@ -7,6 +7,7 @@ import { useUIStore } from '../../hooks/useUIStore';
 import { PlanFormModal, type PlanFormDayInitial } from './components/PlanFormModal';
 import { PlanDetailModal } from './components/PlanDetailModal';
 import { isPlanFinished } from '../../lib/progression';
+import { weekdayLetter } from '../../lib/weekdays';
 import type { TrainingPlan } from '../../types';
 
 export function PlansPage() {
@@ -56,7 +57,13 @@ export function PlansPage() {
         };
       }
 
-      dayInitials.push({ id: day.id, label: day.label, routineId: day.routineId, exerciseConfig });
+      dayInitials.push({
+        id: day.id,
+        dayOfWeek: day.dayOfWeek,
+        time: day.time,
+        routineId: day.routineId,
+        exerciseConfig,
+      });
     }
 
     setEditing({ plan, days: dayInitials });
@@ -68,7 +75,7 @@ export function PlansPage() {
 
     openConfirmDialog({
       title: '¿Eliminar el plan?',
-      message: `"${plan.name}" se borra junto con los turnos agendados que lo usan.`,
+      message: `"${plan.name}" se borra junto con los días que tenía agendados en el calendario.`,
       variant: 'danger',
       confirmLabel: 'Eliminar',
       onConfirm: () => deletePlan(plan.id as number),
@@ -81,7 +88,7 @@ export function PlansPage() {
         <div>
           <h2 className="font-heading text-xl font-bold tracking-tight text-ink-100">Planes de entrenamiento</h2>
           <p className="mt-1 text-sm text-ink-400">
-            Progresión automática: el peso sube cada 3 turnos entrenados, según el equipamiento.
+            Elegí los días de la semana y la rutina de cada uno: la agenda se arma sola y el peso sube cada 3 semanas.
           </p>
         </div>
         {plans.length > 0 && (
@@ -99,7 +106,7 @@ export function PlansPage() {
           </span>
           <h2 className="font-heading text-xl font-bold text-ink-100">Todavía no armaste ningún plan</h2>
           <p className="mt-2 max-w-xs text-sm leading-relaxed text-ink-400">
-            Armá uno o más días con su rutina y peso inicial: Carga calcula sola cuánto subir cada 3 turnos de cada día.
+            Elegí los días de la semana que entrenás y su rutina: Carga carga la agenda sola y calcula cuánto subir cada 3 semanas.
           </p>
           <Button size="lg" className="mt-6 w-full max-w-xs" onClick={openCreate}>
             Crear mi primer plan
@@ -146,10 +153,13 @@ export function PlansPage() {
                     return (
                       <span
                         key={day.id}
-                        className="flex w-fit items-center gap-1.5 rounded-md border border-ink-700 bg-ink-850 px-2 py-1 text-xs font-medium text-ink-300"
+                        className="flex w-fit items-center gap-1.5 rounded-md border border-ink-700 bg-ink-850 py-1 pl-1 pr-2 text-xs font-medium text-ink-300"
                       >
-                        <Dumbbell className="h-3.5 w-3.5 text-ink-500" />
-                        {day.label} · {routine ? routine.name : 'Rutina eliminada'}
+                        <span className="flex h-5 w-5 items-center justify-center rounded bg-ember-500/15 text-[11px] font-bold text-ember-300">
+                          {weekdayLetter(day.dayOfWeek)}
+                        </span>
+                        {routine ? routine.name : 'Rutina eliminada'}
+                        <span className="tabular-nums text-ink-500">{day.time}</span>
                       </span>
                     );
                   })}

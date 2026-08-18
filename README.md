@@ -14,6 +14,10 @@ El nombre viene del peso que levantás y de lo que hace la app: cargar cada seri
   sesión si se cierra el navegador.
 - **Rutinas**: planes reutilizables con series, repeticiones y peso base por
   ejercicio.
+- **Agenda y planes**: elegís qué días de la semana entrenás y con qué rutina, y el
+  calendario se llena solo entre la fecha de inicio y la de fin del plan. Tocando un
+  día se ve la rutina con el peso que toca esa semana (sube cada 3 semanas, según el
+  equipamiento de cada ejercicio).
 - **Biblioteca**: catálogo remoto de ejercicios (con imágenes) más los propios,
   con notas de puesta a punto de cada máquina.
 - **Historial**: calendario de asistencia, resumen de cada sesión y 1RM estimado.
