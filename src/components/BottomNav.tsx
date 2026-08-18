@@ -1,8 +1,9 @@
-import { Dumbbell, ClipboardList, Library } from 'lucide-react';
+import { Dumbbell, ClipboardList, Library, CalendarDays } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export const NAV_ITEMS = [
   { id: 'gym', icon: Dumbbell, label: 'Entrenar' },
+  { id: 'agenda', icon: CalendarDays, label: 'Agenda' },
   { id: 'routines', icon: ClipboardList, label: 'Rutinas' },
   { id: 'exercises', icon: Library, label: 'Ejercicios' },
 ] as const;

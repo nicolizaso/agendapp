@@ -7,6 +7,7 @@ import { ConfirmDialog } from './components/ui/ConfirmDialog';
 import { GymPage } from './features/gym/GymPage';
 import { RoutinesManager } from './features/gym/RoutinesManager';
 import { ExerciseLibrary } from './features/gym/components/ExerciseLibrary';
+import { AgendaPage } from './features/agenda/AgendaPage';
 import { WorkoutSession } from './features/gym/session/WorkoutSession';
 import { WorkoutSummarySheet } from './features/gym/session/WorkoutSummarySheet';
 import { useGymStore } from './hooks/useGymStore';
@@ -58,6 +59,7 @@ export default function App() {
 
       <div key={activeTab} className="animate-in fade-in slide-in-from-bottom-2 duration-300">
         {activeTab === 'gym' && <GymPage />}
+        {activeTab === 'agenda' && <AgendaPage />}
         {activeTab === 'routines' && <RoutinesManager />}
         {activeTab === 'exercises' && <ExerciseLibrary />}
       </div>
