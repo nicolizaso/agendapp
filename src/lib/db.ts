@@ -88,6 +88,20 @@ export class CargaDB extends Dexie {
             delete session.weekIndex;
           });
       });
+
+    // Los planes suman fecha de fin: marca cuándo el plan se da por terminado.
+    // Los planes existentes quedan sin ella hasta que se completen al editarlos.
+    this.version(4).stores({
+      exercises: '++id, apiId, name, muscleGroup, equipment',
+      workouts: '++id, date, name, durationSeconds',
+      sets: '++id, workoutId, exerciseId, [exerciseId+date], [workoutId+exerciseId]',
+      routines: '++id, name, created_at',
+      routineExercises: '++id, routineId, exerciseId, order',
+      activeWorkoutDraft: '++id, workoutId',
+      scheduledSessions: '++id, dayOfWeek, routineId, planId',
+      trainingPlans: '++id, name, startDate, endDate',
+      planExercises: '++id, planId, exerciseId, order',
+    });
   }
 }
 

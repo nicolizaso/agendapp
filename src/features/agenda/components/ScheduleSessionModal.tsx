@@ -7,6 +7,7 @@ import { Label } from '../../../components/Label';
 import { Select } from '../../../components/Select';
 import { useAgendaStore, type SchedulePayload } from '../../../hooks/useAgendaStore';
 import { useGymStore } from '../../../hooks/useGymStore';
+import { isPlanFinished } from '../../../lib/progression';
 import { WEEKDAYS } from '../../../lib/weekdays';
 import { cn } from '../../../lib/utils';
 import type { ScheduledSession } from '../../../types';
@@ -38,10 +39,18 @@ export function ScheduleSessionModal({ isOpen, onClose, editing, prefill }: Sche
     editing?.routineId ? String(editing.routineId) : String(routines[0]?.id ?? '')
   );
   const [planId, setPlanId] = useState<string>(
-    editing?.planId ? String(editing.planId) : prefill ? String(prefill.planId) : String(plans[0]?.id ?? '')
+    editing?.planId
+      ? String(editing.planId)
+      : prefill
+        ? String(prefill.planId)
+        : String(plans.find((plan) => !isPlanFinished(plan))?.id ?? '')
   );
   const [notes, setNotes] = useState(editing?.notes ?? '');
   const [isSaving, setIsSaving] = useState(false);
+
+  // Los planes finalizados no se pueden agendar de nuevo, salvo que el turno que se está
+  // editando ya los tuviera asignados (para no hacerlo desaparecer solo por editar el horario).
+  const selectablePlans = plans.filter((plan) => !isPlanFinished(plan) || plan.id === editing?.planId);
 
   const isSaveDisabled =
     (source === 'routine' && !routineId) || (source === 'plan' && !planId) || isSaving;
@@ -121,7 +130,7 @@ export function ScheduleSessionModal({ isOpen, onClose, editing, prefill }: Sche
             <button
               type="button"
               onClick={() => setSource('plan')}
-              disabled={plans.length === 0}
+              disabled={selectablePlans.length === 0}
               className={cn(
                 'h-11 rounded-xl border text-sm font-semibold transition-colors disabled:opacity-40',
                 source === 'plan'
@@ -153,14 +162,15 @@ export function ScheduleSessionModal({ isOpen, onClose, editing, prefill }: Sche
           <div className="space-y-2">
             <Label htmlFor="schedule-plan">Plan</Label>
             <Select id="schedule-plan" value={planId} onChange={(event) => setPlanId(event.target.value)}>
-              {plans.map((plan) => (
+              {selectablePlans.map((plan) => (
                 <option key={plan.id} value={plan.id}>
                   {plan.name}
+                  {isPlanFinished(plan) ? ' (finalizado)' : ''}
                 </option>
               ))}
             </Select>
             <p className="text-xs text-ink-500">
-              La semana de progresión que toca se calcula sola según la fecha en que arranca el plan.
+              La semana de progresión que toca se calcula sola según los turnos agendados de este plan que ya pasaron.
             </p>
           </div>
         )}

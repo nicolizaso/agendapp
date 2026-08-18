@@ -29,8 +29,19 @@ interface AgendaState {
 
   getPlans: () => Promise<void>;
   getPlanExercises: (planId: number) => Promise<PlanExercise[]>;
-  createPlan: (name: string, startDate: Date, exercises: PlanExercisePayload[]) => Promise<number | null>;
-  updatePlan: (id: number, name: string, startDate: Date, exercises: PlanExercisePayload[]) => Promise<void>;
+  createPlan: (
+    name: string,
+    startDate: Date,
+    endDate: Date,
+    exercises: PlanExercisePayload[]
+  ) => Promise<number | null>;
+  updatePlan: (
+    id: number,
+    name: string,
+    startDate: Date,
+    endDate: Date,
+    exercises: PlanExercisePayload[]
+  ) => Promise<void>;
   deletePlan: (id: number) => Promise<void>;
 }
 
@@ -95,12 +106,12 @@ export const useAgendaStore = create<AgendaState>((set, get) => ({
     }
   },
 
-  createPlan: async (name, startDate, exercises) => {
+  createPlan: async (name, startDate, endDate, exercises) => {
     try {
       let planId: number | null = null;
 
       await db.transaction('rw', db.trainingPlans, db.planExercises, async () => {
-        const id = (await db.trainingPlans.add({ name, startDate, createdAt: new Date() })) as number;
+        const id = (await db.trainingPlans.add({ name, startDate, endDate, createdAt: new Date() })) as number;
         planId = id;
 
         await db.planExercises.bulkAdd(
@@ -123,10 +134,10 @@ export const useAgendaStore = create<AgendaState>((set, get) => ({
     }
   },
 
-  updatePlan: async (id, name, startDate, exercises) => {
+  updatePlan: async (id, name, startDate, endDate, exercises) => {
     try {
       await db.transaction('rw', db.trainingPlans, db.planExercises, async () => {
-        await db.trainingPlans.update(id, { name, startDate });
+        await db.trainingPlans.update(id, { name, startDate, endDate });
         await db.planExercises.where('planId').equals(id).delete();
 
         await db.planExercises.bulkAdd(

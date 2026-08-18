@@ -15,7 +15,7 @@
  * lo mismo "un salto" en una máquina de placas apiladas que en un par de
  * mancuernas.
  */
-import type { EquipmentType, PlanWeekTarget } from '../types';
+import type { EquipmentType, PlanWeekTarget, ScheduledSession, TrainingPlan } from '../types';
 
 export const TARGET_SETS = 4;
 export const REPS_BY_PHASE = [8, 10, 12] as const;
@@ -85,10 +85,55 @@ export function buildProgressionTable(
   );
 }
 
-/** Semana calendario (0-indexed) en la que cae `date`, a partir del `startDate` del plan. */
-export function weekIndexForDate(startDate: Date, date: Date): number {
-  const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
-  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const diffDays = Math.round((target.getTime() - start.getTime()) / 86_400_000);
-  return Math.max(0, Math.floor(diffDays / 7));
+function atMidnight(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+/** Cuántas veces cayó `dayOfWeek` entre `start` y `end`, ambos inclusive. */
+function occurrencesOfWeekday(dayOfWeek: number, start: Date, end: Date): number {
+  if (end < start) return 0;
+
+  const diffToFirst = (dayOfWeek - start.getDay() + 7) % 7;
+  const firstOccurrence = new Date(start);
+  firstOccurrence.setDate(firstOccurrence.getDate() + diffToFirst);
+  if (firstOccurrence > end) return 0;
+
+  const diffDays = Math.round((end.getTime() - firstOccurrence.getTime()) / 86_400_000);
+  return Math.floor(diffDays / 7) + 1;
+}
+
+/**
+ * Semana de progresión (0-indexed) en la que está un plan, calculada con los turnos
+ * agendados que lo usan: no es una cuenta de días de calendario, sino de cuántas veces
+ * ya pasó cada turno semanal (día + hora) que entrena ese plan. Si hay más de un turno
+ * agendado para el mismo plan (p. ej. lunes y jueves), cada uno que transcurre suma a
+ * la misma semana, así que el plan avanza más rápido que si se entrenara una vez por
+ * semana.
+ */
+export function weekIndexForPlan(
+  plan: TrainingPlan,
+  sessions: ScheduledSession[],
+  today: Date = new Date()
+): number {
+  const planSessions = sessions.filter((session) => session.planId === plan.id);
+  if (planSessions.length === 0) return 0;
+
+  const start = atMidnight(new Date(plan.startDate));
+  const todayMidnight = atMidnight(today);
+  const end = plan.endDate && atMidnight(new Date(plan.endDate)) < todayMidnight
+    ? atMidnight(new Date(plan.endDate))
+    : todayMidnight;
+
+  const elapsed = planSessions.reduce(
+    (total, session) => total + occurrencesOfWeekday(session.dayOfWeek, start, end),
+    0
+  );
+
+  return Math.max(0, elapsed - 1);
+}
+
+/** true si ya pasó la fecha de fin del plan (los planes sin fecha de fin nunca se dan por terminados). */
+export function isPlanFinished(plan: TrainingPlan, today: Date = new Date()): boolean {
+  if (!plan.endDate) return false;
+  return atMidnight(new Date(plan.endDate)) < atMidnight(today);
 }

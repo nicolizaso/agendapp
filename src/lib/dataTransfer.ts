@@ -23,6 +23,7 @@ export interface ExportedPlan {
   id: number;
   name: string;
   startDate: string;
+  endDate?: string;
   createdAt: string;
   exercises: Omit<PlanExercise, 'id' | 'planId'>[];
 }
@@ -146,6 +147,7 @@ export async function buildExportBundle(selection: ExportSelection): Promise<Dat
         id: plan.id,
         name: plan.name,
         startDate: new Date(plan.startDate).toISOString(),
+        endDate: plan.endDate ? new Date(plan.endDate).toISOString() : undefined,
         createdAt: new Date(plan.createdAt).toISOString(),
         exercises: exercises.map(({ exerciseId, order, equipmentType, initialWeight, incrementOverride }) => ({
           exerciseId,
@@ -371,6 +373,7 @@ export async function importBundle(bundle: DataBundle, selection: ImportSelectio
       const newPlanId = (await db.trainingPlans.add({
         name: plan.name,
         startDate: new Date(plan.startDate),
+        endDate: plan.endDate ? new Date(plan.endDate) : undefined,
         createdAt: new Date(plan.createdAt),
       })) as number;
 

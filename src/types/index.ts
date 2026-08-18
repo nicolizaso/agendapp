@@ -107,6 +107,10 @@ export interface TrainingPlan {
   id?: number;
   name: string;
   startDate: Date;
+  /** Fecha en la que termina el plan; a partir de ahí se considera finalizado.
+   *  Opcional sólo por planes creados antes de que este campo existiera: hay que
+   *  completarla para poder seguir editando o agendando turnos con el plan. */
+  endDate?: Date;
   createdAt: Date;
 }
 
