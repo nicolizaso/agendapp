@@ -335,13 +335,22 @@ export const useGymStore = create<GymState>((set, get) => ({
     }
   },
 
-  /** Arranca un entrenamiento con los sets/reps/peso que le tocan a esa semana del plan. */
+  /**
+   * Arranca un entrenamiento con los sets/reps/peso que le tocan a esa semana del plan.
+   * Los ejercicios y su orden son siempre los de la rutina del plan; para cada uno se usa
+   * la progresión configurada si existe, y si no (ejercicio agregado a la rutina después de
+   * armar el plan) se cae al peso/reps/series propios de la rutina, sin aumento automático.
+   */
   loadPlanWeekIntoWorkout: async (planId, weekIndex) => {
     try {
       const plan = await db.trainingPlans.get(planId);
       if (!plan) return;
 
-      const planExercises = await db.planExercises.where('planId').equals(planId).sortBy('order');
+      const routineExercises = await db.routineExercises
+        .where('routineId')
+        .equals(plan.routineId)
+        .sortBy('order');
+      const planExercises = await db.planExercises.where('planId').equals(planId).toArray();
       const catalog = await db.exercises.toArray();
 
       const startTime = new Date();
@@ -354,29 +363,40 @@ export const useGymStore = create<GymState>((set, get) => ({
 
       const activeExercises: ActiveExerciseData[] = [];
 
-      for (const planExercise of planExercises) {
-        const definition = catalog.find((item) => item.id === planExercise.exerciseId);
+      for (const routineExercise of routineExercises) {
+        const definition = catalog.find((item) => item.id === routineExercise.exerciseId);
         if (!definition) continue;
 
-        const target = calculateWeekTarget(
-          planExercise.initialWeight,
-          planExercise.equipmentType,
-          weekIndex,
-          planExercise.incrementOverride
-        );
+        const planExercise = planExercises.find((item) => item.exerciseId === routineExercise.exerciseId);
 
-        const sets: ActiveSetInput[] = Array.from({ length: target.sets }).map(() => ({
-          weight: String(target.weight),
-          reps: String(target.reps),
-          completed: false,
-        }));
+        let sets: ActiveSetInput[];
+        if (planExercise) {
+          const target = calculateWeekTarget(
+            planExercise.initialWeight,
+            planExercise.equipmentType,
+            weekIndex,
+            planExercise.incrementOverride
+          );
+
+          sets = Array.from({ length: target.sets }).map(() => ({
+            weight: String(target.weight),
+            reps: String(target.reps),
+            completed: false,
+          }));
+        } else {
+          sets = Array.from({ length: Math.max(1, routineExercise.targetSets) }).map(() => ({
+            weight: routineExercise.targetWeight || '',
+            reps: routineExercise.targetReps || '',
+            completed: false,
+          }));
+        }
 
         activeExercises.push({
-          exerciseId: planExercise.exerciseId,
+          exerciseId: routineExercise.exerciseId,
           name: definition.name,
           muscleGroup: definition.muscleGroup,
           sets,
-          previous: await get().getPreviousPerformance(planExercise.exerciseId, workoutId),
+          previous: await get().getPreviousPerformance(routineExercise.exerciseId, workoutId),
         });
       }
 

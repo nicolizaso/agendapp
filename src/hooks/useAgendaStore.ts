@@ -31,6 +31,7 @@ interface AgendaState {
   getPlanExercises: (planId: number) => Promise<PlanExercise[]>;
   createPlan: (
     name: string,
+    routineId: number,
     startDate: Date,
     endDate: Date,
     exercises: PlanExercisePayload[]
@@ -38,6 +39,7 @@ interface AgendaState {
   updatePlan: (
     id: number,
     name: string,
+    routineId: number,
     startDate: Date,
     endDate: Date,
     exercises: PlanExercisePayload[]
@@ -97,7 +99,7 @@ export const useAgendaStore = create<AgendaState>((set, get) => ({
 
   getPlanExercises: async (planId) => {
     try {
-      const exercises = await db.planExercises.where('planId').equals(planId).sortBy('order');
+      const exercises = await db.planExercises.where('planId').equals(planId).toArray();
       set((state) => ({ planExercisesByPlan: { ...state.planExercisesByPlan, [planId]: exercises } }));
       return exercises;
     } catch (err) {
@@ -106,19 +108,24 @@ export const useAgendaStore = create<AgendaState>((set, get) => ({
     }
   },
 
-  createPlan: async (name, startDate, endDate, exercises) => {
+  createPlan: async (name, routineId, startDate, endDate, exercises) => {
     try {
       let planId: number | null = null;
 
       await db.transaction('rw', db.trainingPlans, db.planExercises, async () => {
-        const id = (await db.trainingPlans.add({ name, startDate, endDate, createdAt: new Date() })) as number;
+        const id = (await db.trainingPlans.add({
+          name,
+          routineId,
+          startDate,
+          endDate,
+          createdAt: new Date(),
+        })) as number;
         planId = id;
 
         await db.planExercises.bulkAdd(
-          exercises.map((exercise, index) => ({
+          exercises.map((exercise) => ({
             planId: id,
             exerciseId: exercise.exerciseId,
-            order: index,
             equipmentType: exercise.equipmentType,
             initialWeight: exercise.initialWeight,
             incrementOverride: exercise.incrementOverride,
@@ -134,17 +141,16 @@ export const useAgendaStore = create<AgendaState>((set, get) => ({
     }
   },
 
-  updatePlan: async (id, name, startDate, endDate, exercises) => {
+  updatePlan: async (id, name, routineId, startDate, endDate, exercises) => {
     try {
       await db.transaction('rw', db.trainingPlans, db.planExercises, async () => {
-        await db.trainingPlans.update(id, { name, startDate, endDate });
+        await db.trainingPlans.update(id, { name, routineId, startDate, endDate });
         await db.planExercises.where('planId').equals(id).delete();
 
         await db.planExercises.bulkAdd(
-          exercises.map((exercise, index) => ({
+          exercises.map((exercise) => ({
             planId: id,
             exerciseId: exercise.exerciseId,
-            order: index,
             equipmentType: exercise.equipmentType,
             initialWeight: exercise.initialWeight,
             incrementOverride: exercise.incrementOverride,

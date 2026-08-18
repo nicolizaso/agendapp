@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ClipboardList, Dumbbell, Pencil, Play, Plus, Trash2 } from 'lucide-react';
 import { useGymStore } from '../../hooks/useGymStore';
+import { useAgendaStore } from '../../hooks/useAgendaStore';
 import { useUIStore } from '../../hooks/useUIStore';
 import { Button } from '../../components/Button';
 import { db } from '../../lib/db';
@@ -19,6 +20,8 @@ export function RoutinesManager() {
   const getRoutines = useGymStore((state) => state.getRoutines);
   const deleteRoutine = useGymStore((state) => state.deleteRoutine);
   const loadRoutineIntoWorkout = useGymStore((state) => state.loadRoutineIntoWorkout);
+  const plans = useAgendaStore((state) => state.plans);
+  const getPlans = useAgendaStore((state) => state.getPlans);
   const openConfirmDialog = useUIStore((state) => state.openConfirmDialog);
 
   const [meta, setMeta] = useState<Record<number, RoutineMeta>>({});
@@ -27,7 +30,8 @@ export function RoutinesManager() {
 
   useEffect(() => {
     getRoutines();
-  }, [getRoutines]);
+    getPlans();
+  }, [getRoutines, getPlans]);
 
   // Cantidad de ejercicios y músculos de cada rutina, leídos de IndexedDB.
   useEffect(() => {
@@ -85,9 +89,17 @@ export function RoutinesManager() {
   const handleDelete = (routine: Routine) => {
     if (typeof routine.id !== 'number') return;
 
+    const dependentPlans = plans.filter((plan) => plan.routineId === routine.id);
+    const warning =
+      dependentPlans.length > 0
+        ? ` La usa${dependentPlans.length > 1 ? 'n' : ''} el plan${dependentPlans.length > 1 ? 'es' : ''} "${dependentPlans
+            .map((plan) => plan.name)
+            .join('", "')}", que se va${dependentPlans.length > 1 ? 'n' : ''} a quedar sin ejercicios.`
+        : '';
+
     openConfirmDialog({
       title: '¿Eliminar la rutina?',
-      message: `"${routine.name}" se borra de forma permanente. Tus entrenamientos ya registrados no se tocan.`,
+      message: `"${routine.name}" se borra de forma permanente.${warning} Tus entrenamientos ya registrados no se tocan.`,
       variant: 'danger',
       confirmLabel: 'Eliminar',
       onConfirm: () => {
