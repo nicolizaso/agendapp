@@ -36,12 +36,18 @@ export function PlanFormModal({ isOpen, onClose, editing }: PlanFormModalProps) 
 
   const [name, setName] = useState(editing?.plan.name ?? '');
   const [startDate, setStartDate] = useState(toDateInputValue(editing?.plan.startDate ?? new Date()));
+  const [endDate, setEndDate] = useState(editing?.plan.endDate ? toDateInputValue(editing.plan.endDate) : '');
   const [rows, setRows] = useState<PlanExerciseRow[]>(editing?.exercises ?? []);
   const [isSelectorOpen, setIsSelectorOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  const isDateRangeValid = Boolean(startDate) && Boolean(endDate) && endDate > startDate;
   const isSaveDisabled =
-    !name.trim() || !startDate || rows.length === 0 || rows.some((row) => !(row.initialWeight >= 0)) || isSaving;
+    !name.trim() ||
+    !isDateRangeValid ||
+    rows.length === 0 ||
+    rows.some((row) => !(row.initialWeight >= 0)) ||
+    isSaving;
 
   const handleExercisesSelected = (selected: Exercise[]) => {
     setRows((previous) => {
@@ -79,13 +85,14 @@ export function PlanFormModal({ isOpen, onClose, editing }: PlanFormModalProps) 
       initialWeight: row.initialWeight,
       incrementOverride: row.incrementOverride,
     }));
-    const parsedDate = new Date(`${startDate}T00:00`);
+    const parsedStartDate = new Date(`${startDate}T00:00`);
+    const parsedEndDate = new Date(`${endDate}T00:00`);
 
     if (editing?.plan.id) {
-      await updatePlan(editing.plan.id, name.trim(), parsedDate, payload);
+      await updatePlan(editing.plan.id, name.trim(), parsedStartDate, parsedEndDate, payload);
       toast.success('Plan actualizado');
     } else {
-      await createPlan(name.trim(), parsedDate, payload);
+      await createPlan(name.trim(), parsedStartDate, parsedEndDate, payload);
       toast.success('Plan creado');
     }
 
@@ -116,6 +123,22 @@ export function PlanFormModal({ isOpen, onClose, editing }: PlanFormModalProps) 
           <div className="space-y-2">
             <Label htmlFor="plan-start">Semana 0 arranca el</Label>
             <Input id="plan-start" type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="plan-end">Termina el</Label>
+            <Input
+              id="plan-end"
+              type="date"
+              min={startDate || undefined}
+              value={endDate}
+              onChange={(event) => setEndDate(event.target.value)}
+            />
+            {editing && !editing.plan.endDate && (
+              <p className="text-xs text-ember-400">Este plan es de antes y no tiene fecha de fin: completala para poder guardarlo.</p>
+            )}
+            {endDate && startDate && endDate <= startDate && (
+              <p className="text-xs text-flare-400">Tiene que ser posterior a la fecha de inicio.</p>
+            )}
           </div>
         </div>
 

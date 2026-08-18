@@ -4,7 +4,7 @@ import { Button } from '../../components/Button';
 import { useAgendaStore } from '../../hooks/useAgendaStore';
 import { useGymStore } from '../../hooks/useGymStore';
 import { useUIStore } from '../../hooks/useUIStore';
-import { weekIndexForDate } from '../../lib/progression';
+import { isPlanFinished, weekIndexForPlan } from '../../lib/progression';
 import { cn } from '../../lib/utils';
 import { WEEKDAYS } from '../../lib/weekdays';
 import { ScheduleSessionModal } from './components/ScheduleSessionModal';
@@ -107,10 +107,10 @@ function SessionsView() {
       loadRoutineIntoWorkout(session.routineId);
     } else if (session.planId) {
       const plan = plans.find((item) => item.id === session.planId);
-      if (!plan) return;
-      // La semana de progresión que toca se planifica sola: se calcula con la fecha de hoy,
-      // no hace falta guardarla en el turno.
-      const weekIndex = weekIndexForDate(new Date(plan.startDate), new Date());
+      if (!plan || isPlanFinished(plan)) return;
+      // La semana de progresión que toca se planifica sola: se calcula contando los
+      // turnos agendados de este plan que ya transcurrieron, no hace falta guardarla.
+      const weekIndex = weekIndexForPlan(plan, sessions);
       loadPlanWeekIntoWorkout(session.planId, weekIndex);
     }
   };
@@ -122,10 +122,13 @@ function SessionsView() {
     }
     if (session.planId) {
       const plan = plans.find((item) => item.id === session.planId);
-      const weekIndex = plan ? weekIndexForDate(new Date(plan.startDate), new Date()) : 0;
+      if (!plan) return { label: 'Plan eliminado', canStart: false };
+
+      const finished = isPlanFinished(plan);
+      const weekIndex = weekIndexForPlan(plan, sessions);
       return {
-        label: plan ? `${plan.name} · Semana ${weekIndex + 1}` : 'Plan eliminado',
-        canStart: Boolean(plan),
+        label: finished ? `${plan.name} · Finalizado` : `${plan.name} · Semana ${weekIndex + 1}`,
+        canStart: !finished,
       };
     }
     return { label: 'Entrenamiento libre', canStart: false };

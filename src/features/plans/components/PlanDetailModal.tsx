@@ -4,7 +4,7 @@ import { Modal } from '../../../components/Modal';
 import { Button } from '../../../components/Button';
 import { useAgendaStore } from '../../../hooks/useAgendaStore';
 import { useGymStore } from '../../../hooks/useGymStore';
-import { buildProgressionTable, weekIndexForDate, WEEKS_PER_BLOCK } from '../../../lib/progression';
+import { buildProgressionTable, isPlanFinished, weekIndexForPlan, WEEKS_PER_BLOCK } from '../../../lib/progression';
 import { cn } from '../../../lib/utils';
 import { ScheduleSessionModal } from '../../agenda/components/ScheduleSessionModal';
 import type { PlanExercise, TrainingPlan } from '../../../types';
@@ -22,10 +22,12 @@ export function PlanDetailModal({ isOpen, onClose, plan }: PlanDetailModalProps)
   const getPlanExercises = useAgendaStore((state) => state.getPlanExercises);
   const exercises =
     useAgendaStore((state) => state.planExercisesByPlan[plan.id as number]) ?? EMPTY_PLAN_EXERCISES;
+  const sessions = useAgendaStore((state) => state.sessions);
   const catalog = useGymStore((state) => state.exercises);
 
   const [isScheduling, setIsScheduling] = useState(false);
-  const currentWeekIndex = weekIndexForDate(new Date(plan.startDate), new Date());
+  const finished = isPlanFinished(plan);
+  const currentWeekIndex = weekIndexForPlan(plan, sessions);
 
   useEffect(() => {
     if (isOpen && typeof plan.id === 'number') getPlanExercises(plan.id);
@@ -55,14 +57,19 @@ export function PlanDetailModal({ isOpen, onClose, plan }: PlanDetailModalProps)
         isOpen={isOpen}
         onClose={onClose}
         title={plan.name}
-        description="Progresión de peso semana a semana. La semana en curso se calcula sola según la fecha."
+        description="Progresión de peso semana a semana. La semana en curso se calcula sola según los turnos agendados que ya pasaron."
         size="xl"
       >
         {columns.length === 0 ? (
           <p className="py-8 text-center text-sm text-ink-500">Este plan todavía no tiene ejercicios.</p>
         ) : (
           <div className="space-y-4">
-            {typeof plan.id === 'number' && (
+            {finished && (
+              <p className="rounded-card border border-ink-800 bg-ink-900/40 px-4 py-3 text-sm text-ink-400">
+                Este plan ya terminó ({new Date(plan.endDate as Date).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })}). No se pueden agendar turnos nuevos con él.
+              </p>
+            )}
+            {typeof plan.id === 'number' && !finished && (
               <Button variant="outline" onClick={() => setIsScheduling(true)}>
                 <CalendarPlus className="h-4 w-4" /> Agendar este plan
               </Button>
