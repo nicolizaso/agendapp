@@ -7,24 +7,16 @@ import { Label } from '../../../components/Label';
 import { Select } from '../../../components/Select';
 import { useAgendaStore, type SchedulePayload } from '../../../hooks/useAgendaStore';
 import { useGymStore } from '../../../hooks/useGymStore';
-import { weekIndexForDate } from '../../../lib/progression';
+import { WEEKDAYS } from '../../../lib/weekdays';
 import { cn } from '../../../lib/utils';
 import type { ScheduledSession } from '../../../types';
-
-/** "2026-08-18" a partir de un Date, sin corrimientos de huso horario. */
-function toDateInputValue(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
 
 interface ScheduleSessionModalProps {
   isOpen: boolean;
   onClose: () => void;
   editing?: ScheduledSession | null;
   /** Prefill al agendar desde el detalle de un plan. */
-  prefill?: { planId: number; weekIndex: number; date?: Date };
+  prefill?: { planId: number };
 }
 
 export function ScheduleSessionModal({ isOpen, onClose, editing, prefill }: ScheduleSessionModalProps) {
@@ -40,9 +32,7 @@ export function ScheduleSessionModal({ isOpen, onClose, editing, prefill }: Sche
       : 'routine';
 
   const [source, setSource] = useState<'routine' | 'plan'>(initialSource);
-  const [date, setDate] = useState(
-    toDateInputValue(editing?.date ?? prefill?.date ?? new Date())
-  );
+  const [dayOfWeek, setDayOfWeek] = useState<number>(editing?.dayOfWeek ?? new Date().getDay());
   const [time, setTime] = useState(editing?.time ?? '18:00');
   const [routineId, setRoutineId] = useState<string>(
     editing?.routineId ? String(editing.routineId) : String(routines[0]?.id ?? '')
@@ -50,51 +40,21 @@ export function ScheduleSessionModal({ isOpen, onClose, editing, prefill }: Sche
   const [planId, setPlanId] = useState<string>(
     editing?.planId ? String(editing.planId) : prefill ? String(prefill.planId) : String(plans[0]?.id ?? '')
   );
-  const [weekIndex, setWeekIndex] = useState<string>(
-    editing?.weekIndex !== undefined
-      ? String(editing.weekIndex)
-      : prefill
-        ? String(prefill.weekIndex)
-        : '0'
-  );
   const [notes, setNotes] = useState(editing?.notes ?? '');
   const [isSaving, setIsSaving] = useState(false);
 
-  const selectedPlan = plans.find((plan) => plan.id === Number(planId));
-
-  const handlePlanChange = (id: string) => {
-    setPlanId(id);
-    const plan = plans.find((item) => item.id === Number(id));
-    if (plan && date) {
-      setWeekIndex(String(weekIndexForDate(new Date(plan.startDate), new Date(`${date}T00:00`))));
-    }
-  };
-
-  const handleDateChange = (value: string) => {
-    setDate(value);
-    if (source === 'plan' && selectedPlan) {
-      setWeekIndex(String(weekIndexForDate(new Date(selectedPlan.startDate), new Date(`${value}T00:00`))));
-    }
-  };
-
   const isSaveDisabled =
-    !date ||
-    !time ||
-    (source === 'routine' && !routineId) ||
-    (source === 'plan' && (!planId || weekIndex === '')) ||
-    isSaving;
+    (source === 'routine' && !routineId) || (source === 'plan' && !planId) || isSaving;
 
   const handleSave = async () => {
     if (isSaveDisabled) return;
     setIsSaving(true);
 
     const payload: SchedulePayload = {
-      date: new Date(`${date}T00:00`),
+      dayOfWeek,
       time,
       notes: notes.trim() || undefined,
-      ...(source === 'routine'
-        ? { routineId: Number(routineId) }
-        : { planId: Number(planId), weekIndex: Math.max(0, parseInt(weekIndex, 10) || 0) }),
+      ...(source === 'routine' ? { routineId: Number(routineId) } : { planId: Number(planId) }),
     };
 
     if (editing?.id) {
@@ -114,23 +74,33 @@ export function ScheduleSessionModal({ isOpen, onClose, editing, prefill }: Sche
       isOpen={isOpen}
       onClose={onClose}
       title={editing ? 'Editar turno' : 'Agendar turno'}
-      description="Elegí día, horario y qué vas a entrenar."
+      description="Elegí el día de la semana y el horario en que vas a entrenar, cada semana."
     >
       <div className="space-y-5">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2">
-            <Label htmlFor="schedule-date">Día</Label>
-            <Input
-              id="schedule-date"
-              type="date"
-              value={date}
-              onChange={(event) => handleDateChange(event.target.value)}
-            />
+        <div className="space-y-2">
+          <Label>Día de la semana</Label>
+          <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+            {WEEKDAYS.map((day) => (
+              <button
+                key={day.value}
+                type="button"
+                onClick={() => setDayOfWeek(day.value)}
+                className={cn(
+                  'h-11 rounded-xl border text-sm font-semibold transition-colors',
+                  dayOfWeek === day.value
+                    ? 'border-ember-500 bg-ember-500/10 text-ember-300'
+                    : 'border-ink-800 bg-ink-900 text-ink-400 hover:text-ink-100'
+                )}
+              >
+                {day.short}
+              </button>
+            ))}
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="schedule-time">Horario</Label>
-            <Input id="schedule-time" type="time" value={time} onChange={(event) => setTime(event.target.value)} />
-          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="schedule-time">Horario</Label>
+          <Input id="schedule-time" type="time" value={time} onChange={(event) => setTime(event.target.value)} />
         </div>
 
         <div className="space-y-2">
@@ -180,27 +150,18 @@ export function ScheduleSessionModal({ isOpen, onClose, editing, prefill }: Sche
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="schedule-plan">Plan</Label>
-              <Select id="schedule-plan" value={planId} onChange={(event) => handlePlanChange(event.target.value)}>
-                {plans.map((plan) => (
-                  <option key={plan.id} value={plan.id}>
-                    {plan.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="schedule-week">Semana</Label>
-              <Input
-                id="schedule-week"
-                type="number"
-                min={0}
-                value={weekIndex}
-                onChange={(event) => setWeekIndex(event.target.value)}
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="schedule-plan">Plan</Label>
+            <Select id="schedule-plan" value={planId} onChange={(event) => setPlanId(event.target.value)}>
+              {plans.map((plan) => (
+                <option key={plan.id} value={plan.id}>
+                  {plan.name}
+                </option>
+              ))}
+            </Select>
+            <p className="text-xs text-ink-500">
+              La semana de progresión que toca se calcula sola según la fecha en que arranca el plan.
+            </p>
           </div>
         )}
 

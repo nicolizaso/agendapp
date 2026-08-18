@@ -87,17 +87,17 @@ export interface WorkoutSummary {
 /** Cómo se carga el peso en el aparato: define de a cuánto se puede subir. */
 export type EquipmentType = 'Mancuerna' | 'Barra' | 'Máquina' | 'Polea' | 'Peso Corporal' | 'Otro';
 
-/** Sesión agendada: un día y horario para ir a entrenar. */
+/** Sesión agendada: un día de la semana y horario fijos para ir a entrenar, que se repiten cada semana. */
 export interface ScheduledSession {
   id?: number;
-  /** Fecha del turno, a las 00:00 (la hora vive aparte, en `time`). */
-  date: Date;
+  /** Día de la semana, 0 = domingo ... 6 = sábado (igual que `Date.getDay()`). */
+  dayOfWeek: number;
   /** "HH:MM", 24 horas. */
   time: string;
-  /** Se agenda una rutina fija o una semana de un plan de entrenamiento (uno de los dos). */
+  /** Se agenda una rutina fija o un plan de entrenamiento (uno de los dos). La semana del plan que toca
+   *  se calcula en el momento a partir de la fecha real, no se guarda. */
   routineId?: number;
   planId?: number;
-  weekIndex?: number;
   notes?: string;
   createdAt: Date;
 }

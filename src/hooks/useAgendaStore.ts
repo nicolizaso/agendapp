@@ -10,11 +10,10 @@ export interface PlanExercisePayload {
 }
 
 export interface SchedulePayload {
-  date: Date;
+  dayOfWeek: number;
   time: string;
   routineId?: number;
   planId?: number;
-  weekIndex?: number;
   notes?: string;
 }
 
@@ -42,7 +41,7 @@ export const useAgendaStore = create<AgendaState>((set, get) => ({
 
   getSessions: async () => {
     try {
-      const sessions = await db.scheduledSessions.orderBy('date').toArray();
+      const sessions = await db.scheduledSessions.orderBy('dayOfWeek').toArray();
       set({ sessions });
     } catch (err) {
       console.error('No se pudieron leer los turnos agendados', err);
