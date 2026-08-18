@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   CalendarDays,
   Check,
@@ -44,6 +45,8 @@ export function GymDashboard() {
   // `null` = todavía no eligió nada en esta sesión; ahí manda la última usada.
   const [choice, setChoice] = useState<{ routineId: number | null } | null>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [pickerRect, setPickerRect] = useState<{ top: number; left: number; width: number } | null>(null);
+  const pickerButtonRef = useRef<HTMLButtonElement>(null);
   const [monthCursor, setMonthCursor] = useState(() => new Date());
   const [monthWorkouts, setMonthWorkouts] = useState<{ day: number; workoutId: number }[]>([]);
   const [recentWorkouts, setRecentWorkouts] = useState<Workout[]>([]);
@@ -83,6 +86,26 @@ export function GymDashboard() {
       cancelled = true;
     };
   }, []);
+
+  // El menú del picker se renderiza en un portal (ver más abajo) para poder superponerse
+  // a toda la pantalla; mientras está abierto seguimos la posición del botón que lo abre.
+  useEffect(() => {
+    if (!isPickerOpen) return;
+
+    const updateRect = () => {
+      const rect = pickerButtonRef.current?.getBoundingClientRect();
+      if (rect) setPickerRect({ top: rect.bottom, left: rect.left, width: rect.width });
+    };
+
+    updateRect();
+    window.addEventListener('resize', updateRect);
+    window.addEventListener('scroll', updateRect, true);
+
+    return () => {
+      window.removeEventListener('resize', updateRect);
+      window.removeEventListener('scroll', updateRect, true);
+    };
+  }, [isPickerOpen]);
 
   // La rutina propuesta es la última que entrenaste, no una al azar.
   const selectedRoutine: Routine | null = useMemo(() => {
@@ -154,6 +177,7 @@ export function GymDashboard() {
 
           <div className="relative">
             <button
+              ref={pickerButtonRef}
               type="button"
               onClick={() => setIsPickerOpen((previous) => !previous)}
               aria-expanded={isPickerOpen}
@@ -172,33 +196,46 @@ export function GymDashboard() {
               />
             </button>
 
-            {isPickerOpen && (
-              <>
-                <div className="fixed inset-0 z-20" onClick={() => setIsPickerOpen(false)} role="presentation" />
-                <div className="absolute inset-x-0 top-full z-30 mt-2 max-h-64 overflow-y-auto rounded-2xl border border-ink-700 bg-ink-850 shadow-lift animate-in fade-in zoom-in-95 duration-150">
-                  <PickerRow
-                    label="Entrenamiento libre"
-                    hint="Agregás los ejercicios sobre la marcha"
-                    isSelected={!selectedRoutine}
-                    onClick={() => {
-                      setChoice({ routineId: null });
-                      setIsPickerOpen(false);
-                    }}
+            {/* En un portal: la sección tiene overflow-hidden por el degradé de fondo, así que
+                si el menú quedara adentro del flujo normal se recortaría contra ese borde en vez
+                de sobreponerse a toda la pantalla. */}
+            {isPickerOpen &&
+              pickerRect &&
+              createPortal(
+                <>
+                  <div
+                    className="fixed inset-0 z-[9100]"
+                    onClick={() => setIsPickerOpen(false)}
+                    role="presentation"
                   />
-                  {routines.map((routine) => (
+                  <div
+                    style={{ top: pickerRect.top + 8, left: pickerRect.left, width: pickerRect.width }}
+                    className="fixed z-[9101] max-h-64 overflow-y-auto rounded-2xl border border-ink-700 bg-ink-850 shadow-lift animate-in fade-in zoom-in-95 duration-150"
+                  >
                     <PickerRow
-                      key={routine.id}
-                      label={routine.name}
-                      isSelected={selectedRoutine?.id === routine.id}
+                      label="Entrenamiento libre"
+                      hint="Agregás los ejercicios sobre la marcha"
+                      isSelected={!selectedRoutine}
                       onClick={() => {
-                        setChoice({ routineId: routine.id ?? null });
+                        setChoice({ routineId: null });
                         setIsPickerOpen(false);
                       }}
                     />
-                  ))}
-                </div>
-              </>
-            )}
+                    {routines.map((routine) => (
+                      <PickerRow
+                        key={routine.id}
+                        label={routine.name}
+                        isSelected={selectedRoutine?.id === routine.id}
+                        onClick={() => {
+                          setChoice({ routineId: routine.id ?? null });
+                          setIsPickerOpen(false);
+                        }}
+                      />
+                    ))}
+                  </div>
+                </>,
+                document.body
+              )}
           </div>
 
           <Button size="xl" className="w-full text-base" onClick={handleStart}>
