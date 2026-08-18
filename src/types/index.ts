@@ -94,24 +94,25 @@ export interface ScheduledSession {
   dayOfWeek: number;
   /** "HH:MM", 24 horas. */
   time: string;
-  /** Se agenda una rutina fija o un plan de entrenamiento (uno de los dos). La semana del plan que toca
-   *  se calcula en el momento a partir de la fecha real, no se guarda. */
+  /** Se agenda una rutina fija o un día de un plan de entrenamiento (uno de los dos).
+   *  `planDayId` es obligatorio cuando se agenda un plan: dice cuál de sus días toca ese
+   *  turno. La semana de progresión que corresponde se calcula en el momento a partir de
+   *  la fecha real, no se guarda. */
   routineId?: number;
   planId?: number;
+  planDayId?: number;
   notes?: string;
   createdAt: Date;
 }
 
 /**
- * Plan de entrenamiento: progresión de peso semana a semana sobre los ejercicios de una
- * rutina. El plan no tiene su propia lista de ejercicios: usa siempre la de `routineId`,
- * en el mismo orden. Si la rutina cambia (se agrega, saca o reordena un ejercicio), el
- * plan lo refleja al toque.
+ * Plan de entrenamiento: un programa con fecha de inicio y fin, armado con uno o más
+ * "días" (`PlanDay`) — por ejemplo Día A / Día B / Día C de un split. El plan en sí no
+ * tiene ejercicios ni rutina propia: esas viven en cada `PlanDay`.
  */
 export interface TrainingPlan {
   id?: number;
   name: string;
-  routineId: number;
   startDate: Date;
   /** Fecha en la que termina el plan; a partir de ahí se considera finalizado.
    *  Opcional sólo por planes creados antes de que este campo existiera: hay que
@@ -120,10 +121,25 @@ export interface TrainingPlan {
   createdAt: Date;
 }
 
-/** Progresión configurada para un ejercicio de la rutina del plan (qué ejercicio es lo define la rutina). */
-export interface PlanExercise {
+/**
+ * Un día de entrenamiento dentro de un plan (p. ej. "Día A · Empuje"). Usa siempre los
+ * ejercicios de `routineId`, en el mismo orden; si la rutina cambia, el día lo refleja
+ * al toque. Cada día progresa de forma independiente: su semana se calcula contando
+ * sólo los turnos agendados que apuntan a este día puntual.
+ */
+export interface PlanDay {
   id?: number;
   planId: number;
+  routineId: number;
+  label: string;
+  /** Orden de presentación dentro del plan. */
+  order: number;
+}
+
+/** Progresión configurada para un ejercicio del día del plan (qué ejercicio es lo define la rutina del día). */
+export interface PlanExercise {
+  id?: number;
+  planDayId: number;
   exerciseId: number;
   equipmentType: EquipmentType;
   /** Peso inicial de la semana 0, en kg. */

@@ -7,7 +7,7 @@
  * todavía no tenga esos ejercicios cargados.
  */
 import { db } from './db';
-import type { Exercise, PlanExercise, RoutineExercise, TrainingPlan, WorkoutSet } from '../types';
+import type { Exercise, PlanDay, PlanExercise, RoutineExercise, TrainingPlan, WorkoutSet } from '../types';
 
 export const BUNDLE_APP_ID = 'carga';
 export const BUNDLE_VERSION = 1;
@@ -19,17 +19,25 @@ export interface ExportedRoutine {
   exercises: Omit<RoutineExercise, 'id' | 'routineId'>[];
 }
 
+export interface ExportedPlanDay {
+  /** Id original del día en el dispositivo de origen: permite que los turnos de agenda
+   *  exportados sepan a qué día apuntar al remapearse en la importación. */
+  originalId: number;
+  label: string;
+  /** Id original de la rutina en el dispositivo de origen, para remapearla al importar.
+   *  El día siempre depende de una rutina, así que se exporta junto con él aunque no esté
+   *  tildada en la selección de rutinas. */
+  originalRoutineId: number;
+  exercises: Omit<PlanExercise, 'id' | 'planDayId'>[];
+}
+
 export interface ExportedPlan {
   id: number;
   name: string;
-  /** Id original de la rutina en el dispositivo de origen, para remapearla al importar.
-   *  El plan siempre depende de una rutina, así que su rutina se exporta junto con él aunque
-   *  no esté tildada en la selección de rutinas. */
-  originalRoutineId: number;
   startDate: string;
   endDate?: string;
   createdAt: string;
-  exercises: Omit<PlanExercise, 'id' | 'planId'>[];
+  days: ExportedPlanDay[];
 }
 
 export interface ExportedWorkoutSet {
@@ -55,6 +63,8 @@ export interface ExportedAgendaSession {
   /** Id original de la rutina/plan en el dispositivo de origen, para poder remapearlo al importar. */
   originalRoutineId?: number;
   originalPlanId?: number;
+  /** Id original del día del plan (dentro de `ExportedPlanDay.originalId`), si el turno agenda un plan. */
+  originalPlanDayId?: number;
 }
 
 export interface DataBundle {
@@ -106,16 +116,25 @@ export async function buildExportBundle(selection: ExportSelection): Promise<Dat
     exportedAt: new Date().toISOString(),
   };
 
-  // Los planes dependen siempre de una rutina: se leen primero para poder sumar esa rutina
-  // a la exportación aunque no esté tildada en la selección de rutinas (si no, el plan
-  // quedaría sin ejercicios al importarlo en otro dispositivo).
+  // Los días de plan dependen siempre de una rutina: se leen primero para poder sumar esas
+  // rutinas a la exportación aunque no estén tildadas en la selección de rutinas (si no, el
+  // plan quedaría con días sin ejercicios al importarlo en otro dispositivo).
   let plansData: TrainingPlan[] = [];
+  const planDaysByPlan = new Map<number, PlanDay[]>();
   if (selection.planIds.length > 0) {
     plansData = (await db.trainingPlans.bulkGet(selection.planIds)).filter(
       (plan): plan is TrainingPlan => plan != null && typeof plan.id === 'number'
     );
+
+    for (const plan of plansData) {
+      const days = await db.planDays.where('planId').equals(plan.id as number).sortBy('order');
+      planDaysByPlan.set(plan.id as number, days);
+    }
   }
-  const planRoutineIds = plansData.map((plan) => plan.routineId).filter((id): id is number => typeof id === 'number');
+  const planRoutineIds = Array.from(planDaysByPlan.values())
+    .flat()
+    .map((day) => day.routineId)
+    .filter((id): id is number => typeof id === 'number');
   const routineIdsToExport = Array.from(new Set([...selection.routineIds, ...planRoutineIds]));
 
   if (routineIdsToExport.length > 0) {
@@ -153,24 +172,38 @@ export async function buildExportBundle(selection: ExportSelection): Promise<Dat
     const exportedPlans: ExportedPlan[] = [];
 
     for (const plan of plansData) {
-      if (typeof plan.id !== 'number' || typeof plan.routineId !== 'number') continue;
+      if (typeof plan.id !== 'number') continue;
+      const days = planDaysByPlan.get(plan.id) ?? [];
+      if (days.length === 0) continue;
 
-      const exercises = await db.planExercises.where('planId').equals(plan.id).toArray();
-      exercises.forEach((exercise) => collectReference(exercise.exerciseId));
+      const exportedDays: ExportedPlanDay[] = [];
+
+      for (const day of days) {
+        if (typeof day.id !== 'number') continue;
+
+        const exercises = await db.planExercises.where('planDayId').equals(day.id).toArray();
+        exercises.forEach((exercise) => collectReference(exercise.exerciseId));
+
+        exportedDays.push({
+          originalId: day.id,
+          label: day.label,
+          originalRoutineId: day.routineId,
+          exercises: exercises.map(({ exerciseId, equipmentType, initialWeight, incrementOverride }) => ({
+            exerciseId,
+            equipmentType,
+            initialWeight,
+            incrementOverride,
+          })),
+        });
+      }
 
       exportedPlans.push({
         id: plan.id,
         name: plan.name,
-        originalRoutineId: plan.routineId,
         startDate: new Date(plan.startDate).toISOString(),
         endDate: plan.endDate ? new Date(plan.endDate).toISOString() : undefined,
         createdAt: new Date(plan.createdAt).toISOString(),
-        exercises: exercises.map(({ exerciseId, equipmentType, initialWeight, incrementOverride }) => ({
-          exerciseId,
-          equipmentType,
-          initialWeight,
-          incrementOverride,
-        })),
+        days: exportedDays,
       });
     }
 
@@ -214,6 +247,7 @@ export async function buildExportBundle(selection: ExportSelection): Promise<Dat
       notes: session.notes,
       originalRoutineId: session.routineId,
       originalPlanId: session.planId,
+      originalPlanDayId: session.planDayId,
     }));
   }
 
@@ -361,6 +395,7 @@ export async function importBundle(bundle: DataBundle, selection: ImportSelectio
 
   const routineIdMap = new Map<number, number>();
   const planIdMap = new Map<number, number>();
+  const planDayIdMap = new Map<number, number>();
 
   const importRoutine = async (routine: ExportedRoutine): Promise<number> => {
     const newRoutineId = (await db.routines.add({
@@ -388,24 +423,29 @@ export async function importBundle(bundle: DataBundle, selection: ImportSelectio
 
   if (selection.plans) {
     for (const plan of bundle.plans ?? []) {
-      let routineId = routineIdMap.get(plan.originalRoutineId);
+      // Un plan sin ningún día cuya rutina se pudo resolver no aporta nada: se omite.
+      const resolvedDays: { day: ExportedPlanDay; routineId: number }[] = [];
 
-      // El plan depende de una rutina que no se importó porque "Rutinas" no estaba tildado:
-      // como se exporta siempre junto con el plan, se importa acá para no perder el plan.
-      if (!routineId) {
-        const bundledRoutine = bundle.routines?.find((item) => item.id === plan.originalRoutineId);
-        if (bundledRoutine) {
-          routineId = await importRoutine(bundledRoutine);
-          routineIdMap.set(plan.originalRoutineId, routineId);
+      for (const day of plan.days) {
+        let routineId = routineIdMap.get(day.originalRoutineId);
+
+        // El día depende de una rutina que no se importó porque "Rutinas" no estaba tildado:
+        // como se exporta siempre junto con el plan, se importa acá para no perder el día.
+        if (!routineId) {
+          const bundledRoutine = bundle.routines?.find((item) => item.id === day.originalRoutineId);
+          if (bundledRoutine) {
+            routineId = await importRoutine(bundledRoutine);
+            routineIdMap.set(day.originalRoutineId, routineId);
+          }
         }
+
+        if (routineId) resolvedDays.push({ day, routineId });
       }
 
-      // Sin rutina no hay ejercicios a los que progresar: el plan se omite.
-      if (!routineId) continue;
+      if (resolvedDays.length === 0) continue;
 
       const newPlanId = (await db.trainingPlans.add({
         name: plan.name,
-        routineId,
         startDate: new Date(plan.startDate),
         endDate: plan.endDate ? new Date(plan.endDate) : undefined,
         createdAt: new Date(plan.createdAt),
@@ -413,14 +453,26 @@ export async function importBundle(bundle: DataBundle, selection: ImportSelectio
 
       planIdMap.set(plan.id, newPlanId);
 
-      const exercises = plan.exercises
-        .map((exercise) => {
-          const exerciseId = exerciseMap.get(exercise.exerciseId);
-          return exerciseId ? { ...exercise, exerciseId, planId: newPlanId } : null;
-        })
-        .filter((exercise): exercise is PlanExercise & { planId: number } => exercise !== null);
+      for (const [index, { day, routineId }] of resolvedDays.entries()) {
+        const newPlanDayId = (await db.planDays.add({
+          planId: newPlanId,
+          routineId,
+          label: day.label,
+          order: index,
+        })) as number;
 
-      if (exercises.length > 0) await db.planExercises.bulkAdd(exercises);
+        planDayIdMap.set(day.originalId, newPlanDayId);
+
+        const exercises = day.exercises
+          .map((exercise) => {
+            const exerciseId = exerciseMap.get(exercise.exerciseId);
+            return exerciseId ? { ...exercise, exerciseId, planDayId: newPlanDayId } : null;
+          })
+          .filter((exercise): exercise is PlanExercise & { planDayId: number } => exercise !== null);
+
+        if (exercises.length > 0) await db.planExercises.bulkAdd(exercises);
+      }
+
       result.plansImported += 1;
     }
   }
@@ -452,10 +504,11 @@ export async function importBundle(bundle: DataBundle, selection: ImportSelectio
     for (const session of bundle.agenda ?? []) {
       const routineId = session.originalRoutineId ? routineIdMap.get(session.originalRoutineId) : undefined;
       const planId = session.originalPlanId ? planIdMap.get(session.originalPlanId) : undefined;
+      const planDayId = session.originalPlanDayId ? planDayIdMap.get(session.originalPlanDayId) : undefined;
 
-      // El turno agendaba una rutina o un plan que no se importó junto: sin ese dato no
-      // hay nada válido a lo que apuntar, así que se omite en vez de dejarlo colgado.
-      if ((session.originalRoutineId && !routineId) || (session.originalPlanId && !planId)) {
+      // El turno agendaba una rutina o un día de plan que no se importó junto: sin ese
+      // dato no hay nada válido a lo que apuntar, así que se omite en vez de dejarlo colgado.
+      if ((session.originalRoutineId && !routineId) || (session.originalPlanId && !planDayId)) {
         result.agendaSkipped += 1;
         continue;
       }
@@ -466,6 +519,7 @@ export async function importBundle(bundle: DataBundle, selection: ImportSelectio
         notes: session.notes,
         routineId,
         planId,
+        planDayId,
         createdAt: new Date(),
       });
       result.agendaImported += 1;

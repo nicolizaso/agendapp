@@ -13,13 +13,15 @@ import type {
   WorkoutSummary,
 } from '../types';
 
-const REST_PREFERENCE_KEY = 'carga:rest-seconds';
-const DEFAULT_REST_SECONDS = 90;
+const REST_BETWEEN_SETS_KEY = 'carga:rest-between-sets-seconds';
+const REST_BETWEEN_EXERCISES_KEY = 'carga:rest-between-exercises-seconds';
+const DEFAULT_REST_BETWEEN_SETS_SECONDS = 30;
+const DEFAULT_REST_BETWEEN_EXERCISES_SECONDS = 90;
 
-function readRestPreference(): number {
-  if (typeof window === 'undefined') return DEFAULT_REST_SECONDS;
-  const stored = Number(window.localStorage.getItem(REST_PREFERENCE_KEY));
-  return Number.isFinite(stored) && stored > 0 ? stored : DEFAULT_REST_SECONDS;
+function readRestPreference(key: string, fallback: number): number {
+  if (typeof window === 'undefined') return fallback;
+  const stored = Number(window.localStorage.getItem(key));
+  return Number.isFinite(stored) && stored > 0 ? stored : fallback;
 }
 
 /** Copia profunda de la lista de ejercicios activos: evita mutar el estado. */
@@ -50,7 +52,10 @@ interface GymState {
 
   restTimerTarget: number | null;
   restTimerDuration: number;
-  defaultRestSeconds: number;
+  /** Descanso entre series de un mismo ejercicio. */
+  restBetweenSetsSeconds: number;
+  /** Descanso al completar la última serie de un ejercicio y pasar al siguiente. */
+  restBetweenExercisesSeconds: number;
 
   /** Resumen de la última sesión cerrada, para mostrarlo al salir del modo entrenamiento. */
   lastSummary: WorkoutSummary | null;
@@ -61,7 +66,7 @@ interface GymState {
 
   startWorkout: (name?: string) => Promise<void>;
   loadRoutineIntoWorkout: (routineId: number) => Promise<void>;
-  loadPlanWeekIntoWorkout: (planId: number, weekIndex: number) => Promise<void>;
+  loadPlanDayIntoWorkout: (planDayId: number, weekIndex: number) => Promise<void>;
   finishWorkout: () => Promise<WorkoutSummary | null>;
   cancelWorkout: () => Promise<void>;
   saveActiveDraft: () => void;
@@ -102,7 +107,8 @@ interface GymState {
   startRestTimer: (durationSeconds?: number) => void;
   adjustRestTimer: (deltaSeconds: number) => void;
   stopRestTimer: () => void;
-  setDefaultRestSeconds: (seconds: number) => void;
+  setRestBetweenSetsSeconds: (seconds: number) => void;
+  setRestBetweenExercisesSeconds: (seconds: number) => void;
 }
 
 export interface RoutineExercisePayload {
@@ -135,8 +141,9 @@ export const useGymStore = create<GymState>((set, get) => ({
   currentExerciseIndex: 0,
 
   restTimerTarget: null,
-  restTimerDuration: readRestPreference(),
-  defaultRestSeconds: readRestPreference(),
+  restTimerDuration: readRestPreference(REST_BETWEEN_SETS_KEY, DEFAULT_REST_BETWEEN_SETS_SECONDS),
+  restBetweenSetsSeconds: readRestPreference(REST_BETWEEN_SETS_KEY, DEFAULT_REST_BETWEEN_SETS_SECONDS),
+  restBetweenExercisesSeconds: readRestPreference(REST_BETWEEN_EXERCISES_KEY, DEFAULT_REST_BETWEEN_EXERCISES_SECONDS),
   lastSummary: null,
 
   clearLastSummary: () => set({ lastSummary: null }),
@@ -194,7 +201,8 @@ export const useGymStore = create<GymState>((set, get) => ({
           activeExercises: draft.activeExercises ?? [],
           currentExerciseIndex: draft.currentExerciseIndex ?? 0,
           restTimerTarget: draft.restTimerTarget,
-          restTimerDuration: draft.restTimerDuration || readRestPreference(),
+          restTimerDuration:
+            draft.restTimerDuration || readRestPreference(REST_BETWEEN_SETS_KEY, DEFAULT_REST_BETWEEN_SETS_SECONDS),
         });
       }
 
@@ -336,25 +344,28 @@ export const useGymStore = create<GymState>((set, get) => ({
   },
 
   /**
-   * Arranca un entrenamiento con los sets/reps/peso que le tocan a esa semana del plan.
-   * Los ejercicios y su orden son siempre los de la rutina del plan; para cada uno se usa
-   * la progresión configurada si existe, y si no (ejercicio agregado a la rutina después de
-   * armar el plan) se cae al peso/reps/series propios de la rutina, sin aumento automático.
+   * Arranca un entrenamiento con los sets/reps/peso que le tocan a esa semana de un día
+   * del plan. Los ejercicios y su orden son siempre los de la rutina de ese día; para cada
+   * uno se usa la progresión configurada si existe, y si no (ejercicio agregado a la
+   * rutina después de armar el plan) se cae al peso/reps/series propios de la rutina, sin
+   * aumento automático.
    */
-  loadPlanWeekIntoWorkout: async (planId, weekIndex) => {
+  loadPlanDayIntoWorkout: async (planDayId, weekIndex) => {
     try {
-      const plan = await db.trainingPlans.get(planId);
+      const planDay = await db.planDays.get(planDayId);
+      if (!planDay) return;
+      const plan = await db.trainingPlans.get(planDay.planId);
       if (!plan) return;
 
       const routineExercises = await db.routineExercises
         .where('routineId')
-        .equals(plan.routineId)
+        .equals(planDay.routineId)
         .sortBy('order');
-      const planExercises = await db.planExercises.where('planId').equals(planId).toArray();
+      const planExercises = await db.planExercises.where('planDayId').equals(planDayId).toArray();
       const catalog = await db.exercises.toArray();
 
       const startTime = new Date();
-      const workoutName = `${plan.name} · Semana ${weekIndex + 1}`;
+      const workoutName = `${plan.name} · ${planDay.label} · Semana ${weekIndex + 1}`;
       const workoutId = (await db.workouts.add({
         date: startTime,
         name: workoutName,
@@ -766,7 +777,11 @@ export const useGymStore = create<GymState>((set, get) => ({
       }
 
       get().saveActiveDraft();
-      startRestTimer();
+
+      // Si era la última serie pendiente del ejercicio, lo que sigue es cambiar de
+      // ejercicio: el descanso es más largo que entre series del mismo ejercicio.
+      const wasLastSet = next[exerciseIndex]?.sets.every((item) => item.completed) ?? false;
+      startRestTimer(wasLastSet ? get().restBetweenExercisesSeconds : get().restBetweenSetsSeconds);
       return 'completed';
     } catch (err) {
       console.error('No se pudo registrar la serie', err);
@@ -851,7 +866,7 @@ export const useGymStore = create<GymState>((set, get) => ({
   },
 
   startRestTimer: (durationSeconds) => {
-    const duration = durationSeconds ?? get().defaultRestSeconds;
+    const duration = durationSeconds ?? get().restBetweenSetsSeconds;
     set({ restTimerDuration: duration, restTimerTarget: Date.now() + duration * 1000 });
     get().saveActiveDraft();
   },
@@ -874,9 +889,15 @@ export const useGymStore = create<GymState>((set, get) => ({
     get().saveActiveDraft();
   },
 
-  setDefaultRestSeconds: (seconds) => {
+  setRestBetweenSetsSeconds: (seconds) => {
     const safe = Math.min(600, Math.max(15, Math.round(seconds)));
-    window.localStorage.setItem(REST_PREFERENCE_KEY, String(safe));
-    set({ defaultRestSeconds: safe });
+    window.localStorage.setItem(REST_BETWEEN_SETS_KEY, String(safe));
+    set({ restBetweenSetsSeconds: safe });
+  },
+
+  setRestBetweenExercisesSeconds: (seconds) => {
+    const safe = Math.min(600, Math.max(15, Math.round(seconds)));
+    window.localStorage.setItem(REST_BETWEEN_EXERCISES_KEY, String(safe));
+    set({ restBetweenExercisesSeconds: safe });
   },
 }));
