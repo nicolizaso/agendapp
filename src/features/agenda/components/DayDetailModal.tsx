@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { ArrowUpRight, Dumbbell, Play } from 'lucide-react';
+import { ArrowUpRight, Check, Dumbbell, Play } from 'lucide-react';
 import { Modal } from '../../../components/Modal';
 import { Button } from '../../../components/Button';
 import { db } from '../../../lib/db';
-import { useGymStore } from '../../../hooks/useGymStore';
+import { useGymStore, type PlanCompletion } from '../../../hooks/useGymStore';
 import { calculateWeekTarget } from '../../../lib/progression';
 import { cn } from '../../../lib/utils';
 import type { DayEntry } from '../../../lib/agendaDays';
@@ -33,9 +33,25 @@ function titleForDate(date: Date): string {
 export function DayDetailModal({ date, entries, onClose }: DayDetailModalProps) {
   const loadRoutineIntoWorkout = useGymStore((state) => state.loadRoutineIntoWorkout);
   const loadPlanDayIntoWorkout = useGymStore((state) => state.loadPlanDayIntoWorkout);
+  const getPlanCompletions = useGymStore((state) => state.getPlanCompletions);
 
   const [linesByEntry, setLinesByEntry] = useState<Record<string, ExerciseLine[]>>({});
+  const [completions, setCompletions] = useState<PlanCompletion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Qué sesiones de plan de este día ya se entrenaron desde el modo entrenamiento.
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      const done = await getPlanCompletions();
+      if (!cancelled) setCompletions(done);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [getPlanCompletions]);
 
   useEffect(() => {
     let cancelled = false;
@@ -103,6 +119,11 @@ export function DayDetailModal({ date, entries, onClose }: DayDetailModalProps) 
     };
   }, [entries]);
 
+  const isEntryDone = (entry: DayEntry) =>
+    typeof entry.planDayId === 'number' &&
+    typeof entry.weekIndex === 'number' &&
+    completions.some((item) => item.planDayId === entry.planDayId && item.weekIndex === entry.weekIndex);
+
   const handleStart = (entry: DayEntry) => {
     if (entry.planDayId && typeof entry.weekIndex === 'number') {
       loadPlanDayIntoWorkout(entry.planDayId, entry.weekIndex);
@@ -117,6 +138,7 @@ export function DayDetailModal({ date, entries, onClose }: DayDetailModalProps) 
       <div className="space-y-4">
         {entries.map((entry) => {
           const lines = linesByEntry[entry.key] ?? [];
+          const isDone = isEntryDone(entry);
 
           return (
             <section key={entry.key} className="overflow-hidden rounded-card border border-ink-800 bg-ink-900">
@@ -135,6 +157,11 @@ export function DayDetailModal({ date, entries, onClose }: DayDetailModalProps) 
                         Turno suelto
                       </span>
                     )}
+                    {isDone && (
+                      <span className="flex items-center gap-1 rounded-full border border-mint-500/30 bg-mint-500/10 px-2 py-0.5 text-[10px] font-bold uppercase text-mint-300">
+                        <Check className="h-3 w-3" /> Entrenado
+                      </span>
+                    )}
                   </div>
                   <h3 className="mt-1.5 truncate font-heading text-lg font-bold text-ink-100">{entry.routineName}</h3>
                   {entry.planName && <p className="truncate text-xs text-ink-500">{entry.planName}</p>}
@@ -143,11 +170,12 @@ export function DayDetailModal({ date, entries, onClose }: DayDetailModalProps) 
 
                 <Button
                   size="sm"
+                  variant={isDone ? 'outline' : 'primary'}
                   disabled={!entry.routineExists}
                   onClick={() => handleStart(entry)}
                   aria-label={`Empezar ${entry.routineName}`}
                 >
-                  <Play className="h-4 w-4 fill-current" /> Empezar
+                  <Play className="h-4 w-4 fill-current" /> {isDone ? 'Repetir' : 'Empezar'}
                 </Button>
               </header>
 

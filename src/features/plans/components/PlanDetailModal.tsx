@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUpRight, CalendarClock, Check } from 'lucide-react';
+import { ArrowUpRight, CalendarClock, Check, CircleSlash } from 'lucide-react';
 import { Modal } from '../../../components/Modal';
 import { db } from '../../../lib/db';
 import { useAgendaStore } from '../../../hooks/useAgendaStore';
-import { useGymStore } from '../../../hooks/useGymStore';
+import { useGymStore, type PlanCompletion } from '../../../hooks/useGymStore';
 import {
   buildProgressionTable,
   dateForPlanWeek,
@@ -44,12 +44,16 @@ export function PlanDetailModal({ isOpen, onClose, plan }: PlanDetailModalProps)
   const catalog = useGymStore((state) => state.exercises);
   const routines = useGymStore((state) => state.routines);
   const getRoutines = useGymStore((state) => state.getRoutines);
+  const getPlanCompletions = useGymStore((state) => state.getPlanCompletions);
+  const isWorkoutActive = useGymStore((state) => state.isWorkoutActive);
 
   // Orden real de los ejercicios de la rutina de cada día (el plan no guarda orden propio).
   const [routineExerciseIdsByDay, setRoutineExerciseIdsByDay] = useState<Record<number, number[]>>({});
   const [activeDayId, setActiveDayId] = useState<number | null>(null);
   // Semana que se está mirando; arranca en la que toca hoy y se puede recorrer con las fichas.
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
+  // Sesiones del plan que ya se entrenaron desde el modo entrenamiento.
+  const [completions, setCompletions] = useState<PlanCompletion[]>([]);
 
   const finished = isPlanFinished(plan);
   const days = useMemo(
@@ -61,6 +65,21 @@ export function PlanDetailModal({ isOpen, onClose, plan }: PlanDetailModalProps)
     if (isOpen && typeof plan.id === 'number') getPlanDays(plan.id);
     getRoutines();
   }, [isOpen, plan.id, getPlanDays, getRoutines]);
+
+  // Se relee al cerrar una sesión: lo que se acaba de entrenar aparece marcado al toque.
+  useEffect(() => {
+    if (!isOpen || typeof plan.id !== 'number') return;
+    let cancelled = false;
+
+    (async () => {
+      const done = await getPlanCompletions(plan.id);
+      if (!cancelled) setCompletions(done);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, plan.id, getPlanCompletions, isWorkoutActive]);
 
   useEffect(() => {
     if (days.length === 0) return;
@@ -98,6 +117,18 @@ export function PlanDetailModal({ isOpen, onClose, plan }: PlanDetailModalProps)
   const totalWeeks = activeDay ? Math.max(1, totalWeeksForPlanDay(plan, activeDay.dayOfWeek)) : 1;
   const currentWeek = activeDay ? Math.min(weekIndexForPlanDay(plan, activeDay.dayOfWeek), totalWeeks - 1) : 0;
   const viewedWeek = Math.min(selectedWeek ?? currentWeek, totalWeeks - 1);
+
+  // Qué semanas de este día ya se entrenaron de verdad (no las que simplemente ya pasaron).
+  const trainedWeeks = useMemo(
+    () =>
+      new Map(
+        completions
+          .filter((item) => item.planDayId === activeDayId)
+          .map((item) => [item.weekIndex, item.date] as const)
+      ),
+    [completions, activeDayId]
+  );
+  const viewedWeekTrainedOn = trainedWeeks.get(viewedWeek);
 
   // Al cambiar de día, la vista vuelve a la semana en curso de ese día.
   useEffect(() => {
@@ -227,6 +258,15 @@ export function PlanDetailModal({ isOpen, onClose, plan }: PlanDetailModalProps)
                         <span className="text-base font-semibold text-ink-500"> / {totalWeeks}</span>
                       </p>
                       {viewedDate && <p className="mt-0.5 text-xs capitalize text-ink-500">{shortDate(viewedDate)}</p>}
+                      {viewedWeekTrainedOn ? (
+                        <p className="mt-1.5 inline-flex items-center gap-1 rounded-full border border-mint-500/30 bg-mint-500/10 px-2 py-0.5 text-[11px] font-bold text-mint-300">
+                          <Check className="h-3 w-3" /> Entrenada el {shortDate(viewedWeekTrainedOn)}
+                        </p>
+                      ) : viewedWeek < currentWeek ? (
+                        <p className="mt-1.5 inline-flex items-center gap-1 rounded-full border border-ink-700 bg-ink-850 px-2 py-0.5 text-[11px] font-bold text-ink-400">
+                          <CircleSlash className="h-3 w-3" /> Sin entrenar
+                        </p>
+                      ) : null}
                     </div>
                     <span className="shrink-0 rounded-xl border border-ember-500/40 bg-ember-500/10 px-3 py-1.5 text-center">
                       <span className="block font-heading text-lg font-bold leading-none text-ember-300">
@@ -248,6 +288,12 @@ export function PlanDetailModal({ isOpen, onClose, plan }: PlanDetailModalProps)
                       ? 'Esta semana sube el peso y las repeticiones vuelven a 8.'
                       : `Faltan ${weeksToNextBump} semana${weeksToNextBump > 1 ? 's' : ''} para el próximo aumento de peso.`}
                   </p>
+
+                  <p className="text-xs text-ink-500">
+                    {trainedWeeks.size === 0
+                      ? 'Todavía no entrenaste ninguna sesión de este día.'
+                      : `${trainedWeeks.size} de ${totalWeeks} sesiones entrenadas.`}
+                  </p>
                 </div>
               </section>
 
@@ -255,6 +301,7 @@ export function PlanDetailModal({ isOpen, onClose, plan }: PlanDetailModalProps)
                 totalWeeks={totalWeeks}
                 currentWeek={currentWeek}
                 selectedWeek={viewedWeek}
+                trainedWeeks={trainedWeeks}
                 onSelect={setSelectedWeek}
                 dateFor={(week) => (activeDay ? dateForPlanWeek(plan, activeDay.dayOfWeek, week) : new Date())}
               />
@@ -305,17 +352,23 @@ export function PlanDetailModal({ isOpen, onClose, plan }: PlanDetailModalProps)
   );
 }
 
-/** Fichas horizontales de semanas: reemplazan la tabla para moverse por la progresión. */
+/**
+ * Fichas horizontales de semanas: reemplazan la tabla para moverse por la progresión. El
+ * tilde marca las que se entrenaron de verdad desde el modo entrenamiento, no las que
+ * simplemente ya pasaron en el calendario.
+ */
 function WeekStrip({
   totalWeeks,
   currentWeek,
   selectedWeek,
+  trainedWeeks,
   onSelect,
   dateFor,
 }: {
   totalWeeks: number;
   currentWeek: number;
   selectedWeek: number;
+  trainedWeeks: Map<number, Date>;
   onSelect: (week: number) => void;
   dateFor: (week: number) => Date;
 }) {
@@ -329,7 +382,8 @@ function WeekStrip({
     <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 no-scrollbar">
       {Array.from({ length: totalWeeks }, (_, week) => {
         const isSelected = week === selectedWeek;
-        const isDone = week < currentWeek;
+        const isDone = trainedWeeks.has(week);
+        const isMissed = !isDone && week < currentWeek;
         const isBlockStart = week % WEEKS_PER_BLOCK === 0;
 
         return (
@@ -343,9 +397,13 @@ function WeekStrip({
               'flex w-16 shrink-0 flex-col items-center gap-0.5 rounded-xl border px-2 py-2 transition-colors',
               isSelected
                 ? 'border-ember-500 bg-ember-500/15 text-ember-200'
-                : isBlockStart
-                  ? 'border-ink-700 bg-ink-900 text-ink-300'
-                  : 'border-ink-800 bg-ink-900 text-ink-400 hover:text-ink-100'
+                : isDone
+                  ? 'border-mint-500/40 bg-mint-500/10 text-mint-200'
+                  : isMissed
+                    ? 'border-ink-800 bg-ink-900/50 text-ink-600'
+                    : isBlockStart
+                      ? 'border-ink-700 bg-ink-900 text-ink-300'
+                      : 'border-ink-800 bg-ink-900 text-ink-400 hover:text-ink-100'
             )}
           >
             <span className="flex items-center gap-1 text-sm font-bold tabular-nums">

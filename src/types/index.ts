@@ -19,6 +19,13 @@ export interface Workout {
   date: Date;
   name: string;
   durationSeconds: number;
+  /** Día del plan que se entrenó, cuando la sesión salió de un plan de entrenamiento.
+   *  Se guardan los tres juntos: el plan (para agrupar), el día (que es el que progresa por
+   *  su cuenta) y la semana de progresión que se entrenó, congelada tal como estaba al
+   *  arrancar. Sin ellos la sesión es un entrenamiento libre o una rutina suelta. */
+  planId?: number;
+  planDayId?: number;
+  weekIndex?: number;
 }
 
 export interface WorkoutSet {
@@ -69,6 +76,10 @@ export interface ActiveWorkoutDraft {
   workoutId: number;
   name: string;
   startTime: Date;
+  /** Día del plan y semana que se está entrenando, si la sesión salió de un plan. */
+  planId?: number;
+  planDayId?: number;
+  weekIndex?: number;
   activeExercises: ActiveExerciseData[];
   currentExerciseIndex: number;
   restTimerTarget: number | null;

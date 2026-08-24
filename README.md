@@ -11,13 +11,20 @@ El nombre viene del peso que levantás y de lo que hace la app: cargar cada seri
 - **Modo entrenamiento**: un ejercicio por vez, con las series editables en línea,
   el peso y las reps de la sesión anterior a la vista, cronómetro de descanso,
   cambio de ejercicio si la máquina está ocupada y recuperación automática de la
-  sesión si se cierra el navegador.
+  sesión si se cierra el navegador. Arranca con lo que el plan tiene puesto para hoy,
+  con el peso de la semana que toca, y al terminar la sesión queda imputada a ese día
+  del plan.
 - **Rutinas**: planes reutilizables con series, repeticiones y peso base por
   ejercicio.
 - **Agenda y planes**: elegís qué días de la semana entrenás y con qué rutina, y el
   calendario se llena solo entre la fecha de inicio y la de fin del plan. Tocando un
   día se ve la rutina con el peso que toca esa semana (sube cada 3 semanas, según el
   equipamiento de cada ejercicio).
+- **La pantalla de inicio sigue al plan**: propone la rutina del día que toca hoy, con
+  su semana de progresión; si hoy el plan no tiene nada, avisa que es día de descanso y
+  deja entrenar libre o elegir cualquier rutina igual. Cada sesión entrenada desde el
+  plan queda marcada en la progresión, así se ve qué semanas se hicieron de verdad y
+  cuáles se saltearon.
 - **Biblioteca**: catálogo remoto de ejercicios (con imágenes) más los propios,
   con notas de puesta a punto de cada máquina.
 - **Historial**: calendario de asistencia, resumen de cada sesión y 1RM estimado.

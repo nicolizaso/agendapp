@@ -8,18 +8,37 @@ import {
   ChevronRight,
   Flame,
   History,
+  Moon,
   Play,
 } from 'lucide-react';
-import { useGymStore } from '../../../hooks/useGymStore';
+import { useGymStore, type PlanCompletion } from '../../../hooks/useGymStore';
+import { useAgendaStore } from '../../../hooks/useAgendaStore';
 import { Button } from '../../../components/Button';
 import { db } from '../../../lib/db';
+import { entriesForDate, type DayEntry } from '../../../lib/agendaDays';
 import { formatDurationLong } from '../../../lib/format';
+import { atMidnight } from '../../../lib/progression';
 import { cn } from '../../../lib/utils';
 import { WorkoutDetailModal } from './WorkoutDetailModal';
 import type { Routine, Workout } from '../../../types';
 
-const LAST_ROUTINE_KEY = 'carga:last-routine';
 const WEEKDAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+
+const NO_PLAN_MESSAGE =
+  'No tenés entrenamientos planificados para hoy. Podés descansar o hacer una rutina de entrenamiento libre.';
+/** Dentro del menú abierto la lista de rutinas ya está a la vista, así que alcanza con el aviso corto. */
+const NO_PLAN_MENU_MESSAGE = 'Hoy el plan no tiene nada. Podés descansar o elegir algo de acá abajo.';
+
+/** Qué se va a entrenar al tocar "Empezar": lo que toca según el plan, una rutina suelta o nada. */
+type Choice =
+  | { kind: 'planned'; key: string }
+  | { kind: 'routine'; routineId: number }
+  | { kind: 'free' };
+
+type Selection =
+  | { kind: 'planned'; entry: DayEntry }
+  | { kind: 'routine'; routine: Routine }
+  | { kind: 'free' };
 
 /** "agosto de 2026" -> "Agosto 2026" (sin el "de" que ensucia el título). */
 function monthLabel(date: Date) {
@@ -35,28 +54,48 @@ function greeting() {
   return 'Buenas noches';
 }
 
+/** Renglón que acompaña a cada entrenamiento planificado: de qué plan sale y en qué semana va. */
+function entryHint(entry: DayEntry): string {
+  if (entry.kind !== 'plan') return `${entry.time} · Turno suelto`;
+  return `${entry.time} · ${entry.planName} · Semana ${(entry.weekIndex ?? 0) + 1} de ${entry.totalWeeks}`;
+}
+
 export function GymDashboard() {
   const routines = useGymStore((state) => state.routines);
   const getRoutines = useGymStore((state) => state.getRoutines);
   const startWorkout = useGymStore((state) => state.startWorkout);
   const loadRoutineIntoWorkout = useGymStore((state) => state.loadRoutineIntoWorkout);
+  const loadPlanDayIntoWorkout = useGymStore((state) => state.loadPlanDayIntoWorkout);
   const getWorkoutsForMonth = useGymStore((state) => state.getWorkoutsForMonth);
+  const getPlanCompletions = useGymStore((state) => state.getPlanCompletions);
+  const isWorkoutActive = useGymStore((state) => state.isWorkoutActive);
 
-  // `null` = todavía no eligió nada en esta sesión; ahí manda la última usada.
-  const [choice, setChoice] = useState<{ routineId: number | null } | null>(null);
+  const plans = useAgendaStore((state) => state.plans);
+  const planDays = useAgendaStore((state) => state.planDays);
+  const sessions = useAgendaStore((state) => state.sessions);
+  const getPlans = useAgendaStore((state) => state.getPlans);
+  const getSessions = useAgendaStore((state) => state.getSessions);
+
+  // `null` = todavía no eligió nada en esta sesión; ahí manda lo que dice el plan.
+  const [choice, setChoice] = useState<Choice | null>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [pickerRect, setPickerRect] = useState<{ top: number; left: number; width: number } | null>(null);
   const pickerButtonRef = useRef<HTMLButtonElement>(null);
   const [monthCursor, setMonthCursor] = useState(() => new Date());
   const [monthWorkouts, setMonthWorkouts] = useState<{ day: number; workoutId: number }[]>([]);
   const [recentWorkouts, setRecentWorkouts] = useState<Workout[]>([]);
+  const [completions, setCompletions] = useState<PlanCompletion[]>([]);
   const [openWorkoutId, setOpenWorkoutId] = useState<number | null>(null);
+  const [today] = useState(() => atMidnight(new Date()));
 
   useEffect(() => {
     getRoutines();
-  }, [getRoutines]);
+    getPlans();
+    getSessions();
+  }, [getRoutines, getPlans, getSessions]);
 
-  // Días entrenados del mes visible.
+  // Días entrenados del mes visible. Se relee al cerrar una sesión para que el día recién
+  // entrenado aparezca sin recargar.
   useEffect(() => {
     let cancelled = false;
 
@@ -68,7 +107,7 @@ export function GymDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [getWorkoutsForMonth, monthCursor]);
+  }, [getWorkoutsForMonth, monthCursor, isWorkoutActive]);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,7 +124,21 @@ export function GymDashboard() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isWorkoutActive]);
+
+  // Qué días del plan ya se entrenaron: es lo que marca como hecho el entrenamiento de hoy.
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      const done = await getPlanCompletions();
+      if (!cancelled) setCompletions(done);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [getPlanCompletions, isWorkoutActive]);
 
   // El menú del picker se renderiza en un portal (ver más abajo) para poder superponerse
   // a toda la pantalla; mientras está abierto seguimos la posición del botón que lo abre.
@@ -107,13 +160,45 @@ export function GymDashboard() {
     };
   }, [isPickerOpen]);
 
-  // La rutina propuesta es la última que entrenaste, no una al azar.
-  const selectedRoutine: Routine | null = useMemo(() => {
-    if (choice) return routines.find((routine) => routine.id === choice.routineId) ?? null;
+  // Lo que el plan de entrenamiento tiene puesto para hoy: los días de plan que caen hoy
+  // más los turnos sueltos de ese día, en orden de horario.
+  const plannedToday = useMemo(
+    () => entriesForDate(today, { plans, planDays, sessions, routines }),
+    [today, plans, planDays, sessions, routines]
+  );
 
-    const stored = Number(window.localStorage.getItem(LAST_ROUTINE_KEY));
-    return routines.find((routine) => routine.id === stored) ?? routines[0] ?? null;
-  }, [choice, routines]);
+  const isEntryDone = (entry: DayEntry) =>
+    typeof entry.planDayId === 'number' &&
+    typeof entry.weekIndex === 'number' &&
+    completions.some(
+      (item) => item.planDayId === entry.planDayId && item.weekIndex === entry.weekIndex
+    );
+
+  /**
+   * Sin elección explícita manda el plan: se propone el primer entrenamiento planificado
+   * de hoy que todavía no se hizo (o el primero, si ya se hicieron todos). Si hoy no hay
+   * nada planificado no se propone ninguna rutina: es día de descanso.
+   */
+  const selection: Selection | null = useMemo(() => {
+    if (choice?.kind === 'free') return { kind: 'free' };
+
+    if (choice?.kind === 'routine') {
+      const routine = routines.find((item) => item.id === choice.routineId);
+      if (routine) return { kind: 'routine', routine };
+    }
+
+    if (choice?.kind === 'planned') {
+      const entry = plannedToday.find((item) => item.key === choice.key);
+      if (entry) return { kind: 'planned', entry };
+    }
+
+    const usable = plannedToday.filter((entry) => entry.routineExists);
+    const suggested = usable.find((entry) => !isEntryDone(entry)) ?? usable[0];
+    return suggested ? { kind: 'planned', entry: suggested } : null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [choice, routines, plannedToday, completions]);
+
+  const selectedDone = selection?.kind === 'planned' && isEntryDone(selection.entry);
 
   const stats = useMemo(() => {
     const now = new Date();
@@ -130,12 +215,25 @@ export function GymDashboard() {
   }, [monthWorkouts, monthCursor, recentWorkouts]);
 
   const handleStart = () => {
-    if (selectedRoutine?.id) {
-      window.localStorage.setItem(LAST_ROUTINE_KEY, String(selectedRoutine.id));
-      loadRoutineIntoWorkout(selectedRoutine.id);
-    } else {
-      window.localStorage.removeItem(LAST_ROUTINE_KEY);
+    if (!selection || selection.kind === 'free') {
       startWorkout();
+      return;
+    }
+
+    if (selection.kind === 'routine') {
+      if (typeof selection.routine.id === 'number') loadRoutineIntoWorkout(selection.routine.id);
+      return;
+    }
+
+    const { entry } = selection;
+    if (!entry.routineExists) return;
+
+    // El entrenamiento del plan arranca con la progresión de la semana que toca hoy, y queda
+    // imputado a ese día del plan: es lo que después marca la semana como entrenada.
+    if (typeof entry.planDayId === 'number' && typeof entry.weekIndex === 'number') {
+      loadPlanDayIntoWorkout(entry.planDayId, entry.weekIndex);
+    } else {
+      loadRoutineIntoWorkout(entry.routineId);
     }
   };
 
@@ -147,7 +245,7 @@ export function GymDashboard() {
     const leading = firstWeekday === 0 ? 6 : firstWeekday - 1;
 
     const trainedDays = new Map(monthWorkouts.map((item) => [item.day, item.workoutId]));
-    const today = new Date();
+    const now = new Date();
 
     return [
       ...Array.from({ length: leading }, (_, index) => ({ key: `empty-${index}`, day: null } as const)),
@@ -158,22 +256,42 @@ export function GymDashboard() {
           day,
           workoutId: trainedDays.get(day) ?? null,
           isToday:
-            day === today.getDate() &&
-            month === today.getMonth() &&
-            year === today.getFullYear(),
+            day === now.getDate() &&
+            month === now.getMonth() &&
+            year === now.getFullYear(),
         };
       }),
     ];
   }, [monthCursor, monthWorkouts]);
 
+  const selectionTitle =
+    selection === null
+      ? 'Día de descanso'
+      : selection.kind === 'free'
+        ? 'Entrenamiento libre'
+        : selection.kind === 'routine'
+          ? selection.routine.name
+          : selection.entry.routineName;
+
+  const selectionHint =
+    selection === null
+      ? NO_PLAN_MESSAGE
+      : selection.kind === 'free'
+        ? 'Agregás los ejercicios sobre la marcha'
+        : selection.kind === 'routine'
+          ? 'Rutina suelta, fuera del plan'
+          : entryHint(selection.entry);
+
   return (
     <div className="mx-auto max-w-3xl space-y-6 pb-24">
-      {/* Punto de partida de la sesión */}
+      {/* Punto de partida de la sesión: lo que el plan de entrenamiento tiene puesto para hoy */}
       <section className="relative overflow-hidden rounded-card border border-ink-800 bg-ink-900 p-5">
         <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-ember-500/12 blur-3xl" />
 
         <div className="relative space-y-4">
-          <p className="text-sm text-ink-400">{greeting()}. ¿Qué entrenás hoy?</p>
+          <p className="text-sm text-ink-400">
+            {greeting()}. {plannedToday.length > 0 ? '¿Arrancamos?' : '¿Qué entrenás hoy?'}
+          </p>
 
           <div className="relative">
             <button
@@ -184,11 +302,30 @@ export function GymDashboard() {
               className="flex w-full items-center justify-between gap-3 rounded-2xl border border-ink-700 bg-ink-850 px-4 py-3 text-left transition-colors hover:border-ember-500/40"
             >
               <span className="min-w-0">
-                <span className="block text-[10px] font-bold uppercase tracking-widest text-ink-500">
-                  Plan de hoy
+                <span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-ink-500">
+                  {selection?.kind === 'planned' ? 'Plan de hoy' : 'Hoy'}
+                  {selectedDone && (
+                    <span className="flex items-center gap-1 rounded-full border border-mint-500/30 bg-mint-500/10 px-1.5 py-0.5 text-mint-300">
+                      <Check className="h-3 w-3" /> Entrenado
+                    </span>
+                  )}
                 </span>
-                <span className="mt-0.5 block truncate font-heading text-lg font-bold text-ink-100">
-                  {selectedRoutine ? selectedRoutine.name : 'Entrenamiento libre'}
+                <span
+                  className={cn(
+                    'mt-0.5 flex items-center gap-2 font-heading text-lg font-bold',
+                    selection === null ? 'text-ink-300' : 'text-ink-100'
+                  )}
+                >
+                  {selection === null && <Moon className="h-4 w-4 shrink-0 text-ink-500" />}
+                  <span className="min-w-0 truncate">{selectionTitle}</span>
+                </span>
+                <span
+                  className={cn(
+                    'mt-0.5 block text-xs',
+                    selection === null ? 'text-ink-400' : 'truncate text-ink-500'
+                  )}
+                >
+                  {selectionHint}
                 </span>
               </span>
               <ChevronDown
@@ -210,14 +347,37 @@ export function GymDashboard() {
                   />
                   <div
                     style={{ top: pickerRect.top + 8, left: pickerRect.left, width: pickerRect.width }}
-                    className="fixed z-[9101] max-h-64 overflow-y-auto rounded-2xl border border-ink-700 bg-ink-850 shadow-lift animate-in fade-in zoom-in-95 duration-150"
+                    className="fixed z-[9101] max-h-72 overflow-y-auto rounded-2xl border border-ink-700 bg-ink-850 shadow-lift animate-in fade-in zoom-in-95 duration-150"
                   >
+                    <PickerGroup label="Planificado para hoy" />
+                    {plannedToday.length === 0 ? (
+                      <p className="border-b border-ink-800 p-4 text-xs leading-relaxed text-ink-400">
+                        {NO_PLAN_MENU_MESSAGE}
+                      </p>
+                    ) : (
+                      plannedToday.map((entry) => (
+                        <PickerRow
+                          key={entry.key}
+                          label={entry.routineName}
+                          hint={entryHint(entry)}
+                          isDone={isEntryDone(entry)}
+                          isDisabled={!entry.routineExists}
+                          isSelected={selection?.kind === 'planned' && selection.entry.key === entry.key}
+                          onClick={() => {
+                            setChoice({ kind: 'planned', key: entry.key });
+                            setIsPickerOpen(false);
+                          }}
+                        />
+                      ))
+                    )}
+
+                    <PickerGroup label="Fuera del plan" />
                     <PickerRow
                       label="Entrenamiento libre"
                       hint="Agregás los ejercicios sobre la marcha"
-                      isSelected={!selectedRoutine}
+                      isSelected={selection?.kind === 'free'}
                       onClick={() => {
-                        setChoice({ routineId: null });
+                        setChoice({ kind: 'free' });
                         setIsPickerOpen(false);
                       }}
                     />
@@ -225,9 +385,9 @@ export function GymDashboard() {
                       <PickerRow
                         key={routine.id}
                         label={routine.name}
-                        isSelected={selectedRoutine?.id === routine.id}
+                        isSelected={selection?.kind === 'routine' && selection.routine.id === routine.id}
                         onClick={() => {
-                          setChoice({ routineId: routine.id ?? null });
+                          setChoice({ kind: 'routine', routineId: routine.id ?? -1 });
                           setIsPickerOpen(false);
                         }}
                       />
@@ -238,9 +398,34 @@ export function GymDashboard() {
               )}
           </div>
 
-          <Button size="xl" className="w-full text-base" onClick={handleStart}>
-            <Play className="h-5 w-5 fill-current" /> Empezar a entrenar
+          {selection?.kind === 'planned' && !selection.entry.routineExists ? (
+            <p className="text-sm text-flare-400">
+              La rutina de este día del plan fue eliminada. Editá el plan para volver a asignarle una.
+            </p>
+          ) : null}
+
+          {/* En un día sin nada planificado el descanso es la propuesta: el botón deja de ser
+              el llamado principal y entrenar igual queda como la opción secundaria. */}
+          <Button
+            size="xl"
+            variant={selection === null ? 'secondary' : 'primary'}
+            className="w-full text-base"
+            disabled={selection?.kind === 'planned' && !selection.entry.routineExists}
+            onClick={handleStart}
+          >
+            <Play className="h-5 w-5 fill-current" />
+            {selection === null
+              ? 'Entrenar igual, sin plan'
+              : selectedDone
+                ? 'Volver a entrenar'
+                : 'Empezar a entrenar'}
           </Button>
+
+          {plannedToday.length > 1 && (
+            <p className="text-xs text-ink-500">
+              Hoy tenés {plannedToday.length} entrenamientos planificados: elegí cuál arrancás.
+            </p>
+          )}
         </div>
       </section>
 
@@ -370,31 +555,47 @@ export function GymDashboard() {
   );
 }
 
+function PickerGroup({ label }: { label: string }) {
+  return (
+    <p className="border-b border-ink-800 bg-ink-900/60 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-ink-500">
+      {label}
+    </p>
+  );
+}
+
 function PickerRow({
   label,
   hint,
   isSelected,
+  isDone,
+  isDisabled,
   onClick,
 }: {
   label: string;
   hint?: string;
   isSelected: boolean;
+  isDone?: boolean;
+  isDisabled?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={isDisabled}
       className={cn(
-        'flex w-full items-center justify-between gap-3 border-b border-ink-800 p-4 text-left transition-colors last:border-0 hover:bg-ink-800',
+        'flex w-full items-center justify-between gap-3 border-b border-ink-800 p-4 text-left transition-colors last:border-0 hover:bg-ink-800 disabled:pointer-events-none disabled:opacity-50',
         isSelected ? 'text-ember-300' : 'text-ink-200'
       )}
     >
       <span className="min-w-0">
         <span className="block truncate font-semibold">{label}</span>
-        {hint && <span className="mt-0.5 block text-xs text-ink-500">{hint}</span>}
+        {hint && <span className="mt-0.5 block truncate text-xs text-ink-500">{hint}</span>}
       </span>
-      {isSelected && <Check className="h-4 w-4 shrink-0" />}
+      <span className="flex shrink-0 items-center gap-1.5">
+        {isDone && <Check className="h-4 w-4 text-mint-400" aria-label="Ya entrenado" />}
+        {isSelected && <Check className="h-4 w-4" />}
+      </span>
     </button>
   );
 }

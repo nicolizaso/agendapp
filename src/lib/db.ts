@@ -278,6 +278,22 @@ export class CargaDB extends Dexie {
           }
         }
       });
+
+    // Cada entrenamiento recuerda de qué día del plan salió y qué semana de progresión se
+    // entrenó: con eso el plan sabe qué sesiones ya se hicieron y cuáles quedaron pendientes.
+    // Las sesiones anteriores quedan sin plan (no hay forma de saber a cuál pertenecían).
+    this.version(8).stores({
+      exercises: '++id, apiId, name, muscleGroup, equipment',
+      workouts: '++id, date, name, durationSeconds, planId, planDayId, [planDayId+weekIndex]',
+      sets: '++id, workoutId, exerciseId, [exerciseId+date], [workoutId+exerciseId]',
+      routines: '++id, name, created_at',
+      routineExercises: '++id, routineId, exerciseId, order',
+      activeWorkoutDraft: '++id, workoutId',
+      scheduledSessions: '++id, dayOfWeek, routineId, planId, planDayId',
+      trainingPlans: '++id, name, startDate, endDate',
+      planDays: '++id, planId, routineId, order, dayOfWeek',
+      planExercises: '++id, planDayId, exerciseId',
+    });
   }
 }
 

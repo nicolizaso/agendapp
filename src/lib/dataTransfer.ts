@@ -58,6 +58,10 @@ export interface ExportedWorkout {
   date: string;
   name: string;
   durationSeconds: number;
+  /** Día del plan al que se imputó la sesión (id original, se remapea al importar) y la
+   *  semana de progresión que cubrió. Sólo en las sesiones que salieron de un plan. */
+  originalPlanDayId?: number;
+  weekIndex?: number;
   sets: ExportedWorkoutSet[];
 }
 
@@ -233,6 +237,8 @@ export async function buildExportBundle(selection: ExportSelection): Promise<Dat
         date: new Date(workout.date).toISOString(),
         name: workout.name,
         durationSeconds: workout.durationSeconds,
+        originalPlanDayId: workout.planDayId,
+        weekIndex: workout.weekIndex,
         sets: sets.map(({ exerciseId, weight, reps, rpe, date }) => ({
           exerciseId,
           weight,
@@ -404,6 +410,8 @@ export async function importBundle(bundle: DataBundle, selection: ImportSelectio
   result.exercisesImported = exerciseMap.size;
 
   const routineIdMap = new Map<number, number>();
+  /** Id original de cada día de plan importado -> id nuevo, para reimputarle sus sesiones. */
+  const planDayIdMap = new Map<number, number>();
 
   const importRoutine = async (routine: ExportedRoutine): Promise<number> => {
     const newRoutineId = (await db.routines.add({
@@ -474,6 +482,8 @@ export async function importBundle(bundle: DataBundle, selection: ImportSelectio
           order: index,
         })) as number;
 
+        planDayIdMap.set(day.originalId, newPlanDayId);
+
         // El plan agenda sus días solo, igual que al crearlo desde la app.
         await db.scheduledSessions.add({
           dayOfWeek,
@@ -499,10 +509,19 @@ export async function importBundle(bundle: DataBundle, selection: ImportSelectio
 
   if (selection.workouts) {
     for (const workout of bundle.workouts ?? []) {
+      // La sesión sigue apuntando a su día del plan sólo si ese plan también se importó;
+      // si no, queda como una sesión suelta más del historial.
+      const planDayId =
+        typeof workout.originalPlanDayId === 'number' ? planDayIdMap.get(workout.originalPlanDayId) : undefined;
+      const planDay = typeof planDayId === 'number' ? await db.planDays.get(planDayId) : undefined;
+
       const newWorkoutId = (await db.workouts.add({
         date: new Date(workout.date),
         name: workout.name,
         durationSeconds: workout.durationSeconds,
+        planId: planDay?.planId,
+        planDayId,
+        weekIndex: typeof planDayId === 'number' ? workout.weekIndex : undefined,
       })) as number;
 
       const sets = workout.sets
