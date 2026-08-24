@@ -13,6 +13,14 @@ import type {
   WorkoutSummary,
 } from '../types';
 
+/** Una sesión ya entrenada de un día del plan: qué semana cubrió y cuándo. */
+export interface PlanCompletion {
+  workoutId: number;
+  planDayId: number;
+  weekIndex: number;
+  date: Date;
+}
+
 const REST_BETWEEN_SETS_KEY = 'carga:rest-between-sets-seconds';
 const REST_BETWEEN_EXERCISES_KEY = 'carga:rest-between-exercises-seconds';
 const DEFAULT_REST_BETWEEN_SETS_SECONDS = 30;
@@ -49,6 +57,12 @@ interface GymState {
   activeWorkoutStartTime: Date | null;
   activeExercises: ActiveExerciseData[];
   currentExerciseIndex: number;
+
+  /** Día del plan que se está entrenando y su semana de progresión; `null` en una rutina
+   *  suelta o un entrenamiento libre. Es lo que hace que la sesión impacte en el plan. */
+  activePlanId: number | null;
+  activePlanDayId: number | null;
+  activeWeekIndex: number | null;
 
   restTimerTarget: number | null;
   restTimerDuration: number;
@@ -103,6 +117,8 @@ interface GymState {
   getHistory: (exerciseId: number) => Promise<WorkoutSet[]>;
   getPreviousPerformance: (exerciseId: number, excludeWorkoutId?: number | null) => Promise<PreviousSet[]>;
   getWorkoutsForMonth: (year: number, month: number) => Promise<{ day: number; workoutId: number }[]>;
+  /** Sesiones ya entrenadas de un plan (o de todos, si no se pasa `planId`). */
+  getPlanCompletions: (planId?: number) => Promise<PlanCompletion[]>;
 
   startRestTimer: (durationSeconds?: number) => void;
   adjustRestTimer: (deltaSeconds: number) => void;
@@ -140,6 +156,10 @@ export const useGymStore = create<GymState>((set, get) => ({
   activeExercises: [],
   currentExerciseIndex: 0,
 
+  activePlanId: null,
+  activePlanDayId: null,
+  activeWeekIndex: null,
+
   restTimerTarget: null,
   restTimerDuration: readRestPreference(REST_BETWEEN_SETS_KEY, DEFAULT_REST_BETWEEN_SETS_SECONDS),
   restBetweenSetsSeconds: readRestPreference(REST_BETWEEN_SETS_KEY, DEFAULT_REST_BETWEEN_SETS_SECONDS),
@@ -164,6 +184,9 @@ export const useGymStore = create<GymState>((set, get) => ({
         workoutId: state.activeWorkoutId,
         name: state.activeWorkoutName,
         startTime: state.activeWorkoutStartTime,
+        planId: state.activePlanId ?? undefined,
+        planDayId: state.activePlanDayId ?? undefined,
+        weekIndex: state.activeWeekIndex ?? undefined,
         activeExercises: state.activeExercises,
         currentExerciseIndex: state.currentExerciseIndex,
         restTimerTarget: state.restTimerTarget,
@@ -198,6 +221,9 @@ export const useGymStore = create<GymState>((set, get) => ({
           activeWorkoutId: draft.workoutId,
           activeWorkoutName: draft.name || 'Entrenamiento libre',
           activeWorkoutStartTime: new Date(draft.startTime),
+          activePlanId: draft.planId ?? null,
+          activePlanDayId: draft.planDayId ?? null,
+          activeWeekIndex: draft.weekIndex ?? null,
           activeExercises: draft.activeExercises ?? [],
           currentExerciseIndex: draft.currentExerciseIndex ?? 0,
           restTimerTarget: draft.restTimerTarget,
@@ -284,6 +310,9 @@ export const useGymStore = create<GymState>((set, get) => ({
         activeWorkoutStartTime: startTime,
         activeExercises: [],
         currentExerciseIndex: 0,
+        activePlanId: null,
+        activePlanDayId: null,
+        activeWeekIndex: null,
         restTimerTarget: null,
       });
       get().saveActiveDraft();
@@ -335,6 +364,9 @@ export const useGymStore = create<GymState>((set, get) => ({
         activeWorkoutStartTime: startTime,
         activeExercises,
         currentExerciseIndex: 0,
+        activePlanId: null,
+        activePlanDayId: null,
+        activeWeekIndex: null,
         restTimerTarget: null,
       });
       get().saveActiveDraft();
@@ -366,10 +398,15 @@ export const useGymStore = create<GymState>((set, get) => ({
 
       const startTime = new Date();
       const workoutName = `${plan.name} · ${planDay.label} · Semana ${weekIndex + 1}`;
+      // El vínculo con el plan se guarda desde el arranque: así la sesión queda imputada al
+      // día y a la semana que se está entrenando aunque el navegador se cierre a mitad.
       const workoutId = (await db.workouts.add({
         date: startTime,
         name: workoutName,
         durationSeconds: 0,
+        planId: planDay.planId,
+        planDayId,
+        weekIndex,
       })) as number;
 
       const activeExercises: ActiveExerciseData[] = [];
@@ -418,6 +455,9 @@ export const useGymStore = create<GymState>((set, get) => ({
         activeWorkoutStartTime: startTime,
         activeExercises,
         currentExerciseIndex: 0,
+        activePlanId: planDay.planId,
+        activePlanDayId: planDayId,
+        activeWeekIndex: weekIndex,
         restTimerTarget: null,
       });
       get().saveActiveDraft();
@@ -469,6 +509,9 @@ export const useGymStore = create<GymState>((set, get) => ({
       activeWorkoutName: 'Entrenamiento libre',
       activeExercises: [],
       currentExerciseIndex: 0,
+      activePlanId: null,
+      activePlanDayId: null,
+      activeWeekIndex: null,
       restTimerTarget: null,
       lastSummary: summary,
     });
@@ -498,6 +541,9 @@ export const useGymStore = create<GymState>((set, get) => ({
       activeWorkoutName: 'Entrenamiento libre',
       activeExercises: [],
       currentExerciseIndex: 0,
+      activePlanId: null,
+      activePlanDayId: null,
+      activeWeekIndex: null,
       restTimerTarget: null,
     });
     await db.activeWorkoutDraft.clear().catch(() => {});
@@ -863,6 +909,40 @@ export const useGymStore = create<GymState>((set, get) => ({
     return workouts
       .filter((workout) => typeof workout.id === 'number')
       .map((workout) => ({ day: new Date(workout.date).getDate(), workoutId: workout.id as number }));
+  },
+
+  /**
+   * Sesiones que ya se entrenaron de un plan. Una sesión vacía o descartada se borra al
+   * cerrarla, así que toda fila con `planDayId` cuenta como entrenada; la única excepción es
+   * la que está abierta en este momento, que todavía no terminó.
+   */
+  getPlanCompletions: async (planId) => {
+    try {
+      const rows =
+        typeof planId === 'number'
+          ? await db.workouts.where('planId').equals(planId).toArray()
+          : await db.workouts.filter((workout) => typeof workout.planDayId === 'number').toArray();
+
+      const activeWorkoutId = get().activeWorkoutId;
+
+      return rows
+        .filter(
+          (workout) =>
+            typeof workout.id === 'number' &&
+            typeof workout.planDayId === 'number' &&
+            typeof workout.weekIndex === 'number' &&
+            workout.id !== activeWorkoutId
+        )
+        .map((workout) => ({
+          workoutId: workout.id as number,
+          planDayId: workout.planDayId as number,
+          weekIndex: workout.weekIndex as number,
+          date: new Date(workout.date),
+        }));
+    } catch (err) {
+      console.error('No se pudieron leer las sesiones entrenadas del plan', err);
+      return [];
+    }
   },
 
   startRestTimer: (durationSeconds) => {

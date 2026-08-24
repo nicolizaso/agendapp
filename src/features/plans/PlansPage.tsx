@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pencil, Plus, Trash2, TrendingUp } from 'lucide-react';
 import { Button } from '../../components/Button';
 import { useAgendaStore, type PlanExercisePayload } from '../../hooks/useAgendaStore';
-import { useGymStore } from '../../hooks/useGymStore';
+import { useGymStore, type PlanCompletion } from '../../hooks/useGymStore';
 import { useUIStore } from '../../hooks/useUIStore';
 import { PlanFormModal, type PlanFormDayInitial } from './components/PlanFormModal';
 import { PlanDetailModal } from './components/PlanDetailModal';
-import { isPlanFinished } from '../../lib/progression';
+import { isPlanFinished, totalWeeksForPlanDay } from '../../lib/progression';
 import { weekdayLetter } from '../../lib/weekdays';
 import type { TrainingPlan } from '../../types';
 
@@ -19,11 +19,15 @@ export function PlansPage() {
   const deletePlan = useAgendaStore((state) => state.deletePlan);
   const routines = useGymStore((state) => state.routines);
   const getRoutines = useGymStore((state) => state.getRoutines);
+  const getPlanCompletions = useGymStore((state) => state.getPlanCompletions);
+  const isWorkoutActive = useGymStore((state) => state.isWorkoutActive);
   const openConfirmDialog = useUIStore((state) => state.openConfirmDialog);
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editing, setEditing] = useState<{ plan: TrainingPlan; days: PlanFormDayInitial[] } | null>(null);
   const [detailPlan, setDetailPlan] = useState<TrainingPlan | null>(null);
+  // Sesiones ya entrenadas de todos los planes, para mostrar cuánto lleva hecho cada uno.
+  const [completions, setCompletions] = useState<PlanCompletion[]>([]);
 
   useEffect(() => {
     getPlans();
@@ -31,7 +35,46 @@ export function PlansPage() {
     getRoutines();
   }, [getPlans, getSessions, getRoutines]);
 
+  // Se relee al cerrar una sesión: lo recién entrenado suma sin recargar la app.
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      const done = await getPlanCompletions();
+      if (!cancelled) setCompletions(done);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [getPlanCompletions, isWorkoutActive]);
+
   const daysByPlan = (planId: number) => planDays.filter((day) => day.planId === planId);
+
+  /** Cuántas de las sesiones que propone el plan ya se entrenaron. */
+  const progressByPlan = useMemo(() => {
+    const doneByDay = new Map<number, number>();
+    for (const item of completions) {
+      doneByDay.set(item.planDayId, (doneByDay.get(item.planDayId) ?? 0) + 1);
+    }
+
+    return new Map(
+      plans
+        .filter((plan) => typeof plan.id === 'number')
+        .map((plan) => {
+          const days = planDays.filter((day) => day.planId === plan.id);
+          const total = days.reduce(
+            (sum, day) => sum + Math.max(1, totalWeeksForPlanDay(plan, day.dayOfWeek)),
+            0
+          );
+          const done = days.reduce(
+            (sum, day) => sum + Math.min(doneByDay.get(day.id as number) ?? 0, Math.max(1, totalWeeksForPlanDay(plan, day.dayOfWeek))),
+            0
+          );
+          return [plan.id as number, { done, total }] as const;
+        })
+    );
+  }, [plans, planDays, completions]);
 
   const openCreate = () => {
     setEditing(null);
@@ -118,6 +161,7 @@ export function PlansPage() {
             const finished = isPlanFinished(plan);
             const days = typeof plan.id === 'number' ? daysByPlan(plan.id) : [];
             const missingRoutine = days.some((day) => !routines.some((routine) => routine.id === day.routineId));
+            const progress = (typeof plan.id === 'number' ? progressByPlan.get(plan.id) : null) ?? { done: 0, total: 0 };
             return (
             <article
               key={plan.id}
@@ -165,6 +209,23 @@ export function PlansPage() {
                   })}
                 </div>
               </div>
+
+              {progress.total > 0 && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-ink-500">Sesiones entrenadas</span>
+                    <span className="font-bold tabular-nums text-ink-300">
+                      {progress.done} / {progress.total}
+                    </span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-ink-800">
+                    <div
+                      className="h-full rounded-full bg-mint-500 transition-all duration-300"
+                      style={{ width: `${Math.min(100, (progress.done / progress.total) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center gap-2 border-t border-ink-800 pt-4">
                 <Button size="lg" className="flex-1" onClick={() => setDetailPlan(plan)}>
